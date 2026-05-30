@@ -1,6 +1,8 @@
 /* Shift handoff report — auto-generated summary for outgoing charge nurse to hand to incoming shift. */
 "use client";
+import { useEffect } from "react";
 import { useSimulationStore } from "@/store/simulationStore";
+import { useDemoStore } from "@/store/demoStore";
 import { formatTime, formatPercent, statusColor, riskColor, riskLabel } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { ClipboardList, Printer, AlertTriangle, Users, Bed, Activity, Flame, Anchor } from "lucide-react";
@@ -14,6 +16,14 @@ function now() {
 
 export default function ShiftReportPage() {
   const { hospitalState } = useSimulationStore();
+  const { pendingAction, clearAction } = useDemoStore();
+
+  useEffect(() => {
+    if (pendingAction === "print_preview") {
+      clearAction();
+      window.print();
+    }
+  }, [pendingAction]);
   const m = hospitalState?.metrics;
   const depts = hospitalState?.departments ?? {};
   const patients = hospitalState?.patients ?? [];

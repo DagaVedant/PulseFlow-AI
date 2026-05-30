@@ -37,8 +37,14 @@ export default function PatientIntelPage() {
   const [analyzed, setAnalyzed] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
 
+  // Reset analysis state on every mount so the cards never start with AI badges already visible.
+  useEffect(() => {
+    setAnalyzed(false);
+    setAnalyzing(false);
+  }, []);
+
   // No LLM round-trip — the constraint-aware recommendation IS the analysis.
-  // "Analyze All" just plays a brief generating animation, then reveals it instantly.
+  // "Analyze All" plays a brief shimmer, then reveals the AI badges.
   const analyzeAll = useCallback(async () => {
     if (patients.length === 0) return;
     setAnalyzing(true);
@@ -221,47 +227,55 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
         </div>
       )}
 
-      {/* AI Analysis (the constraint-aware recommendation serves as the summary) */}
-      <div className="rounded-xl p-3.5 mb-3"
-        style={{ background: rec.blocked ? "rgba(255,170,0,0.06)" : "rgba(59,130,246,0.06)", border: `1px solid ${rec.blocked ? "rgba(255,170,0,0.25)" : "rgba(59,130,246,0.22)"}` }}>
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <div className="flex items-center gap-2 min-w-0">
-            {rec.blocked
-              ? <Ban className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              : <ShieldAlert className="w-4 h-4 text-blue-400 flex-shrink-0" />}
-            <span className="text-xs font-bold font-mono leading-tight truncate" style={{ color: rec.blocked ? "#ffaa00" : "#93c5fd" }}>
-              {rec.title}
-            </span>
-          </div>
-          {analyzing ? (
-            <span className="flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded text-blue-400 bg-blue-950/50 flex-shrink-0">
-              <RefreshCw className="w-2.5 h-2.5 animate-spin" /> ANALYZING
-            </span>
-          ) : analyzed ? (
-            <span className="flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-950/50 flex-shrink-0">
-              <CheckCircle2 className="w-2.5 h-2.5" /> AI ANALYSIS
-            </span>
-          ) : (
-            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded text-slate-500 bg-slate-800/50 flex-shrink-0">
-              RECOMMENDATION
-            </span>
-          )}
-        </div>
-
+      {/* AI Analysis box — hidden until Analyze All is clicked */}
+      <AnimatePresence mode="wait">
         {analyzing ? (
-          <div className="py-3 space-y-2">
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="h-2.5 rounded bg-blue-500/15"
-                animate={{ opacity: [0.3, 0.7, 0.3] }}
-                transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
-                style={{ width: `${90 - i * 18}%` }}
-              />
-            ))}
-          </div>
-        ) : (
-          <>
+          <motion.div
+            key="shimmer"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="rounded-xl p-3.5 mb-3"
+            style={{ background: "rgba(59,130,246,0.04)", border: "1px solid rgba(59,130,246,0.18)" }}
+          >
+            <div className="flex items-center gap-2 mb-2.5">
+              <RefreshCw className="w-3.5 h-3.5 text-blue-400 animate-spin flex-shrink-0" />
+              <span className="text-[9px] font-mono font-bold text-blue-400">ANALYZING...</span>
+            </div>
+            <div className="space-y-2">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="h-2.5 rounded bg-blue-500/15"
+                  animate={{ opacity: [0.3, 0.7, 0.3] }}
+                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
+                  style={{ width: `${90 - i * 18}%` }}
+                />
+              ))}
+            </div>
+          </motion.div>
+        ) : analyzed ? (
+          <motion.div
+            key="result"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="rounded-xl p-3.5 mb-3"
+            style={{ background: rec.blocked ? "rgba(255,170,0,0.06)" : "rgba(59,130,246,0.06)", border: `1px solid ${rec.blocked ? "rgba(255,170,0,0.25)" : "rgba(59,130,246,0.22)"}` }}
+          >
+            <div className="flex items-center justify-between gap-2 mb-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                {rec.blocked
+                  ? <Ban className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                  : <ShieldAlert className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+                <span className="text-xs font-bold font-mono leading-tight truncate" style={{ color: rec.blocked ? "#ffaa00" : "#93c5fd" }}>
+                  {rec.title}
+                </span>
+              </div>
+              <span className="flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-950/50 flex-shrink-0">
+                <CheckCircle2 className="w-2.5 h-2.5" /> AI ANALYSIS
+              </span>
+            </div>
             <div className="space-y-1.5 mb-3">
               {rec.reasons.map((reason, i) => (
                 <div key={i} className="flex items-start gap-2">
@@ -280,9 +294,21 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
                 <span className="text-[11px] font-mono font-bold text-blue-400">+{rec.throughput_improvement}% flow</span>
               </div>
             </div>
-          </>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="placeholder"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="rounded-xl p-3.5 mb-3 flex items-center justify-center gap-2"
+            style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
+          >
+            <Zap className="w-3.5 h-3.5 text-slate-600" />
+            <span className="text-xs font-mono text-slate-600">Click Analyze All to generate AI care plan</span>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
 
       {/* Pathway badges */}
       <div className="flex gap-1.5 flex-wrap mb-1">

@@ -7,6 +7,7 @@ export type DemoAction =
   | "sandbox_demo"
   | "add_constraint"
   | "remove_constraint"
+  | "print_preview"
   | null;
 
 interface DemoStore {
