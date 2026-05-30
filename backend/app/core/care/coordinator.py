@@ -15,12 +15,10 @@ class Specialist:
     avg_consult_min: int
     patient_load: int
     queue_length: int
-    busy_min: int            # initial busy window in minutes (0 = currently free)
+    busy_min: int
     current_assignment: str = ""
 
     def _available_in(self, now: float) -> int:
-        """Live, repeating countdown so availability actually ticks down over sim time.
-        Each specialist cycles: busy for `busy_min`, then free for the rest of the cycle."""
         if self.busy_min <= 0:
             return 0
         cycle = 30 + self.avg_consult_min
@@ -97,18 +95,15 @@ class TrackedPatient:
     created_at: float = 0.0
 
     def wait_min(self, now: float) -> float:
-        # Anchored near the spec value; drifts up by at most ~12 min so the demo stays realistic
         drift = min(12.0, max(0.0, now - self.created_at))
         return self.ed_wait_base + drift
 
     def risk(self, now: float) -> float:
-        # Anchored at base_risk; creeps up by at most 2 points for a subtle deterioration cue
         elapsed = min(30.0, max(0.0, now - self.created_at))
         deterioration = min(0.02, (elapsed / max(1, self.target_window_min)) * 0.02)
         return min(0.99, self.base_risk + deterioration)
 
 
-# Specialty group → ranked roles preferred for a consult
 PREFERRED_ROLES = {
     "Neurology": ["Stroke Specialist", "Neurocritical Care Physician"],
     "Cardiology": ["Heart Failure Specialist", "Interventional Cardiologist", "Electrophysiologist"],
@@ -129,39 +124,30 @@ class CareCoordinator:
         self.tracked: List[TrackedPatient] = []
         self._seed_done = False
 
-    # ── Seeding ──────────────────────────────────────────────────────────────
     def _seed(self, now: float = 0.0):
         s = lambda *a, **k: self.specialists.append(Specialist(*a, **k))
         sid = lambda: uuid.uuid4().hex[:6].upper()
 
-        # Cardiology
         s(sid(), "Dr. Alan Reyes",   "Cardiology",  "Interventional Cardiologist", 35, 4, 2, 28, "Cath Lab — STEMI")
         s(sid(), "Dr. Nina Patel",   "Cardiology",  "Electrophysiologist",         30, 2, 1, 0)
         s(sid(), "Dr. Omar Haddad",  "Cardiology",  "Heart Failure Specialist",    25, 5, 3, 18, "Inpatient rounds")
-        # Neurology
         s(sid(), "Dr. Grace Liu",    "Neurology",   "Stroke Specialist",           20, 3, 2, 12, "Reading CT angiography")
         s(sid(), "Dr. Peter Novak",  "Neurology",   "Neurocritical Care Physician",30, 4, 1, 40, "ICU consult")
-        # Pulmonology
         s(sid(), "Dr. Sara Kim",     "Pulmonology", "Pulmonary Specialist",        25, 3, 1, 0)
         s(sid(), "Dr. Luis Mendez",  "Pulmonology", "Critical Care Specialist",    30, 5, 2, 22, "ICU ventilator management")
-        # Orthopedics
         s(sid(), "Dr. Emma Wright",  "Orthopedics", "Trauma Surgeon",              40, 2, 1, 8)
         s(sid(), "Dr. Raj Sharma",   "Orthopedics", "Joint Replacement Specialist",45, 1, 0, 0)
-        # Oncology
         s(sid(), "Dr. Chen Wei",     "Oncology",    "Medical Oncologist",          30, 3, 2, 35, "Chemotherapy planning")
         s(sid(), "Dr. Maria Costa",  "Oncology",    "Radiation Oncologist",        35, 2, 1, 50, "Treatment planning")
-        # GI / EM
         s(sid(), "Dr. John Park",    "Gastroenterology", "GI Specialist",          30, 2, 1, 15)
         s(sid(), "Dr. Aisha Bello",  "Emergency Medicine", "Attending Physician",  15, 8, 4, 0)
         s(sid(), "Dr. Tom Fischer",  "Emergency Medicine", "Trauma Physician",     20, 6, 3, 5, "Trauma bay")
-        # Shared resources
         s(sid(), "R. Daniels, RT",   "Shared", "Respiratory Therapist", 20, 6, 2, 0)
         s(sid(), "M. Okafor, PT",    "Shared", "Physical Therapist",    25, 4, 1, 18)
         s(sid(), "K. Schmidt, PharmD","Shared","Pharmacist",            10, 9, 3, 0)
         s(sid(), "L. Tran, RN",      "Shared", "Case Manager",          20, 7, 2, 8)
         s(sid(), "P. Adeyemi, MSW",  "Shared", "Social Worker",         30, 5, 1, 25)
 
-        # Seeded constraints anchored to real sim_time so countdowns start correctly
         self.add_bottleneck({
             "resource_name": "Dr. Sarah Chen",
             "resource_type": "Specialist",
@@ -190,7 +176,6 @@ class CareCoordinator:
             "release_in_min": 100,
         }, now=now)
 
-        # Four tracked executive-view patients — created_at anchored to real sim_time
         self.tracked = [
             TrackedPatient("EXEC-1001", "James Wilson", 67, "Acute Stroke", "critical", "critical",
                            "Neurology", "Stroke Specialist", 52, 25, 0.93,
@@ -206,7 +191,6 @@ class CareCoordinator:
                            ["X-Ray", "Casting", "Discharge"], created_at=now),
         ]
 
-    # ── Bottleneck CRUD ──────────────────────────────────────────────────────
     def add_bottleneck(self, data: dict, now: float = 0.0) -> dict:
         bid = data.get("bottleneck_id") or f"BN-{uuid.uuid4().hex[:5].upper()}"
         release_in = data.get("release_in_min")
@@ -229,7 +213,6 @@ class CareCoordinator:
     def remove_bottleneck(self, bottleneck_id: str) -> bool:
         return self.bottlenecks.pop(bottleneck_id, None) is not None
 
-    # ── Lookups ──────────────────────────────────────────────────────────────
     def _find_specialist(self, specialty: str, preferred_role: str, now: float) -> Optional[Specialist]:
         pool = [sp for sp in self.specialists if sp.specialty == specialty]
         if not pool:
@@ -240,7 +223,6 @@ class CareCoordinator:
             role_rank = ranked.index(sp.role) if sp.role in ranked else len(ranked)
             return (sp._available_in(now), role_rank)
 
-        # Prefer the preferred role if it exists, otherwise soonest-available
         preferred = [sp for sp in pool if sp.role == preferred_role]
         if preferred:
             preferred.sort(key=lambda sp: sp._available_in(now))
@@ -287,7 +269,6 @@ class CareCoordinator:
                 return self._patient_dict(tp, now)
         return None
 
-    # ── State assembly ───────────────────────────────────────────────────────
     def _patient_dict(self, tp: TrackedPatient, now: float) -> dict:
         wait = tp.wait_min(now)
         risk = tp.risk(now)
@@ -334,7 +315,6 @@ class CareCoordinator:
         if sp:
             eta = sp.to_dict(now)["available_in_min"]
             if blocker:
-                # Primary route is blocked by a non-movable constraint
                 bd = blocker.to_dict(now)
                 until = bd["release_label"] or (f"{bd['release_in_min']} min" if bd["release_in_min"] is not None else "later")
                 alt = self._find_alternative(tp, sp, now)

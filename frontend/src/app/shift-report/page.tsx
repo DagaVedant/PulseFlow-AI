@@ -29,7 +29,6 @@ export default function ShiftReportPage() {
   const patients = hospitalState?.patients ?? [];
   const alerts = hospitalState?.alerts ?? [];
 
-  // Full-population counts come from metrics (the patients list is a top-100 sample).
   const totalActive = m?.active_patients ?? patients.length;
   const sev = m?.severity_counts ?? {
     critical: patients.filter(p => p.severity === "critical").length,
@@ -57,7 +56,6 @@ export default function ShiftReportPage() {
   return (
     <div className="flex flex-col h-full overflow-auto p-6 gap-5">
 
-      {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <ClipboardList className="w-7 h-7 text-blue-400" />
@@ -77,10 +75,8 @@ export default function ShiftReportPage() {
 
       <div className="grid grid-cols-3 gap-5">
 
-        {/* Left column */}
         <div className="flex flex-col gap-4 col-span-2">
 
-          {/* Census */}
           <Section title="Patient Census" icon={<Users className="w-4 h-4 text-blue-400" />}>
             <div className="grid grid-cols-5 gap-3">
               <StatBox label="Total Active" value={String(totalActive)} color="#60a5fa" />
@@ -97,7 +93,6 @@ export default function ShiftReportPage() {
             </div>
           </Section>
 
-          {/* Top 5 at-risk patients */}
           <Section title="Top 5 Highest-Risk Patients" icon={<AlertTriangle className="w-4 h-4 text-red-400" />}>
             <div className="space-y-2">
               {topRisk.map((p) => (
@@ -131,7 +126,6 @@ export default function ShiftReportPage() {
             </div>
           </Section>
 
-          {/* Boarding patients */}
           {boarding.length > 0 && (
             <Section title={`Boarding Patients (${boarding.length})`} icon={<Anchor className="w-4 h-4 text-orange-400" />}>
               <div className="space-y-2">
@@ -155,10 +149,8 @@ export default function ShiftReportPage() {
           )}
         </div>
 
-        {/* Right column */}
         <div className="flex flex-col gap-4">
 
-          {/* Department status */}
           <Section title="Department Status" icon={<Bed className="w-4 h-4 text-cyan-400" />}>
             {["er", "icu", "ward", "labs", "imaging"].map((key) => {
               const d = (depts as any)[key];
@@ -182,7 +174,6 @@ export default function ShiftReportPage() {
             })}
           </Section>
 
-          {/* Key metrics */}
           <Section title="Key Metrics" icon={<Activity className="w-4 h-4 text-blue-400" />}>
             {m && [
               ["Avg Wait",     formatTime(m.avg_wait_time),           m.avg_wait_time > 120 ? "#ef4444" : "#60a5fa"],
@@ -199,7 +190,6 @@ export default function ShiftReportPage() {
             ))}
           </Section>
 
-          {/* Incoming shift priorities */}
           <Section title="Incoming Shift Priorities" icon={<AlertTriangle className="w-4 h-4 text-yellow-400" />}>
             <div className="space-y-2">
               {priorities.map((p, i) => (

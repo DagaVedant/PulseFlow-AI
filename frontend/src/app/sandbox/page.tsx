@@ -161,17 +161,14 @@ export default function SandboxPage() {
     if (pendingAction !== "sandbox_demo") return;
     clearAction();
 
-    // Phase 1: flu outbreak — spike arrival rate so projected metrics jump
     setActiveEvents(new Set(["flu_outbreak" as EventType]));
     triggerEvent("flu_outbreak", {});
     setCfg((prev) => ({ ...prev, arrival_rate: parseFloat((DEFAULTS.arrival_rate * 2.5).toFixed(1)) }));
 
-    // Phase 2: max staff to show recovery
     const t1 = setTimeout(() => {
       setCfg({ ...DEFAULTS, doctors: 40, nurses: 100, arrival_rate: parseFloat((DEFAULTS.arrival_rate * 2.5).toFixed(1)) });
     }, 6000);
 
-    // Phase 3: clear everything
     const t2 = setTimeout(() => {
       setActiveEvents(new Set());
       triggerEvent("clear_event");

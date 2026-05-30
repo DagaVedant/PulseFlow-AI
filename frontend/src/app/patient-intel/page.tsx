@@ -37,14 +37,11 @@ export default function PatientIntelPage() {
   const [analyzed, setAnalyzed] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
 
-  // Reset analysis state on every mount so the cards never start with AI badges already visible.
   useEffect(() => {
     setAnalyzed(false);
     setAnalyzing(false);
   }, []);
 
-  // No LLM round-trip — the constraint-aware recommendation IS the analysis.
-  // "Analyze All" plays a brief shimmer, then reveals the AI badges.
   const analyzeAll = useCallback(async () => {
     if (patients.length === 0) return;
     setAnalyzing(true);
@@ -66,7 +63,6 @@ export default function PatientIntelPage() {
   return (
     <div className="flex flex-col h-full p-6 gap-5 overflow-hidden">
 
-      {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
@@ -106,7 +102,6 @@ export default function PatientIntelPage() {
         </div>
       </div>
 
-      {/* Patient grid */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         {patients.length === 0 ? (
           <div className="flex items-center justify-center py-20 text-slate-600 font-mono text-sm">
@@ -154,7 +149,6 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
         boxShadow: p.priority === "critical" ? `0 0 24px ${ps.color}18` : "none",
       }}
     >
-      {/* Header */}
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
           <div className="text-lg font-bold text-white leading-tight">{p.name}</div>
@@ -170,10 +164,8 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
         </span>
       </div>
 
-      {/* Condition */}
       <div className="text-base font-semibold text-slate-200 mb-3">{p.condition}</div>
 
-      {/* Metric row */}
       <div className="grid grid-cols-3 gap-2.5 mb-4">
         <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex items-center gap-1.5 mb-1">
@@ -207,7 +199,6 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
         </div>
       </div>
 
-      {/* Specialist availability */}
       {sp && (
         <div className="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3"
           style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
@@ -227,7 +218,6 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
         </div>
       )}
 
-      {/* AI Analysis box — hidden until Analyze All is clicked */}
       <AnimatePresence mode="wait">
         {analyzing ? (
           <motion.div
@@ -310,7 +300,6 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
         )}
       </AnimatePresence>
 
-      {/* Pathway badges */}
       <div className="flex gap-1.5 flex-wrap mb-1">
         {p.pathway.map((step) => (
           <span key={step} className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-800/60 text-slate-400 font-mono border border-slate-700/40">
