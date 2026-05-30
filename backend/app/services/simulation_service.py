@@ -161,6 +161,32 @@ class SimulationService:
         summary = await self.copilot.generate_patient_summary(patient)
         return {"patient_id": patient_id, "summary": summary}
 
+    def reset(self):
+        self.simulation.stop()
+        cfg = SimulationConfig(
+            arrival_rate=settings.BASE_ARRIVAL_RATE,
+            simulation_speed=settings.SIMULATION_SPEED,
+            er_beds=settings.ER_BEDS,
+            er_doctors=settings.ER_DOCTORS,
+            er_nurses=settings.ER_NURSES,
+            lab_technicians=settings.LAB_TECHNICIANS,
+            lab_analyzers=settings.LAB_ANALYZERS,
+            imaging_ct=settings.IMAGING_CT_SCANNERS,
+            imaging_mri=settings.IMAGING_MRI_MACHINES,
+            imaging_xray=settings.IMAGING_XRAY_ROOMS,
+            icu_beds=settings.ICU_BEDS,
+            icu_doctors=settings.ICU_DOCTORS,
+            icu_nurses=settings.ICU_NURSES,
+            ward_beds=settings.WARD_BEDS,
+            ward_doctors=settings.WARD_DOCTORS,
+            ward_nurses=settings.WARD_NURSES,
+            discharge_staff=settings.DISCHARGE_STAFF,
+        )
+        self.simulation = HospitalSimulation(cfg)
+        self.care = CareCoordinator()
+        self.simulation.start()
+        logger.info("Simulation reset to defaults")
+
     def update_config(self, config_updates: dict):
         logger.info(f"Received config update with {len(config_updates)} keys: {list(config_updates.keys())}")
         current_cfg = self.simulation.config

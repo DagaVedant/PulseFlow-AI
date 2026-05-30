@@ -45,6 +45,8 @@ export const api = {
   getShiftReport: () => fetchJSON<any>("/copilot/shift-report"),
   getBottleneckPredictions: () => fetchJSON<any>("/copilot/forecast/bottlenecks"),
 
+  resetSimulation: () => fetchJSON<any>("/simulation/reset", { method: "POST" }),
+
   getCareState: () => fetchJSON<any>("/care/state"),
   getCareRecommendations: () => fetchJSON<any>("/care/recommendations"),
   getSpecialists: () => fetchJSON<any>("/care/specialists"),

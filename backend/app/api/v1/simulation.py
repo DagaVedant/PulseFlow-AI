@@ -62,6 +62,12 @@ async def update_config(request: ConfigUpdateRequest):
     simulation_service.update_config(updates)
     return {"success": True, "updated": list(updates.keys())}
 
+@router.post("/reset")
+async def reset_simulation():
+    """Reset the simulation to default state, clearing all patients, events, and constraints."""
+    simulation_service.reset()
+    return {"success": True}
+
 @router.get("/forecast")
 async def get_forecast(horizon_minutes: int = 60):
     """Get demand and capacity forecasts."""
