@@ -9,6 +9,7 @@ from app.core.simulation.engine import HospitalSimulation, SimulationConfig
 from app.core.optimization.optimizer import HospitalOptimizer, build_optimization_input_from_state
 from app.core.forecasting.forecaster import HospitalForecaster
 from app.core.ai.copilot import AICopilot
+from app.core.care import CareCoordinator
 from app.services.websocket_manager import manager
 from app.config import settings
 
@@ -47,6 +48,7 @@ class SimulationService:
             base_url=settings.OLLAMA_BASE_URL,
             model=settings.OLLAMA_MODEL,
         )
+        self.care = CareCoordinator()
         self._broadcast_task: Optional[asyncio.Task] = None
         self._running = False
 
@@ -72,6 +74,7 @@ class SimulationService:
                     state = self.simulation.get_hospital_state()
                     if state:
                         state["type"] = "hospital_state"
+                        state["care"] = self.care.get_state(self.simulation.sim_time)
                         await manager.broadcast(state)
                 await asyncio.sleep(broadcast_interval)
             except asyncio.CancelledError:
@@ -134,10 +137,29 @@ class SimulationService:
         }
 
     def get_current_state(self) -> dict:
-        return self.simulation.get_hospital_state() or {}
+        state = self.simulation.get_hospital_state() or {}
+        if state:
+            state["care"] = self.care.get_state(self.simulation.sim_time)
+        return state
 
     def trigger_event(self, event_type: str, params: dict = None):
         self.simulation.trigger_event(event_type, params or {})
+
+    def add_bottleneck(self, data: dict) -> dict:
+        return self.care.add_bottleneck(data, now=self.simulation.sim_time)
+
+    def remove_bottleneck(self, bottleneck_id: str) -> bool:
+        return self.care.remove_bottleneck(bottleneck_id)
+
+    def get_care_recommendations(self) -> list:
+        return self.care.get_recommendations(self.simulation.sim_time)
+
+    async def get_tracked_patient_summary(self, patient_id: str) -> Optional[dict]:
+        patient = self.care.get_patient(patient_id, self.simulation.sim_time)
+        if not patient:
+            return None
+        summary = await self.copilot.generate_patient_summary(patient)
+        return {"patient_id": patient_id, "summary": summary}
 
     def update_config(self, config_updates: dict):
         logger.info(f"Received config update with {len(config_updates)} keys: {list(config_updates.keys())}")

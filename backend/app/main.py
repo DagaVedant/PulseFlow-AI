@@ -122,6 +122,20 @@ async def _handle_client_message(websocket: WebSocket, msg: dict):
             "result": result,
         })
 
+    elif msg_type == "add_bottleneck":
+        bottleneck = simulation_service.add_bottleneck(msg.get("bottleneck", {}))
+        await manager.send_to(websocket, {
+            "type": "bottleneck_added",
+            "bottleneck": bottleneck,
+        })
+
+    elif msg_type == "remove_bottleneck":
+        ok = simulation_service.remove_bottleneck(msg.get("bottleneck_id", ""))
+        await manager.send_to(websocket, {
+            "type": "bottleneck_removed",
+            "success": ok,
+        })
+
     elif msg_type == "request_state":
         state = simulation_service.get_current_state()
         if state:

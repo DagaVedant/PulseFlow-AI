@@ -97,14 +97,20 @@ function DiversionBanner({ metrics }: { metrics: any }) {
   );
 }
 
-function LiveEventLog({ patients, alerts }: { patients: Patient[]; alerts: any[] }) {
-  const [events, setEvents] = useState<{ id: string; text: string; color: string; ts: number }[]>([]);
+function simClock(simTime: number): string {
+  const totalMin = Math.max(0, Math.floor(simTime));
+  const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, "0");
+  const mm = String(Math.floor(totalMin % 60)).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; alerts: any[]; simTime: number }) {
+  const [events, setEvents] = useState<{ id: string; text: string; color: string; clock: string }[]>([]);
   const prevCountRef = useRef(0);
+  const simRef = useRef(simTime);
+  simRef.current = simTime;
 
   useEffect(() => {
-    const criticalNew = patients.filter(
-      (p) => (p.severity === "critical" || p.severity === "high") && p.state === "triage"
-    );
     const count = patients.length;
     if (count !== prevCountRef.current && count > 0) {
       const p = patients[patients.length - 1];
@@ -112,7 +118,7 @@ function LiveEventLog({ patients, alerts }: { patients: Patient[]; alerts: any[]
       const text = p?.severity === "critical" || p?.severity === "high"
         ? `${p.severity.toUpperCase()} — ${p.name || "Patient"} admitted · ${p.chief_complaint || ""}`
         : `Patient admitted to ${p?.current_department?.toUpperCase() || "ER"}`;
-      setEvents((prev) => [{ id: `${Date.now()}`, text, color, ts: Date.now() }, ...prev.slice(0, 11)]);
+      setEvents((prev) => [{ id: `${Date.now()}`, text, color, clock: simClock(simRef.current) }, ...prev.slice(0, 11)]);
       prevCountRef.current = count;
     }
   }, [patients.length]);
@@ -121,7 +127,7 @@ function LiveEventLog({ patients, alerts }: { patients: Patient[]; alerts: any[]
     if (alerts.length === 0) return;
     const latest = alerts[alerts.length - 1];
     const color = latest.severity === "critical" ? "#f87171" : latest.severity === "warning" ? "#fbbf24" : "#60a5fa";
-    setEvents((prev) => [{ id: `alert-${latest.alert_id}`, text: `⚠ ${latest.message}`, color, ts: Date.now() }, ...prev.slice(0, 11)]);
+    setEvents((prev) => [{ id: `alert-${latest.alert_id}`, text: `⚠ ${latest.message}`, color, clock: simClock(simRef.current) }, ...prev.slice(0, 11)]);
   }, [alerts.length]);
 
   return (
@@ -149,10 +155,10 @@ function LiveEventLog({ patients, alerts }: { patients: Patient[]; alerts: any[]
                 initial={{ opacity: 0, x: -6 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, height: 0 }}
-                className="text-[10px] font-mono truncate"
-                style={{ color: e.color }}
+                className="text-[10px] font-mono truncate flex items-center gap-2"
               >
-                {e.text}
+                <span className="text-slate-600 flex-shrink-0 tabular-nums">{e.clock}</span>
+                <span className="truncate" style={{ color: e.color }}>{e.text}</span>
               </motion.div>
             ))}
           </AnimatePresence>
@@ -389,7 +395,7 @@ export default function CommandCenterPage() {
           </div>
 
           {}
-          <LiveEventLog patients={hospitalState?.patients ?? []} alerts={hospitalState?.alerts ?? []} />
+          <LiveEventLog patients={hospitalState?.patients ?? []} alerts={hospitalState?.alerts ?? []} simTime={hospitalState?.sim_time ?? 0} />
 
           {}
           <div

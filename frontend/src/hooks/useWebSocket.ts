@@ -96,6 +96,20 @@ export function useWebSocket() {
     [sendMessage]
   );
 
+  const addBottleneck = useCallback(
+    (bottleneck: object) => {
+      sendMessage({ type: "add_bottleneck", bottleneck });
+    },
+    [sendMessage]
+  );
+
+  const removeBottleneck = useCallback(
+    (bottleneckId: string) => {
+      sendMessage({ type: "remove_bottleneck", bottleneck_id: bottleneckId });
+    },
+    [sendMessage]
+  );
+
   useEffect(() => {
     mountedRef.current = true;
     connect();
@@ -110,5 +124,5 @@ export function useWebSocket() {
     };
   }, [connect]);
 
-  return { sendMessage, triggerEvent, requestOptimization, updateConfig };
+  return { sendMessage, triggerEvent, requestOptimization, updateConfig, addBottleneck, removeBottleneck };
 }

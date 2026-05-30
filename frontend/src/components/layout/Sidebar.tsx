@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Activity, Network, Users, Brain, FlaskConical,
-  AlertTriangle, ChevronRight, Zap, Play, ClipboardList
+  AlertTriangle, ChevronRight, Zap, Play, ClipboardList, Stethoscope
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useDemoStore } from "@/store/demoStore";
@@ -29,6 +29,12 @@ const NAV_ITEMS = [
     icon: Users,
     label: "Patient Intel",
     sublabel: "Patient tracking",
+  },
+  {
+    href: "/operations",
+    icon: Stethoscope,
+    label: "Operations Hub",
+    sublabel: "Specialists & constraints",
   },
   {
     href: "/copilot",

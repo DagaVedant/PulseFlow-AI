@@ -576,10 +576,16 @@ class HospitalSimulation:
             staff_util = total_staff_used / max(1, total_staff_cap)
             critical = sum(1 for p in patients if p.severity in (Severity.HIGH, Severity.CRITICAL))
             mortality_risk = min(1.0, sum(p.risk_score for p in patients if p.severity == Severity.CRITICAL) / max(1, n) * 5)
+            severity_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+            for p in patients:
+                key = p.severity.value
+                if key in severity_counts:
+                    severity_counts[key] += 1
             return {
                 "sim_time": round(self.env.now, 1),
                 "avg_wait_time": round(avg_wait if self._crisis_active() else min(avg_wait, 240.0), 1),
                 "active_patients": n,
+                "severity_counts": severity_counts,
                 "discharged_today": self.total_discharged,
                 "total_admitted": self.total_admitted,
                 "throughput_per_hour": round(throughput, 1),
@@ -598,6 +604,7 @@ class HospitalSimulation:
                 "sim_time": round(self.env.now, 1),
                 "avg_wait_time": 0.0,
                 "active_patients": 0,
+                "severity_counts": {"critical": 0, "high": 0, "medium": 0, "low": 0},
                 "discharged_today": 0,
                 "total_admitted": 0,
                 "throughput_per_hour": 0.0,
