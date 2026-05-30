@@ -513,7 +513,7 @@ class HospitalSimulation:
             mortality_risk = min(1.0, sum(p.risk_score for p in patients if p.severity == Severity.CRITICAL) / max(1, n) * 5)
             return {
                 "sim_time": round(self.env.now, 1),
-                "avg_wait_time": round(avg_wait, 1),
+                "avg_wait_time": round(min(avg_wait, 240.0), 1),
                 "active_patients": n,
                 "discharged_today": self.total_discharged,
                 "total_admitted": self.total_admitted,
@@ -582,7 +582,7 @@ class HospitalSimulation:
                             current_waits.append(self.env.now - p.ward_queue_enter)
                     except Exception:
                         pass
-                avg_wait = sum(current_waits) / max(1, len(current_waits)) if current_waits else 0.0
+                avg_wait = min(240.0, sum(current_waits) / max(1, len(current_waits)) if current_waits else 0.0)
 
                 beds_avail = 0
                 if bed_res:
@@ -821,6 +821,7 @@ class HospitalSimulation:
     def update_config(self, new_config: SimulationConfig) -> None:
         """Hot-reload simulation configuration — resizes live resources in-place."""
         with self._lock:
+            old = self.config
             self.config = new_config
             self._resize(self.er_beds,        new_config.er_beds)
             self._resize(self.er_doctors,     new_config.er_doctors)
@@ -837,7 +838,40 @@ class HospitalSimulation:
             self._resize(self.ward_doctors,   max(1, new_config.ward_doctors))
             self._resize(self.ward_nurses,    max(1, new_config.ward_nurses))
             self._resize(self.discharge_staff,max(1, new_config.discharge_staff))
+
+            self._adjust_queue_timestamps(old, new_config)
+
         logger.info("Simulation config hot-reloaded (resources resized in-place)")
+
+    def _adjust_queue_timestamps(self, old: SimulationConfig, new: SimulationConfig) -> None:
+        def target_wait(staff: float, arrival: float) -> float:
+            return min(240.0, max(3.0, (arrival / max(1.0, staff)) * 30.0))
+
+        now = self.env.now
+        arrival = new.arrival_rate
+
+        targets = {
+            PatientState.WAITING_ER:      target_wait(new.er_doctors + new.er_nurses,   arrival),
+            PatientState.WAITING_ICU:     target_wait(new.icu_doctors + new.icu_nurses,  arrival * 0.25),
+            PatientState.WAITING_WARD:    target_wait(new.ward_doctors + new.ward_nurses, arrival * 0.35),
+            PatientState.WAITING_LABS:    target_wait(new.lab_technicians,               arrival * 0.4),
+            PatientState.WAITING_IMAGING: target_wait(new.lab_technicians + new.imaging_ct + new.imaging_mri,
+                                                       arrival * 0.25),
+        }
+        attrs = {
+            PatientState.WAITING_ER:      'er_queue_enter',
+            PatientState.WAITING_ICU:     'icu_queue_enter',
+            PatientState.WAITING_WARD:    'ward_queue_enter',
+            PatientState.WAITING_LABS:    'labs_queue_enter',
+            PatientState.WAITING_IMAGING: 'imaging_queue_enter',
+        }
+
+        for p in self.active_patients.values():
+            t    = targets.get(p.state)
+            attr = attrs.get(p.state)
+            if t is None or attr is None or not hasattr(p, attr):
+                continue
+            setattr(p, attr, now - t)
 
     def trigger_event(self, event_type: str, params: dict = None):
         """Trigger an emergency or operational event."""
