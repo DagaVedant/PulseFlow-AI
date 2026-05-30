@@ -1,110 +1,66 @@
-/* Patient Intelligence page: patient cards, risk scores, and on-demand AI summaries. */
+/* Patient Intelligence page: four tracked executive patients with risk scores, specialist-await status, and inline constraint-aware AI recommendations. */
 "use client";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Users, AlertTriangle, Clock, MapPin, Activity, ChevronLeft, ChevronRight, Zap, RefreshCw, Flame, Anchor, Timer } from "lucide-react";
-import { useSimulationStore } from "@/store/simulationStore";
-import { api } from "@/lib/api";
 import {
-  severityBadgeClass, severityColor, riskColor, riskLabel,
-  formatTime, departmentLabel, cn
-} from "@/lib/utils";
-import type { Patient, Severity } from "@/types";
+  Users, AlertTriangle, Clock, Zap, RefreshCw,
+  Stethoscope, ArrowRight, ShieldAlert, TrendingUp, CheckCircle2, Ban
+} from "lucide-react";
+import { useSimulationStore } from "@/store/simulationStore";
 import { useDemoStore } from "@/store/demoStore";
+import type { TrackedPatient } from "@/types";
 
-type FilterSeverity = "all" | Severity;
-
-const STATE_LABELS: Record<string, string> = {
-  arriving: "Arriving",
-  triage: "In Triage",
-  waiting_er: "Waiting — ER",
-  in_er: "In ER",
-  waiting_labs: "Waiting — Labs",
-  in_labs: "In Labs",
-  waiting_imaging: "Waiting — Imaging",
-  in_imaging: "In Imaging",
-  waiting_icu: "Waiting — ICU",
-  in_icu: "In ICU",
-  waiting_ward: "Waiting — Ward",
-  in_ward: "In Ward",
-  waiting_discharge: "Awaiting Discharge",
-  discharged: "Discharged",
+const PRIORITY_STYLE: Record<string, { color: string; bg: string; label: string }> = {
+  critical: { color: "#ff3b3b", bg: "rgba(255,59,59,0.12)", label: "CRITICAL" },
+  high:     { color: "#ffaa00", bg: "rgba(255,170,0,0.12)", label: "HIGH" },
+  moderate: { color: "#3b82f6", bg: "rgba(59,130,246,0.12)", label: "MODERATE" },
+  low:      { color: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "LOW" },
 };
 
-const PAGE_SIZE = 4;
+function riskColor(pct: number): string {
+  if (pct >= 80) return "#ff3b3b";
+  if (pct >= 50) return "#ffaa00";
+  if (pct >= 25) return "#3b82f6";
+  return "#22c55e";
+}
+
+function specialistStatusStyle(status: string) {
+  if (status === "available") return { color: "#22c55e", label: "AVAILABLE" };
+  if (status === "in_surgery") return { color: "#ef4444", label: "IN SURGERY" };
+  return { color: "#ffaa00", label: "BUSY" };
+}
 
 export default function PatientIntelPage() {
-  const { hospitalState, highRiskPatients } = useSimulationStore();
-  const patients = hospitalState?.patients ?? [];
+  const { hospitalState } = useSimulationStore();
+  const patients = hospitalState?.care?.tracked_patients ?? [];
 
-  const [search, setSearch] = useState("");
-  const [filterSev, setFilterSev] = useState<FilterSeverity>("all");
-  const [page, setPage] = useState(0);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [summaries, setSummaries] = useState<Record<string, string>>({});
-  const [loadingSummary, setLoadingSummary] = useState<string | null>(null);
-  const [analyzingAll, setAnalyzingAll] = useState(false);
+  const [analyzed, setAnalyzed] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
 
-  const filtered = useMemo(() => {
-    return patients
-      .filter((p) => {
-        if (filterSev !== "all" && p.severity !== filterSev) return false;
-        if (search) {
-          const s = search.toLowerCase();
-          if (
-            !p.name.toLowerCase().includes(s) &&
-            !p.patient_id.toLowerCase().includes(s) &&
-            !p.chief_complaint.toLowerCase().includes(s)
-          ) return false;
-        }
-        return true;
-      })
-      .sort((a, b) => b.risk_score - a.risk_score || a.total_wait_time - b.total_wait_time);
-  }, [patients, filterSev, search]);
-
-  useEffect(() => { setPage(0); }, [filterSev, search]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const visible = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-
-  async function loadSummary(id: string) {
-    if (summaries[id]) return;
-    setLoadingSummary(id);
-    try {
-      const res = await api.getPatientSummary(id);
-      setSummaries((prev) => ({ ...prev, [id]: res.summary }));
-    } catch {
-      setSummaries((prev) => ({ ...prev, [id]: "Summary unavailable." }));
-    } finally {
-      setLoadingSummary(null);
-    }
-  }
-
-  const handleSelect = (id: string) => {
-    setSelectedId(selectedId === id ? null : id);
-    if (selectedId !== id) loadSummary(id);
-  };
-
+  // No LLM round-trip — the constraint-aware recommendation IS the analysis.
+  // "Analyze All" just plays a brief generating animation, then reveals it instantly.
   const analyzeAll = useCallback(async () => {
-    setAnalyzingAll(true);
-    const ids = visible.map((p) => p.patient_id);
-    await Promise.all(ids.map((id) => loadSummary(id)));
-    setSelectedId(null);
-    setAnalyzingAll(false);
-  }, [visible]);
+    if (patients.length === 0) return;
+    setAnalyzing(true);
+    await new Promise((r) => setTimeout(r, 1100));
+    setAnalyzed(true);
+    setAnalyzing(false);
+  }, [patients.length]);
 
   const { pendingAction, clearAction } = useDemoStore();
   useEffect(() => {
-    if (pendingAction === "analyze_patients" && visible.length > 0) {
+    if (pendingAction === "analyze_patients" && patients.length > 0) {
       clearAction();
       analyzeAll();
     }
-  }, [pendingAction]);
+  }, [pendingAction]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const highRisk = patients.filter((p) => p.risk_pct >= 80).length;
 
   return (
     <div className="flex flex-col h-full p-6 gap-5 overflow-hidden">
 
-      {}
+      {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
@@ -112,130 +68,72 @@ export default function PatientIntelPage() {
             Patient Intelligence
           </h1>
           <p className="text-sm text-slate-500 font-mono mt-1">
-            Sorted by risk score — showing highest priority first
+            Tracked high-acuity patients · specialist-await status · constraint-aware AI recommendations
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {highRiskPatients.length > 0 && (
+          {highRisk > 0 && (
             <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-950/40 border border-red-800/40">
               <AlertTriangle className="w-4 h-4 text-red-400" />
               <span className="text-sm font-mono font-bold text-red-400">
-                {highRiskPatients.length} HIGH RISK
+                {highRisk} HIGH RISK
               </span>
             </div>
           )}
           <button
             onClick={analyzeAll}
-            disabled={analyzingAll}
+            disabled={analyzing || patients.length === 0}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-mono font-bold transition-all"
             style={{
-              background: analyzingAll ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.15)",
-              border: "1px solid rgba(59,130,246,0.4)",
-              color: analyzingAll ? "#60a5fa" : "#93c5fd",
+              background: analyzed ? "rgba(0,255,136,0.1)" : analyzing ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.15)",
+              border: `1px solid ${analyzed ? "rgba(0,255,136,0.35)" : "rgba(59,130,246,0.4)"}`,
+              color: analyzed ? "#34d399" : analyzing ? "#60a5fa" : "#93c5fd",
             }}
           >
-            {analyzingAll
+            {analyzing
               ? <><RefreshCw className="w-4 h-4 animate-spin" /> Analyzing...</>
-              : <><Zap className="w-4 h-4" /> Analyze All 4</>
+              : analyzed
+              ? <><CheckCircle2 className="w-4 h-4" /> Analysis Complete</>
+              : <><Zap className="w-4 h-4" /> Analyze All {patients.length}</>
             }
           </button>
         </div>
       </div>
 
-      {}
-      <div className="flex gap-3 flex-shrink-0">
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
-          <input
-            type="text"
-            placeholder="Search by name, ID, or complaint..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm font-mono bg-slate-900/60 border border-slate-700/50 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-blue-600/50"
-          />
-        </div>
-        <select
-          value={filterSev}
-          onChange={(e) => setFilterSev(e.target.value as FilterSeverity)}
-          className="text-sm font-mono px-4 py-2.5 rounded-xl bg-slate-900/60 border border-slate-700/50 text-slate-300 focus:outline-none"
-        >
-          <option value="all">All Severities</option>
-          <option value="critical">Critical</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
-        </select>
-      </div>
-
-      {}
+      {/* Patient grid */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">
-        {visible.length === 0 ? (
+        {patients.length === 0 ? (
           <div className="flex items-center justify-center py-20 text-slate-600 font-mono text-sm">
-            No patients match your filters
+            Connecting to care coordination feed...
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 items-start">
             <AnimatePresence mode="popLayout">
-              {visible.map((patient) => (
-                <LargePatientCard
-                  key={patient.patient_id}
-                  patient={patient}
-                  selected={selectedId === patient.patient_id}
-                  summary={summaries[patient.patient_id]}
-                  loadingSummary={loadingSummary === patient.patient_id || (analyzingAll && !summaries[patient.patient_id])}
-                  showSummary={!!(summaries[patient.patient_id]) || selectedId === patient.patient_id || (analyzingAll && !summaries[patient.patient_id])}
-                  onClick={() => handleSelect(patient.patient_id)}
+              {patients.map((p) => (
+                <TrackedCard
+                  key={p.patient_id}
+                  patient={p}
+                  analyzing={analyzing}
+                  analyzed={analyzed}
                 />
               ))}
             </AnimatePresence>
           </div>
         )}
       </div>
-
-      {}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between flex-shrink-0 pt-1">
-          <span className="text-xs text-slate-600 font-mono">
-            Page {page + 1} of {totalPages} • {filtered.length} patients
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
-              className="p-2 rounded-lg disabled:opacity-30 hover:bg-white/[0.05] transition-colors"
-              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-            >
-              <ChevronLeft className="w-4 h-4 text-slate-400" />
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page === totalPages - 1}
-              className="p-2 rounded-lg disabled:opacity-30 hover:bg-white/[0.05] transition-colors"
-              style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-            >
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
-interface LargeCardProps {
-  patient: Patient;
-  selected: boolean;
-  summary?: string;
-  loadingSummary: boolean;
-  showSummary?: boolean;
-  onClick: () => void;
-}
-
-function LargePatientCard({ patient: p, selected, summary, loadingSummary, showSummary, onClick }: LargeCardProps) {
-  const risk = p.risk_score;
-  const rColor = riskColor(risk);
-  const sColor = severityColor(p.severity);
-  const isWaiting = p.state.startsWith("waiting");
+function TrackedCard({ patient: p, analyzing, analyzed }: {
+  patient: TrackedPatient;
+  analyzing: boolean;
+  analyzed: boolean;
+}) {
+  const ps = PRIORITY_STYLE[p.priority] ?? PRIORITY_STYLE.moderate;
+  const rColor = riskColor(p.risk_pct);
+  const sp = p.specialist;
+  const rec = p.recommendation;
 
   return (
     <motion.div
@@ -243,155 +141,157 @@ function LargePatientCard({ patient: p, selected, summary, loadingSummary, showS
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.97 }}
-      onClick={onClick}
-      className="flex flex-col rounded-2xl p-5 cursor-pointer"
+      className="flex flex-col rounded-2xl p-5"
       style={{
-        background: selected ? "rgba(59,130,246,0.07)" : "rgba(15,22,41,0.7)",
-        border: `1.5px solid ${selected ? "rgba(59,130,246,0.4)" : "rgba(255,255,255,0.07)"}`,
-        boxShadow: selected ? "0 0 24px rgba(59,130,246,0.12)" : "none",
+        background: "rgba(15,22,41,0.7)",
+        border: `1.5px solid ${ps.color}40`,
+        boxShadow: p.priority === "critical" ? `0 0 24px ${ps.color}18` : "none",
       }}
-      whileHover={{ borderColor: "rgba(59,130,246,0.25)" }}
     >
-      {}
-      <div className="flex items-start justify-between gap-3 mb-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="text-lg font-bold text-white leading-tight">{p.name}</div>
-            {p.deterioration_alert && (
-              <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1, repeat: Infinity }}
-                className="text-[9px] px-2 py-0.5 rounded font-mono font-bold bg-red-950/70 text-red-400 border border-red-800/50 flex items-center gap-1">
-                <AlertTriangle className="w-2.5 h-2.5" /> DETERIORATING
-              </motion.span>
-            )}
-            {p.sepsis_risk && (
-              <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 0.9, repeat: Infinity }}
-                className="text-[9px] px-2 py-0.5 rounded font-mono font-bold bg-orange-950/70 text-orange-400 border border-orange-800/50 flex items-center gap-1">
-                <Timer className="w-2.5 h-2.5" /> SEPSIS RISK
-              </motion.span>
-            )}
-            {p.boarding && (
-              <span className="text-[9px] px-2 py-0.5 rounded font-mono font-bold bg-amber-950/70 text-amber-400 border border-amber-800/50 flex items-center gap-1">
-                <Anchor className="w-2.5 h-2.5" /> BOARDING
-              </span>
-            )}
+          <div className="text-lg font-bold text-white leading-tight">{p.name}</div>
+          <div className="text-xs text-slate-500 font-mono mt-0.5">
+            #{p.patient_id} · Age {p.age}
           </div>
-          <div className="text-xs text-slate-500 font-mono mt-0.5">#{p.patient_id} · Age {p.age}</div>
         </div>
-        <span className={cn("text-xs px-3 py-1.5 rounded-lg font-mono font-bold uppercase flex-shrink-0", severityBadgeClass(p.severity))}>
-          {p.severity}
+        <span
+          className="text-xs px-3 py-1.5 rounded-lg font-mono font-bold uppercase flex-shrink-0"
+          style={{ background: ps.bg, color: ps.color }}
+        >
+          {ps.label}
         </span>
       </div>
 
-      {}
-      <div className="text-sm text-slate-300 mb-4 leading-snug">
-        {p.chief_complaint}
-      </div>
+      {/* Condition */}
+      <div className="text-base font-semibold text-slate-200 mb-3">{p.condition}</div>
 
-      {}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="flex items-center gap-1.5">
-          <MapPin className="w-3.5 h-3.5 text-slate-600" />
-          <span className="text-sm font-mono text-slate-400">
-            {departmentLabel(p.current_department)}
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <Activity className="w-3.5 h-3.5 text-slate-600" />
-          <span className={cn("text-sm font-mono", isWaiting ? "text-yellow-400" : "text-slate-400")}>
-            {STATE_LABELS[p.state] ?? p.state}
-          </span>
-        </div>
-      </div>
-
-      {}
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        {}
-        <div
-          className="rounded-xl px-3 py-2.5"
-          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-        >
+      {/* Metric row */}
+      <div className="grid grid-cols-3 gap-2.5 mb-4">
+        <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="flex items-center gap-1.5 mb-1">
             <Clock className="w-3 h-3 text-slate-600" />
-            <span className="text-[10px] text-slate-600 font-mono uppercase">Wait</span>
+            <span className="text-[10px] text-slate-600 font-mono uppercase">ED Wait</span>
           </div>
-          <div
-            className="text-xl font-bold font-mono"
-            style={{
-              color: p.total_wait_time > 120 ? "#ff3b3b"
-                : p.total_wait_time > 80 ? "#ffaa00"
-                : "#e2e8f0",
-            }}
-          >
-            {formatTime(p.total_wait_time)}
+          <div className="text-xl font-bold font-mono" style={{ color: p.over_target ? "#ff3b3b" : "#e2e8f0" }}>
+            {p.ed_wait_min}m
+          </div>
+          <div className="text-[9px] font-mono mt-0.5" style={{ color: p.over_target ? "#ff6b6b" : "#475569" }}>
+            {p.over_target ? `+${p.over_target_min}m over target` : `target ${p.target_window_min}m`}
           </div>
         </div>
 
-        {}
-        <div
-          className="rounded-xl px-3 py-2.5"
-          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-        >
+        <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
           <div className="text-[10px] text-slate-600 font-mono uppercase mb-1">Risk</div>
-          <div className="text-xl font-bold font-mono" style={{ color: rColor }}>
-            {riskLabel(risk)}
-          </div>
+          <div className="text-xl font-bold font-mono" style={{ color: rColor }}>{p.risk_pct}%</div>
           <div className="mt-1.5 h-1 rounded-full bg-slate-800 overflow-hidden">
-            <div
-              className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${risk * 100}%`, background: rColor, opacity: 0.75 }}
-            />
+            <div className="h-full rounded-full transition-all duration-700"
+              style={{ width: `${p.risk_pct}%`, background: rColor, opacity: 0.8 }} />
           </div>
+        </div>
+
+        <div className="rounded-xl px-3 py-2.5" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="flex items-center gap-1.5 mb-1">
+            <Stethoscope className="w-3 h-3 text-slate-600" />
+            <span className="text-[10px] text-slate-600 font-mono uppercase">Awaiting</span>
+          </div>
+          <div className="text-sm font-bold font-mono text-slate-200 leading-tight">{p.awaiting_specialty}</div>
+          <div className="text-[9px] font-mono mt-0.5 text-slate-600 truncate">{p.preferred_role}</div>
         </div>
       </div>
 
-      {}
-      <div className="flex gap-1.5 flex-wrap mb-3">
-        {p.pathway.needs_labs && (
-          <span className="text-xs px-2.5 py-1 rounded-lg bg-purple-950/50 text-purple-300 font-mono border border-purple-900/40">
-            Labs
-          </span>
-        )}
-        {p.pathway.needs_imaging && (
-          <span className="text-xs px-2.5 py-1 rounded-lg bg-cyan-950/50 text-cyan-300 font-mono border border-cyan-900/40">
-            {p.pathway.imaging_type.toUpperCase()}
-          </span>
-        )}
-        {p.pathway.needs_icu && (
-          <span className="text-xs px-2.5 py-1 rounded-lg bg-amber-950/50 text-amber-300 font-mono border border-amber-900/40">
-            ICU
-          </span>
-        )}
-        {p.pathway.needs_ward && (
-          <span className="text-xs px-2.5 py-1 rounded-lg bg-green-950/50 text-green-300 font-mono border border-green-900/40">
-            Ward
-          </span>
+      {/* Specialist availability */}
+      {sp && (
+        <div className="flex items-center justify-between rounded-xl px-3 py-2.5 mb-3"
+          style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)" }}>
+          <div className="min-w-0 flex-1">
+            <div className="text-xs font-mono text-slate-300 truncate">{sp.name}</div>
+            <div className="text-[10px] font-mono text-slate-600 truncate">{sp.current_assignment}</div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded"
+              style={{ background: `${specialistStatusStyle(sp.status).color}20`, color: specialistStatusStyle(sp.status).color }}>
+              {specialistStatusStyle(sp.status).label}
+            </span>
+            <span className="text-sm font-bold font-mono" style={{ color: sp.available_in_min === 0 ? "#22c55e" : "#ffaa00" }}>
+              {sp.available_in_min === 0 ? "now" : `${sp.available_in_min}m`}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* AI Analysis (the constraint-aware recommendation serves as the summary) */}
+      <div className="rounded-xl p-3.5 mb-3"
+        style={{ background: rec.blocked ? "rgba(255,170,0,0.06)" : "rgba(59,130,246,0.06)", border: `1px solid ${rec.blocked ? "rgba(255,170,0,0.25)" : "rgba(59,130,246,0.22)"}` }}>
+        <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            {rec.blocked
+              ? <Ban className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              : <ShieldAlert className="w-4 h-4 text-blue-400 flex-shrink-0" />}
+            <span className="text-xs font-bold font-mono leading-tight truncate" style={{ color: rec.blocked ? "#ffaa00" : "#93c5fd" }}>
+              {rec.title}
+            </span>
+          </div>
+          {analyzing ? (
+            <span className="flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded text-blue-400 bg-blue-950/50 flex-shrink-0">
+              <RefreshCw className="w-2.5 h-2.5 animate-spin" /> ANALYZING
+            </span>
+          ) : analyzed ? (
+            <span className="flex items-center gap-1 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded text-emerald-400 bg-emerald-950/50 flex-shrink-0">
+              <CheckCircle2 className="w-2.5 h-2.5" /> AI ANALYSIS
+            </span>
+          ) : (
+            <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded text-slate-500 bg-slate-800/50 flex-shrink-0">
+              RECOMMENDATION
+            </span>
+          )}
+        </div>
+
+        {analyzing ? (
+          <div className="py-3 space-y-2">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="h-2.5 rounded bg-blue-500/15"
+                animate={{ opacity: [0.3, 0.7, 0.3] }}
+                transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
+                style={{ width: `${90 - i * 18}%` }}
+              />
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="space-y-1.5 mb-3">
+              {rec.reasons.map((reason, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <ArrowRight className="w-3 h-3 text-slate-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-xs text-slate-300 leading-relaxed">{reason}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: "rgba(34,197,94,0.1)" }}>
+                <ShieldAlert className="w-3 h-3 text-emerald-400" />
+                <span className="text-[11px] font-mono font-bold text-emerald-400">-{rec.deterioration_reduction}% risk</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg" style={{ background: "rgba(59,130,246,0.1)" }}>
+                <TrendingUp className="w-3 h-3 text-blue-400" />
+                <span className="text-[11px] font-mono font-bold text-blue-400">+{rec.throughput_improvement}% flow</span>
+              </div>
+            </div>
+          </>
         )}
       </div>
 
-      {}
-      <AnimatePresence>
-        {(selected || showSummary) && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="mt-2 pt-3 border-t border-slate-700/50">
-              {loadingSummary ? (
-                <div className="flex items-center gap-2 text-sm text-slate-500 font-mono animate-pulse">
-                  <span className="text-blue-500">●</span>
-                  Generating AI summary...
-                </div>
-              ) : summary ? (
-                <p className="text-sm text-slate-300 leading-relaxed">{summary}</p>
-              ) : (
-                <p className="text-sm text-slate-600 italic">Loading summary...</p>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Pathway badges */}
+      <div className="flex gap-1.5 flex-wrap mb-1">
+        {p.pathway.map((step) => (
+          <span key={step} className="text-[10px] px-2 py-0.5 rounded-lg bg-slate-800/60 text-slate-400 font-mono border border-slate-700/40">
+            {step}
+          </span>
+        ))}
+      </div>
     </motion.div>
   );
 }

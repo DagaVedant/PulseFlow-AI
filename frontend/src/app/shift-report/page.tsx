@@ -19,23 +19,27 @@ export default function ShiftReportPage() {
   const patients = hospitalState?.patients ?? [];
   const alerts = hospitalState?.alerts ?? [];
 
-  const byBeverity = {
-    critical: patients.filter(p => p.severity === "critical"),
-    high:     patients.filter(p => p.severity === "high"),
-    medium:   patients.filter(p => p.severity === "medium"),
-    low:      patients.filter(p => p.severity === "low"),
+  // Full-population counts come from metrics (the patients list is a top-100 sample).
+  const totalActive = m?.active_patients ?? patients.length;
+  const sev = m?.severity_counts ?? {
+    critical: patients.filter(p => p.severity === "critical").length,
+    high:     patients.filter(p => p.severity === "high").length,
+    medium:   patients.filter(p => p.severity === "medium").length,
+    low:      patients.filter(p => p.severity === "low").length,
   };
 
-  const boarding  = patients.filter(p => p.boarding);
-  const deteriorating = patients.filter(p => p.deterioration_alert);
-  const sepsisRisk    = patients.filter(p => p.sepsis_risk);
+  const boardingCount      = m?.boarding_count ?? patients.filter(p => p.boarding).length;
+  const deterioratingCount = m?.deteriorating_count ?? patients.filter(p => p.deterioration_alert).length;
+  const sepsisCount        = m?.sepsis_count ?? patients.filter(p => p.sepsis_risk).length;
+
+  const boarding = patients.filter(p => p.boarding);
   const topRisk = [...patients].sort((a, b) => b.risk_score - a.risk_score).slice(0, 5);
 
   const priorities: string[] = [];
   if ((m?.diversion_risk ?? 0) > 0.75) priorities.push("⚠ DIVERSION RISK — notify EMS coordinator immediately");
-  if (boarding.length > 2)             priorities.push(`${boarding.length} boarding patients — expedite ICU/Ward bed assignments`);
-  if (deteriorating.length > 0)        priorities.push(`${deteriorating.length} patients deteriorating in queue — escalate triage`);
-  if (sepsisRisk.length > 0)           priorities.push(`${sepsisRisk.length} sepsis-risk patients — initiate bundle protocols`);
+  if (boardingCount > 2)               priorities.push(`${boardingCount} boarding patients — expedite ICU/Ward bed assignments`);
+  if (deterioratingCount > 0)          priorities.push(`${deterioratingCount} patients deteriorating in queue — escalate triage`);
+  if (sepsisCount > 0)                 priorities.push(`${sepsisCount} sepsis-risk patients — initiate bundle protocols`);
   if ((m?.icu_utilization ?? 0) > 0.88) priorities.push("ICU near capacity — identify transfer candidates");
   if ((m?.sla_compliance ?? 1) < 0.70) priorities.push("SLA compliance below 70% — increase triage throughput");
   if (priorities.length === 0)         priorities.push("No critical issues — maintain current staffing ratios");
@@ -69,16 +73,16 @@ export default function ShiftReportPage() {
           {/* Census */}
           <Section title="Patient Census" icon={<Users className="w-4 h-4 text-blue-400" />}>
             <div className="grid grid-cols-5 gap-3">
-              <StatBox label="Total Active" value={String(patients.length)} color="#60a5fa" />
-              <StatBox label="Critical"  value={String(byBeverity.critical.length)} color="#ef4444" />
-              <StatBox label="High"      value={String(byBeverity.high.length)}     color="#f59e0b" />
-              <StatBox label="Medium"    value={String(byBeverity.medium.length)}   color="#3b82f6" />
-              <StatBox label="Low"       value={String(byBeverity.low.length)}      color="#22c55e" />
+              <StatBox label="Total Active" value={String(totalActive)} color="#60a5fa" />
+              <StatBox label="Critical"  value={String(sev.critical)} color="#ef4444" />
+              <StatBox label="High"      value={String(sev.high)}     color="#f59e0b" />
+              <StatBox label="Medium"    value={String(sev.medium)}   color="#3b82f6" />
+              <StatBox label="Low"       value={String(sev.low)}      color="#22c55e" />
             </div>
             <div className="grid grid-cols-4 gap-3 mt-3">
-              <StatBox label="Boarding"      value={String(m?.boarding_count ?? 0)}       color="#f97316" />
-              <StatBox label="Deteriorating" value={String(m?.deteriorating_count ?? 0)}  color="#ef4444" />
-              <StatBox label="Sepsis Risk"   value={String(m?.sepsis_count ?? 0)}         color="#dc2626" />
+              <StatBox label="Boarding"      value={String(boardingCount)}       color="#f97316" />
+              <StatBox label="Deteriorating" value={String(deterioratingCount)}  color="#ef4444" />
+              <StatBox label="Sepsis Risk"   value={String(sepsisCount)}         color="#dc2626" />
               <StatBox label="SLA Compliant" value={m ? formatPercent(m.sla_compliance ?? 0) : "--"} color={(m?.sla_compliance ?? 1) < 0.7 ? "#ef4444" : "#22c55e"} />
             </div>
           </Section>

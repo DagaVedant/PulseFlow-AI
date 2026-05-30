@@ -77,6 +77,7 @@ export interface HospitalMetrics {
   critical_patients: number;
   mortality_risk_index: number;
   alerts_active: number;
+  severity_counts?: { critical: number; high: number; medium: number; low: number };
   boarding_count?: number;
   deteriorating_count?: number;
   sepsis_count?: number;
@@ -127,6 +128,75 @@ export interface SimulationConfig {
   covid_surge: boolean;
 }
 
+export type SpecialistStatus = "available" | "busy" | "in_surgery";
+
+export interface Specialist {
+  specialist_id: string;
+  name: string;
+  specialty: string;
+  role: string;
+  avg_consult_min: number;
+  patient_load: number;
+  queue_length: number;
+  available_in_min: number;
+  status: SpecialistStatus;
+  current_assignment: string;
+}
+
+export type BottleneckType =
+  | "Doctor" | "Specialist" | "Operating Room" | "Equipment" | "Bed" | "Nurse";
+
+export interface FixedBottleneck {
+  bottleneck_id: string;
+  resource_name: string;
+  resource_type: BottleneckType;
+  status: string;
+  priority: "low" | "medium" | "high" | "critical";
+  notes: string;
+  start_label: string;
+  release_label: string;
+  release_in_min: number | null;
+  active: boolean;
+}
+
+export interface CareRecommendation {
+  title: string;
+  reasons: string[];
+  deterioration_reduction: number;
+  throughput_improvement: number;
+  blocked: boolean;
+  alternative: string | null;
+  urgency: "critical" | "high" | "moderate" | "low";
+}
+
+export interface TrackedPatient {
+  patient_id: string;
+  name: string;
+  age: number;
+  condition: string;
+  chief_complaint: string;
+  severity: Severity;
+  priority: "critical" | "high" | "moderate" | "low";
+  awaiting_specialty: string;
+  preferred_role: string;
+  ed_wait_min: number;
+  total_wait_time: number;
+  target_window_min: number;
+  over_target: boolean;
+  over_target_min: number;
+  risk_score: number;
+  risk_pct: number;
+  pathway: string[];
+  specialist: Specialist | null;
+  recommendation: CareRecommendation;
+}
+
+export interface CareState {
+  specialists: Specialist[];
+  bottlenecks: FixedBottleneck[];
+  tracked_patients: TrackedPatient[];
+}
+
 export interface HospitalState {
   type?: string;
   sim_time: number;
@@ -138,6 +208,7 @@ export interface HospitalState {
   flow: PatientFlow;
   config: SimulationConfig;
   forecast_24h?: ForecastPoint[];
+  care?: CareState;
 }
 
 export interface MetricsSnapshot {

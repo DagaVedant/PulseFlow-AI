@@ -224,18 +224,28 @@ export default function SandboxPage() {
             Simulation Sandbox
           </h1>
           <p className="text-sm text-slate-500 font-mono mt-0.5">
-            Changes apply automatically · Toggle events to simulate crises
+            Changes apply automatically · Events &amp; constraints drive dynamic delays and resource competition
           </p>
         </div>
-        {activeEvents.size > 0 && (
-          <button
-            onClick={clearAll}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-mono text-slate-300 transition-all"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
-          >
-            <RefreshCw className="w-4 h-4" /> Clear Events
-          </button>
-        )}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {(hospitalState?.care?.bottlenecks?.length ?? 0) > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
+              style={{ background: "rgba(255,170,0,0.08)", border: "1px solid rgba(255,170,0,0.25)" }}>
+              <span className="text-xs font-mono text-amber-400 font-bold">
+                {hospitalState?.care?.bottlenecks.length} fixed constraint{(hospitalState?.care?.bottlenecks.length ?? 0) === 1 ? "" : "s"} active
+              </span>
+            </div>
+          )}
+          {activeEvents.size > 0 && (
+            <button
+              onClick={clearAll}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-mono text-slate-300 transition-all"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+            >
+              <RefreshCw className="w-4 h-4" /> Clear Events
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-1 gap-5 min-h-0 overflow-hidden">

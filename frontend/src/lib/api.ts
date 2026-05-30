@@ -44,4 +44,18 @@ export const api = {
   runOptimization: () => fetchJSON<any>("/copilot/optimize"),
   getShiftReport: () => fetchJSON<any>("/copilot/shift-report"),
   getBottleneckPredictions: () => fetchJSON<any>("/copilot/forecast/bottlenecks"),
+
+  getCareState: () => fetchJSON<any>("/care/state"),
+  getCareRecommendations: () => fetchJSON<any>("/care/recommendations"),
+  getSpecialists: () => fetchJSON<any>("/care/specialists"),
+  getFixedBottlenecks: () => fetchJSON<any>("/care/bottlenecks"),
+  addFixedBottleneck: (bottleneck: object) =>
+    fetchJSON<any>("/care/bottlenecks", {
+      method: "POST",
+      body: JSON.stringify(bottleneck),
+    }),
+  removeFixedBottleneck: (id: string) =>
+    fetchJSON<any>(`/care/bottlenecks/${id}`, { method: "DELETE" }),
+  getTrackedPatientSummary: (id: string) =>
+    fetchJSON<any>(`/care/patients/${id}/summary`),
 };
