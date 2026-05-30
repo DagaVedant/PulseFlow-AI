@@ -95,6 +95,12 @@ class Patient:
     risk_score: float = 0.0
     total_wait_time: float = 0.0
 
+    deterioration_alert: bool = False
+    deterioration_notified: bool = False
+    sepsis_risk: bool = False
+    boarding: bool = False
+    sla_breached: bool = False
+
     @classmethod
     def generate(cls, arrival_time: float) -> "Patient":
         severity = random.choices(
@@ -245,4 +251,8 @@ class Patient:
                 "ward_start": self.ward_start,
                 "discharge_time": self.discharge_time,
             },
+            "deterioration_alert": self.deterioration_alert,
+            "sepsis_risk": self.sepsis_risk,
+            "boarding": self.boarding,
+            "sla_breached": self.sla_breached,
         }

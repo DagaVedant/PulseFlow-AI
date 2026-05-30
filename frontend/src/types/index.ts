@@ -39,6 +39,10 @@ export interface Patient {
     ward_start?: number;
     discharge_time?: number;
   };
+  deterioration_alert?: boolean;
+  sepsis_risk?: boolean;
+  boarding?: boolean;
+  sla_breached?: boolean;
 }
 
 export interface DepartmentState {
@@ -54,6 +58,8 @@ export interface DepartmentState {
   patients_in: string[];
   patients_queued: string[];
   resource_utilization: number;
+  burnout_risk?: boolean;
+  boarding_count?: number;
 }
 
 export interface HospitalMetrics {
@@ -71,6 +77,20 @@ export interface HospitalMetrics {
   critical_patients: number;
   mortality_risk_index: number;
   alerts_active: number;
+  boarding_count?: number;
+  deteriorating_count?: number;
+  sepsis_count?: number;
+  sla_compliance?: number;
+  diversion_risk?: number;
+  minutes_to_diversion?: number;
+  delay_cost_per_hour?: number;
+}
+
+export interface ForecastPoint {
+  hour_offset: number;
+  hour_of_day: number;
+  predicted_arrivals: number;
+  staffing_capacity: number;
 }
 
 export interface HospitalAlert {
@@ -117,6 +137,7 @@ export interface HospitalState {
   alerts: HospitalAlert[];
   flow: PatientFlow;
   config: SimulationConfig;
+  forecast_24h?: ForecastPoint[];
 }
 
 export interface MetricsSnapshot {

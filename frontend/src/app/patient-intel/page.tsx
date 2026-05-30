@@ -2,7 +2,7 @@
 "use client";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Users, AlertTriangle, Clock, MapPin, Activity, ChevronLeft, ChevronRight, Zap, RefreshCw } from "lucide-react";
+import { Search, Users, AlertTriangle, Clock, MapPin, Activity, ChevronLeft, ChevronRight, Zap, RefreshCw, Flame, Anchor, Timer } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { api } from "@/lib/api";
 import {
@@ -255,17 +255,29 @@ function LargePatientCard({ patient: p, selected, summary, loadingSummary, showS
       {}
       <div className="flex items-start justify-between gap-3 mb-4">
         <div className="flex-1 min-w-0">
-          <div className="text-lg font-bold text-white leading-tight truncate">{p.name}</div>
-          <div className="text-xs text-slate-500 font-mono mt-0.5">
-            #{p.patient_id} · Age {p.age}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="text-lg font-bold text-white leading-tight">{p.name}</div>
+            {p.deterioration_alert && (
+              <motion.span animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1, repeat: Infinity }}
+                className="text-[9px] px-2 py-0.5 rounded font-mono font-bold bg-red-950/70 text-red-400 border border-red-800/50 flex items-center gap-1">
+                <AlertTriangle className="w-2.5 h-2.5" /> DETERIORATING
+              </motion.span>
+            )}
+            {p.sepsis_risk && (
+              <motion.span animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 0.9, repeat: Infinity }}
+                className="text-[9px] px-2 py-0.5 rounded font-mono font-bold bg-orange-950/70 text-orange-400 border border-orange-800/50 flex items-center gap-1">
+                <Timer className="w-2.5 h-2.5" /> SEPSIS RISK
+              </motion.span>
+            )}
+            {p.boarding && (
+              <span className="text-[9px] px-2 py-0.5 rounded font-mono font-bold bg-amber-950/70 text-amber-400 border border-amber-800/50 flex items-center gap-1">
+                <Anchor className="w-2.5 h-2.5" /> BOARDING
+              </span>
+            )}
           </div>
+          <div className="text-xs text-slate-500 font-mono mt-0.5">#{p.patient_id} · Age {p.age}</div>
         </div>
-        <span
-          className={cn(
-            "text-xs px-3 py-1.5 rounded-lg font-mono font-bold uppercase flex-shrink-0",
-            severityBadgeClass(p.severity)
-          )}
-        >
+        <span className={cn("text-xs px-3 py-1.5 rounded-lg font-mono font-bold uppercase flex-shrink-0", severityBadgeClass(p.severity))}>
           {p.severity}
         </span>
       </div>

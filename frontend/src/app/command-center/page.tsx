@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import {
   Activity, AlertTriangle, Bed, Clock, TrendingUp,
-  Users, Zap, RefreshCw, Radio
+  Users, Zap, RefreshCw, Radio, Siren, DollarSign, ShieldCheck, Flame, Anchor
 } from "lucide-react";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { useSimulationStore } from "@/store/simulationStore";
@@ -16,6 +16,86 @@ import {
 import type { Patient } from "@/types";
 
 const DEPT_KEYS = ["er", "labs", "imaging", "icu", "ward"] as const;
+
+function DiversionBanner({ metrics }: { metrics: any }) {
+  const risk = metrics.diversion_risk ?? 0;
+  const mins = metrics.minutes_to_diversion ?? 0;
+  const cost = metrics.delay_cost_per_hour ?? 0;
+  const sla  = metrics.sla_compliance ?? 1;
+  const boarding = metrics.boarding_count ?? 0;
+  const deteriorating = metrics.deteriorating_count ?? 0;
+  const sepsis = metrics.sepsis_count ?? 0;
+
+  const color = risk > 0.80 ? "#ef4444" : risk > 0.60 ? "#f59e0b" : "#22c55e";
+  const label = risk > 0.80 ? "HIGH RISK" : risk > 0.60 ? "ELEVATED" : "NORMAL";
+
+  return (
+    <div className="flex items-center gap-3 flex-shrink-0 rounded-xl px-4 py-2.5 flex-wrap"
+      style={{ background: "rgba(10,14,26,0.8)", border: `1px solid ${color}30` }}>
+
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <Siren className="w-3.5 h-3.5" style={{ color }} />
+        <span className="text-[10px] font-mono font-bold uppercase" style={{ color }}>Diversion {label}</span>
+        <div className="w-28 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <motion.div className="h-full rounded-full" style={{ background: color }}
+            animate={{ width: `${Math.round(risk * 100)}%` }} transition={{ duration: 1.5 }} />
+        </div>
+        <span className="text-[10px] font-mono" style={{ color }}>{Math.round(risk * 100)}%</span>
+        {risk > 0.60 && mins > 0 && (
+          <span className="text-[10px] font-mono text-slate-500">~{mins}m</span>
+        )}
+      </div>
+
+      <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
+
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <DollarSign className="w-3 h-3 text-yellow-500" />
+        <span className="text-[10px] font-mono text-yellow-400">${cost.toLocaleString()}/hr delay cost</span>
+      </div>
+
+      <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
+
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <ShieldCheck className="w-3 h-3" style={{ color: sla < 0.70 ? "#ef4444" : "#22c55e" }} />
+        <span className="text-[10px] font-mono" style={{ color: sla < 0.70 ? "#ef4444" : "#22c55e" }}>
+          {Math.round(sla * 100)}% SLA
+        </span>
+      </div>
+
+      {boarding > 0 && (
+        <>
+          <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <Anchor className="w-3 h-3 text-orange-400" />
+            <span className="text-[10px] font-mono text-orange-400">{boarding} boarding</span>
+          </div>
+        </>
+      )}
+
+      {deteriorating > 0 && (
+        <>
+          <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
+          <motion.div animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
+            className="flex items-center gap-1.5 flex-shrink-0">
+            <AlertTriangle className="w-3 h-3 text-red-400" />
+            <span className="text-[10px] font-mono text-red-400">{deteriorating} deteriorating</span>
+          </motion.div>
+        </>
+      )}
+
+      {sepsis > 0 && (
+        <>
+          <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
+          <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1, repeat: Infinity }}
+            className="flex items-center gap-1.5 flex-shrink-0">
+            <Zap className="w-3 h-3 text-red-500" />
+            <span className="text-[10px] font-mono text-red-400">{sepsis} sepsis risk</span>
+          </motion.div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function LiveEventLog({ patients, alerts }: { patients: Patient[]; alerts: any[] }) {
   const [events, setEvents] = useState<{ id: string; text: string; color: string; ts: number }[]>([]);
@@ -181,6 +261,9 @@ export default function CommandCenterPage() {
           />
         ))}
       </div>
+
+      {}
+      {metrics && <DiversionBanner metrics={metrics} />}
 
       {}
       <div className="flex flex-1 gap-4 overflow-hidden min-h-0">

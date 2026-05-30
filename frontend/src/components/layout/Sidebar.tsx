@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Activity, Network, Users, Brain, FlaskConical,
-  AlertTriangle, ChevronRight, Zap, Play
+  AlertTriangle, ChevronRight, Zap, Play, ClipboardList
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useDemoStore } from "@/store/demoStore";
@@ -41,6 +41,12 @@ const NAV_ITEMS = [
     icon: FlaskConical,
     label: "Sandbox",
     sublabel: "What-if scenarios",
+  },
+  {
+    href: "/shift-report",
+    icon: ClipboardList,
+    label: "Shift Report",
+    sublabel: "Handoff summary",
   },
   {
     href: "/demo",

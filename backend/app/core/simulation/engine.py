@@ -148,6 +148,12 @@ class HospitalSimulation:
         self.active_alerts: List[HospitalAlert] = []
         self._alert_id_counter = 0
 
+        self._util_history: Dict[str, Deque[float]] = {
+            "er":   deque(maxlen=120),
+            "icu":  deque(maxlen=120),
+            "ward": deque(maxlen=120),
+        }
+
         self._setup_resources()
 
         self._warm_start()
@@ -411,12 +417,28 @@ class HospitalSimulation:
                     self.wait_time_history.append(metrics["avg_wait_time"])
                 if metrics.get("throughput_per_hour") is not None:
                     self.throughput_history.append(metrics["throughput_per_hour"])
+                self._util_history["er"].append(
+                    self.er_doctors.count / max(1, self.er_doctors.capacity))
+                self._util_history["icu"].append(
+                    self.icu_doctors.count / max(1, self.icu_doctors.capacity))
+                self._util_history["ward"].append(
+                    self.ward_doctors.count / max(1, self.ward_doctors.capacity))
 
     def _alert_monitor(self):
         """SimPy process: monitors for system-wide alert conditions."""
         while True:
             yield self.env.timeout(5.0)
             self._check_alerts()
+
+    _DETERIORATION_THRESH = {
+        "critical": 15, "high": 45, "medium": 90, "low": 180
+    }
+    _SEPSIS_COMPLAINTS = {
+        "sepsis indicators", "respiratory distress", "acute mi symptoms",
+        "suspected stroke", "respiratory failure", "cardiac arrest",
+        "anaphylaxis", "mass hemorrhage", "multi-system trauma"
+    }
+    _SLA_THRESH = {"critical": 10, "high": 30, "medium": 60, "low": 120}
 
     def _check_alerts(self):
         state = self.get_hospital_state()
@@ -425,22 +447,65 @@ class HospitalSimulation:
 
         for dept_name, dept in state["departments"].items():
             if dept["occupancy"] >= 0.92:
-                self._create_alert(
-                    "critical", dept_name,
-                    f"{dept['display_name']} at {dept['occupancy']*100:.0f}% capacity — CRITICAL"
-                )
+                self._create_alert("critical", dept_name,
+                    f"{dept['display_name']} at {dept['occupancy']*100:.0f}% capacity — CRITICAL")
             elif dept["occupancy"] >= 0.85:
-                self._create_alert(
-                    "warning", dept_name,
-                    f"{dept['display_name']} approaching capacity ({dept['occupancy']*100:.0f}%)"
-                )
+                self._create_alert("warning", dept_name,
+                    f"{dept['display_name']} approaching capacity ({dept['occupancy']*100:.0f}%)")
 
         metrics = state.get("metrics", {})
         if metrics.get("avg_wait_time", 0) > 150:
-            self._create_alert(
-                "warning", "hospital",
-                f"Hospital-wide average wait time exceeds 2 hours ({metrics['avg_wait_time']:.0f} min)"
-            )
+            self._create_alert("warning", "hospital",
+                f"Hospital-wide average wait time exceeds 2 hours ({metrics['avg_wait_time']:.0f} min)")
+
+        now = self.env.now
+        with self._lock:
+            for p in self.active_patients.values():
+                sev = p.severity.value
+
+                # Deterioration: waiting past severity threshold
+                if p.state.value.startswith("waiting") and not p.deterioration_notified:
+                    thresh = self._DETERIORATION_THRESH.get(sev, 180)
+                    queue_enter = (
+                        p.er_queue_enter   if p.state == PatientState.WAITING_ER   else
+                        p.icu_queue_enter  if p.state == PatientState.WAITING_ICU  else
+                        p.ward_queue_enter if p.state == PatientState.WAITING_WARD else None
+                    )
+                    if queue_enter and (now - queue_enter) >= thresh:
+                        p.deterioration_alert = True
+                        p.deterioration_notified = True
+                        p.risk_score = min(1.0, p.risk_score + 0.18)
+                        self._create_alert("critical", p.current_department.value,
+                            f"DETERIORATION — {p.name} ({sev.upper()}) waiting "
+                            f"{now - queue_enter:.0f} min · risk now {p.risk_score:.2f}")
+
+                # Sepsis risk: high-risk complaint waiting > 60 min
+                if (not p.sepsis_risk and
+                        p.chief_complaint.lower() in self._SEPSIS_COMPLAINTS and
+                        p.state.value.startswith("waiting")):
+                    wait = now - p.arrival_time
+                    if wait >= 60:
+                        p.sepsis_risk = True
+                        self._create_alert("critical", p.current_department.value,
+                            f"SEPSIS RISK — {p.name}: '{p.chief_complaint}' — "
+                            f"{wait:.0f} min without treatment")
+
+                # Boarding: finished ER but still waiting for bed
+                if (p.state in (PatientState.WAITING_ICU, PatientState.WAITING_WARD)
+                        and p.er_end is not None):
+                    board_time = now - p.er_end
+                    p.boarding = True
+                    if board_time >= 120 and not p.deterioration_notified:
+                        p.deterioration_notified = True
+                        self._create_alert("warning", "hospital",
+                            f"BOARDING — {p.name} ({sev.upper()}) boarded "
+                            f"{board_time:.0f} min waiting for {p.state.value.replace('waiting_', '').upper()} bed")
+
+                # SLA breach
+                if p.er_start is not None and not p.sla_breached:
+                    time_to_care = p.er_start - p.arrival_time
+                    if time_to_care > self._SLA_THRESH.get(sev, 120):
+                        p.sla_breached = True
 
     def _create_alert(self, severity: str, department: str, message: str):
         with self._lock:
@@ -513,7 +578,7 @@ class HospitalSimulation:
             mortality_risk = min(1.0, sum(p.risk_score for p in patients if p.severity == Severity.CRITICAL) / max(1, n) * 5)
             return {
                 "sim_time": round(self.env.now, 1),
-                "avg_wait_time": round(min(avg_wait, 240.0), 1),
+                "avg_wait_time": round(avg_wait if self._crisis_active() else min(avg_wait, 240.0), 1),
                 "active_patients": n,
                 "discharged_today": self.total_discharged,
                 "total_admitted": self.total_admitted,
@@ -582,7 +647,8 @@ class HospitalSimulation:
                             current_waits.append(self.env.now - p.ward_queue_enter)
                     except Exception:
                         pass
-                avg_wait = min(240.0, sum(current_waits) / max(1, len(current_waits)) if current_waits else 0.0)
+                raw_wait = sum(current_waits) / max(1, len(current_waits)) if current_waits else 0.0
+                avg_wait = raw_wait if self._crisis_active() else min(raw_wait, 240.0)
 
                 beds_avail = 0
                 if bed_res:
@@ -635,12 +701,26 @@ class HospitalSimulation:
                 ),
             }
 
-            metrics = self._extract_metrics()
+            advanced = self._compute_advanced_metrics(patients, departments)
 
-            sorted_patients = sorted(
-                patients,
-                key=lambda p: (p.priority, -p.total_wait_time),
-            )
+            for dept_key in ("er", "icu", "ward"):
+                if dept_key in departments:
+                    departments[dept_key]["burnout_risk"] = advanced["burnout_risk"].get(dept_key, False)
+            if "er" in departments:
+                departments["er"]["boarding_count"] = advanced["boarding_count"]
+
+            metrics = self._extract_metrics()
+            metrics.update({
+                "boarding_count":       advanced["boarding_count"],
+                "deteriorating_count":  advanced["deteriorating_count"],
+                "sepsis_count":         advanced["sepsis_count"],
+                "sla_compliance":       advanced["sla_compliance"],
+                "diversion_risk":       advanced["diversion_risk"],
+                "minutes_to_diversion": advanced["minutes_to_diversion"],
+                "delay_cost_per_hour":  advanced["delay_cost_per_hour"],
+            })
+
+            sorted_patients = sorted(patients, key=lambda p: (p.priority, -p.total_wait_time))
             patient_list = [p.to_dict() for p in sorted_patients[:100]]
 
             alerts = [
@@ -665,6 +745,7 @@ class HospitalSimulation:
                 "metrics": metrics,
                 "alerts": alerts,
                 "flow": flow,
+                "forecast_24h": self._generate_24h_forecast(),
                 "config": {
                     "arrival_rate": self.config.arrival_rate,
                     "flu_outbreak": self.config.flu_outbreak,
@@ -807,6 +888,93 @@ class HospitalSimulation:
 
         return candidates[0] if candidates else None
 
+    def _compute_advanced_metrics(self, patients: list, departments: dict) -> dict:
+        now = self.env.now
+        er = departments.get("er", {})
+        icu = departments.get("icu", {})
+        ward = departments.get("ward", {})
+
+        boarding = [p for p in patients
+                    if p.state in (PatientState.WAITING_ICU, PatientState.WAITING_WARD)
+                    and p.er_end is not None]
+        boarding_count = len(boarding)
+
+        deteriorating = sum(1 for p in patients if p.deterioration_alert)
+        sepsis_count   = sum(1 for p in patients if p.sepsis_risk)
+
+        treated = [p for p in patients if p.er_start is not None]
+        sla_compliant = sum(
+            1 for p in treated
+            if (p.er_start - p.arrival_time) <= self._SLA_THRESH.get(p.severity.value, 120)
+        )
+        waiting_breached = sum(
+            1 for p in patients
+            if p.state == PatientState.WAITING_ER and p.er_queue_enter is not None
+            and (now - p.er_queue_enter) > self._SLA_THRESH.get(p.severity.value, 120)
+        )
+        sla_denom = max(1, len(treated) + waiting_breached)
+        sla_compliance = round(sla_compliant / sla_denom, 3)
+
+        er_occ   = er.get("occupancy", 0)
+        icu_occ  = icu.get("occupancy", 0)
+        ward_occ = ward.get("occupancy", 0)
+        diversion_score = er_occ * 0.45 + icu_occ * 0.35 + ward_occ * 0.20
+        er_q = er.get("queue_length", 0)
+        rate  = max(0.01, self.config.arrival_rate / 60)
+        headroom = max(0.0, 0.95 - diversion_score)
+        minutes_to_diversion = int(headroom / rate * 8) if diversion_score < 0.95 else 0
+
+        hourly_cost = boarding_count * 1400 + er_q * 50
+
+        burnout: Dict[str, bool] = {}
+        for dept_key, hist in self._util_history.items():
+            if len(hist) >= 30:
+                burnout[dept_key] = (sum(list(hist)[-30:]) / 30) > 0.88
+            else:
+                burnout[dept_key] = False
+
+        return {
+            "boarding_count":        boarding_count,
+            "deteriorating_count":   deteriorating,
+            "sepsis_count":          sepsis_count,
+            "sla_compliance":        sla_compliance,
+            "diversion_risk":        round(min(1.0, diversion_score), 3),
+            "minutes_to_diversion":  minutes_to_diversion,
+            "delay_cost_per_hour":   hourly_cost,
+            "burnout_risk":          burnout,
+        }
+
+    def _generate_24h_forecast(self) -> list:
+        now_hour = (self.env.now / 60) % 24
+        base = self.config.arrival_rate
+        crisis_mult = (
+            2.5 if self.config.flu_outbreak else
+            1.8 if self.config.covid_surge else
+            1.4 if self.config.heatwave else 1.0
+        )
+        forecast = []
+        for i in range(25):
+            hour = (now_hour + i) % 24
+            tod  = max(0.3, 1.0 + 0.4 * math.sin((hour - 6) * math.pi / 12))
+            predicted = round(base * tod * crisis_mult, 1)
+            capacity  = round(
+                (self.er_doctors.capacity + self.er_nurses.capacity) * 4.5, 1
+            )
+            forecast.append({
+                "hour_offset":         i,
+                "hour_of_day":         int(hour),
+                "predicted_arrivals":  predicted,
+                "staffing_capacity":   capacity,
+            })
+        return forecast
+
+    def _crisis_active(self) -> bool:
+        cfg = self.config
+        return any([
+            cfg.flu_outbreak, cfg.covid_surge, cfg.heatwave,
+            cfg.mass_casualty, cfg.ct_failure, cfg.mri_failure, cfg.lab_slowdown,
+        ])
+
     def _resize(self, resource: simpy.PriorityResource, new_cap: int) -> None:
         """
         Update a SimPy PriorityResource capacity in-place without recreating it.
@@ -844,8 +1012,10 @@ class HospitalSimulation:
         logger.info("Simulation config hot-reloaded (resources resized in-place)")
 
     def _adjust_queue_timestamps(self, old: SimulationConfig, new: SimulationConfig) -> None:
+        crisis = self._crisis_active()
+        cap = 9999.0 if crisis else 240.0
         def target_wait(staff: float, arrival: float) -> float:
-            return min(240.0, max(3.0, (arrival / max(1.0, staff)) * 30.0))
+            return min(cap, max(3.0, (arrival / max(1.0, staff)) * 30.0))
 
         now = self.env.now
         arrival = new.arrival_rate

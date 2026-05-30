@@ -107,6 +107,20 @@ export const DepartmentNode = memo(({ data }: NodeProps<DeptNodeData>) => {
                 {dept.beds_available}
               </div>
             </div>
+          {((dept as any).burnout_risk || ((dept as any).boarding_count ?? 0) > 0) && (
+            <div className="flex gap-1.5 mt-1.5 pt-1 border-t border-slate-800/30 flex-wrap">
+              {(dept as any).burnout_risk && (
+                <span className="text-[7px] px-1.5 py-0.5 rounded font-mono font-bold bg-orange-950/60 text-orange-400 border border-orange-900/40">
+                  🔥 BURNOUT RISK
+                </span>
+              )}
+              {((dept as any).boarding_count ?? 0) > 0 && (
+                <span className="text-[7px] px-1.5 py-0.5 rounded font-mono font-bold bg-amber-950/60 text-amber-400 border border-amber-900/40">
+                  ⚓ {(dept as any).boarding_count} BOARDING
+                </span>
+              )}
+            </div>
+          )}
           </div>
         </div>
 
