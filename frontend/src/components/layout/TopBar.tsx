@@ -22,7 +22,7 @@ export function TopBar() {
         <div
           className="w-2 h-2 rounded-full flex-shrink-0"
           style={{
-            background: isConnected ? "#34d399" : "#ef4444",
+            background: isConnected ? "#34d399" : "#ff3b3b",
             boxShadow: isConnected ? "0 0 6px rgba(52,211,153,0.9)" : "none",
           }}
         />

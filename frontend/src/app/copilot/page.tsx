@@ -18,9 +18,9 @@ import { useDemoStore } from "@/store/demoStore";
 
 const URGENCY_COLORS: Record<string, string> = {
   low: "#475569",
-  medium: "#3b82f6",
-  high: "#f59e0b",
-  critical: "#ef4444",
+  medium: "#ffe600",
+  high: "#ffaa00",
+  critical: "#ff3b3b",
 };
 
 function recsToConfig(recs: StaffingRecommendation[]): Record<string, number> {

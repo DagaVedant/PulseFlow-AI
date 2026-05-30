@@ -103,10 +103,10 @@ function Slider({ label, value, min, max, step = 1, onChange, color = "#3b82f6",
 }
 
 const EVENTS: { key: EventType; label: string; desc: string; color: string; icon: any }[] = [
-  { key: "flu_outbreak",  label: "Flu Outbreak",   desc: "2.5× arrivals",        color: "#f59e0b", icon: AlertTriangle },
-  { key: "covid_surge",   label: "COVID Surge",    desc: "1.8× + isolation",     color: "#ef4444", icon: AlertTriangle },
-  { key: "heatwave",      label: "Heatwave",       desc: "1.4× arrivals",        color: "#f97316", icon: Zap },
-  { key: "mass_casualty", label: "Mass Casualty",  desc: "15 critical patients", color: "#dc2626", icon: AlertTriangle },
+  { key: "flu_outbreak",  label: "Flu Outbreak",   desc: "2.5× arrivals",        color: "#ffaa00", icon: AlertTriangle },
+  { key: "covid_surge",   label: "COVID Surge",    desc: "1.8× + isolation",     color: "#ff3b3b", icon: AlertTriangle },
+  { key: "heatwave",      label: "Heatwave",       desc: "1.4× arrivals",        color: "#ffaa00", icon: Zap },
+  { key: "mass_casualty", label: "Mass Casualty",  desc: "15 critical patients", color: "#ff3b3b", icon: AlertTriangle },
   { key: "ct_failure",    label: "CT Failure",     desc: "Scanner offline",      color: "#8b5cf6", icon: Server },
   { key: "mri_failure",   label: "MRI Failure",    desc: "Scanner offline",      color: "#8b5cf6", icon: Server },
   { key: "lab_slowdown",  label: "Lab Slowdown",   desc: "2.5× processing time", color: "#06b6d4", icon: Activity },
@@ -374,7 +374,7 @@ export default function SandboxPage() {
                       <div className="space-y-2">
                         <div>
                           <div className="text-[10px] text-slate-600 font-mono mb-0.5">Occupancy</div>
-                          <div className="text-xl font-bold font-mono" style={{ color: p.occupancy > 0.9 ? "#ff3b3b" : p.occupancy > 0.7 ? "#ffaa00" : deptColor }}>
+                          <div className="text-xl font-bold font-mono" style={{ color: p.occupancy > 0.9 ? "#ff3b3b" : p.occupancy > 0.7 ? "#ffe600" : deptColor }}>
                             {formatPercent(p.occupancy)}
                           </div>
                         </div>

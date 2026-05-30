@@ -11,22 +11,22 @@ import { useDemoStore } from "@/store/demoStore";
 import type { TrackedPatient } from "@/types";
 
 const PRIORITY_STYLE: Record<string, { color: string; bg: string; label: string }> = {
-  critical: { color: "#ff3b3b", bg: "rgba(255,59,59,0.12)", label: "CRITICAL" },
-  high:     { color: "#ffaa00", bg: "rgba(255,170,0,0.12)", label: "HIGH" },
-  moderate: { color: "#3b82f6", bg: "rgba(59,130,246,0.12)", label: "MODERATE" },
-  low:      { color: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "LOW" },
+  critical: { color: "#ff3b3b", bg: "rgba(255,59,59,0.12)",   label: "CRITICAL" },
+  high:     { color: "#ffaa00", bg: "rgba(255,170,0,0.12)",   label: "HIGH" },
+  moderate: { color: "#ffe600", bg: "rgba(255,230,0,0.12)",   label: "MODERATE" },
+  low:      { color: "#22c55e", bg: "rgba(34,197,94,0.12)",   label: "LOW" },
 };
 
 function riskColor(pct: number): string {
   if (pct >= 80) return "#ff3b3b";
   if (pct >= 50) return "#ffaa00";
-  if (pct >= 25) return "#3b82f6";
+  if (pct >= 25) return "#ffe600";
   return "#22c55e";
 }
 
 function specialistStatusStyle(status: string) {
   if (status === "available") return { color: "#22c55e", label: "AVAILABLE" };
-  if (status === "in_surgery") return { color: "#ef4444", label: "IN SURGERY" };
+  if (status === "in_surgery") return { color: "#ff3b3b", label: "IN SURGERY" };
   return { color: "#ffaa00", label: "BUSY" };
 }
 
