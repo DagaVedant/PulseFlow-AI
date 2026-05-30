@@ -10,7 +10,8 @@ import { useSimulationStore } from "@/store/simulationStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { api } from "@/lib/api";
 import {
-  RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer
+  RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, Legend
 } from "recharts";
 import { formatTime, formatPercent, cn } from "@/lib/utils";
 import type { CopilotAnalysis, StaffingRecommendation } from "@/types";
@@ -66,7 +67,7 @@ export default function CopilotPage() {
     setLoading(true);
     setError(null);
     setImplemented(false);
-    setSnapshot((hospitalState as any)?.metrics ?? null);
+    setSnapshot(hospitalState?.metrics as any ?? null);
     try {
       const result = await api.getCopilotAnalysis();
       setAnalysis(result);
@@ -178,6 +179,39 @@ export default function CopilotPage() {
               </div>
             )}
           </div>
+
+          {}
+          {hospitalState?.forecast_24h && hospitalState.forecast_24h.length > 0 && (
+            <div className="rounded-2xl p-4"
+              style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}>
+              <div className="text-xs text-slate-500 font-mono uppercase mb-1 tracking-wider">24h Demand Forecast</div>
+              <div className="text-[9px] text-slate-700 font-mono mb-2">arrivals/hr vs staffing capacity</div>
+              <div className="h-[140px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={hospitalState.forecast_24h} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(59,130,246,0.07)" />
+                    <XAxis dataKey="hour_of_day" tick={{ fontSize: 8, fill: "#475569", fontFamily: "monospace" }}
+                      tickFormatter={(v) => `${v}h`} interval={5} />
+                    <YAxis tick={{ fontSize: 8, fill: "#475569", fontFamily: "monospace" }} />
+                    <Tooltip
+                      contentStyle={{ background: "rgba(10,14,26,0.95)", border: "1px solid rgba(59,130,246,0.3)", fontSize: 10, fontFamily: "monospace" }}
+                      labelFormatter={(v) => `Hour ${v}:00`}
+                    />
+                    <Area type="monotone" dataKey="staffing_capacity" stroke="#22c55e" strokeWidth={1}
+                      fill="rgba(34,197,94,0.06)" strokeDasharray="4 2" name="Staff Cap" />
+                    <Area type="monotone" dataKey="predicted_arrivals" stroke="#3b82f6" strokeWidth={1.5}
+                      fill="rgba(59,130,246,0.12)" name="Predicted" />
+                    <ReferenceLine x={0} stroke="rgba(255,255,255,0.3)" strokeDasharray="3 3" label={{ value: "NOW", fill: "#94a3b8", fontSize: 8, fontFamily: "monospace" }} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+              {hospitalState.forecast_24h.some(p => p.predicted_arrivals > p.staffing_capacity) && (
+                <div className="mt-2 text-[9px] font-mono text-yellow-400 flex items-center gap-1">
+                  <span>⚠</span> Predicted demand exceeds staffing capacity in upcoming hours
+                </div>
+              )}
+            </div>
+          )}
 
           {}
           {metrics && (
