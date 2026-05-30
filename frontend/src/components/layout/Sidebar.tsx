@@ -5,11 +5,13 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Activity, Network, Users, Brain, FlaskConical,
-  AlertTriangle, ChevronRight, Zap, Play, ClipboardList, Stethoscope
+  AlertTriangle, ChevronRight, Zap, Play, ClipboardList, Stethoscope, RotateCcw
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useDemoStore } from "@/store/demoStore";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { useState } from "react";
 
 const NAV_ITEMS = [
   {
@@ -69,6 +71,22 @@ export function Sidebar() {
   const { isRunning, currentStep } = useDemoStore();
   const activePatients = hospitalState?.metrics?.active_patients ?? 0;
   const alertCount = criticalAlerts.length;
+  const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
+
+  const handleReset = async () => {
+    if (resetting) return;
+    setResetting(true);
+    try {
+      await api.resetSimulation();
+      setResetDone(true);
+      setTimeout(() => setResetDone(false), 2000);
+    } catch {
+      /* backend unreachable */
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
     <div
@@ -217,11 +235,24 @@ export function Sidebar() {
       </nav>
 
       {}
-      <div className="px-5 py-4 border-t border-blue-950/30">
+      <div className="px-5 py-4 border-t border-blue-950/30 space-y-3">
+        <button
+          onClick={handleReset}
+          disabled={resetting || !isConnected}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-mono font-bold transition-all disabled:opacity-40"
+          style={{
+            background: resetDone ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)",
+            border: `1px solid ${resetDone ? "rgba(34,197,94,0.4)" : "rgba(255,255,255,0.08)"}`,
+            color: resetDone ? "#22c55e" : "#64748b",
+          }}
+        >
+          <RotateCcw className={cn("w-3.5 h-3.5", resetting && "animate-spin")} />
+          {resetDone ? "Reset Complete" : resetting ? "Resetting..." : "Reset Simulation"}
+        </button>
         <div className="text-[10px] text-slate-700 font-mono text-center">
           PULSEFLOW AI v1.0 • SIMULATION ENGINE ACTIVE
         </div>
-        <div className="mt-1 text-[10px] font-mono text-center"
+        <div className="text-[10px] font-mono text-center"
           style={{ color: isConnected ? "#1e3a5f" : "#374151" }}>
           {isConnected ? "● CONNECTED TO DIGITAL TWIN" : "○ CONNECTING..."}
         </div>
