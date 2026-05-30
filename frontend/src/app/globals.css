@@ -1,0 +1,162 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #0f1629;
+  --bg-tertiary: #141d38;
+  --border-color: rgba(59, 130, 246, 0.15);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --accent: #3b82f6;
+  --accent-glow: rgba(59, 130, 246, 0.4);
+  --healthy: #00ff88;
+  --warning: #ffaa00;
+  --critical: #ff3b3b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+body {
+  background: var(--bg-primary);
+  overflow-x: hidden;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.02);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(59,130,246,0.3);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59,130,246,0.5);
+}
+
+/* Grid background */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(15, 22, 41, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Status glow effects */
+.status-healthy { box-shadow: 0 0 20px rgba(0,255,136,0.15); border-color: rgba(0,255,136,0.25); }
+.status-warning { box-shadow: 0 0 20px rgba(255,170,0,0.15); border-color: rgba(255,170,0,0.25); }
+.status-critical { box-shadow: 0 0 20px rgba(255,59,59,0.2); border-color: rgba(255,59,59,0.3); }
+
+/* Animated patient dot */
+.patient-dot {
+  border-radius: 50%;
+  transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pulse animation for critical alerts */
+@keyframes pulse-critical {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(255, 59, 59, 0.8); }
+  50% { opacity: 0.7; box-shadow: 0 0 20px rgba(255, 59, 59, 0.4); }
+}
+.pulse-critical { animation: pulse-critical 1.5s ease-in-out infinite; }
+
+/* Scan line */
+@keyframes scan-line {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* Number counter animation */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.count-animate { animation: count-up 0.3s ease-out; }
+
+/* Flow edge animation */
+@keyframes flow-dash {
+  to { stroke-dashoffset: -20; }
+}
+.flow-edge { animation: flow-dash 1s linear infinite; }
+
+/* Department zone hover */
+.dept-zone {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.dept-zone:hover {
+  filter: brightness(1.15);
+}
+
+/* React Flow customization */
+.react-flow__renderer { background: transparent !important; }
+.react-flow__background { background: transparent !important; }
+.react-flow__controls {
+  background: rgba(15,22,41,0.9) !important;
+  border: 1px solid rgba(59,130,246,0.2) !important;
+}
+.react-flow__controls button {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid rgba(59,130,246,0.15) !important;
+}
+
+/* Recharts customization */
+.recharts-cartesian-grid line { stroke: rgba(59,130,246,0.08) !important; }
+.recharts-text { fill: #64748b !important; font-size: 11px !important; }
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: rgba(15,22,41,0.95) !important;
+  border: 1px solid rgba(59,130,246,0.3) !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+}
+
+/* Sidebar nav active */
+.nav-active {
+  background: rgba(59, 130, 246, 0.12);
+  border-left: 2px solid #3b82f6;
+  color: #93c5fd;
+}
+
+/* Loading skeleton */
+@keyframes skeleton-wave {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.03) 25%,
+    rgba(255,255,255,0.07) 50%,
+    rgba(255,255,255,0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-wave 1.5s infinite;
+}
