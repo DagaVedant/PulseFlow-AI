@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { WebSocketProvider } from "@/components/layout/WebSocketProvider";
+import { CrisisGlow } from "@/components/layout/CrisisGlow";
 
 export const metadata: Metadata = {
   title: "PulseFlow AI — Hospital Operating System",
@@ -19,6 +20,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="bg-space-900 text-slate-100 font-sans antialiased">
         <WebSocketProvider>
+          <CrisisGlow />
           <div className="flex h-screen overflow-hidden">
             <Sidebar />
             <div className="flex flex-col flex-1 overflow-hidden">

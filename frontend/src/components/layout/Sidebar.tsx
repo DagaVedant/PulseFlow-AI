@@ -5,9 +5,10 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Activity, Network, Users, Brain, FlaskConical,
-  AlertTriangle, ChevronRight, Zap
+  AlertTriangle, ChevronRight, Zap, Play
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
+import { useDemoStore } from "@/store/demoStore";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -41,11 +42,19 @@ const NAV_ITEMS = [
     label: "Sandbox",
     sublabel: "What-if scenarios",
   },
+  {
+    href: "/demo",
+    icon: Play,
+    label: "Auto Demo",
+    sublabel: "1-click walkthrough",
+    accent: true,
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { isConnected, criticalAlerts, hospitalState } = useSimulationStore();
+  const { isRunning, currentStep } = useDemoStore();
   const activePatients = hospitalState?.metrics?.active_patients ?? 0;
   const alertCount = criticalAlerts.length;
 
@@ -129,9 +138,11 @@ export function Sidebar() {
 
       {}
       <nav className="flex-1 px-4 py-5 space-y-1.5 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.map((item, idx) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isDemo = (item as any).accent;
+          const isDemoStep = isRunning && idx < 5 && currentStep === idx;
 
           return (
             <Link key={item.href} href={item.href}>
@@ -139,41 +150,53 @@ export function Sidebar() {
                 whileHover={{ x: 3 }}
                 className={cn(
                   "flex items-center gap-4 px-4 py-4 rounded-xl transition-all duration-200 group cursor-pointer",
-                  isActive
+                  isActive && !isDemo
                     ? "bg-blue-500/12 border-l-[3px] border-blue-500"
+                    : isDemo
+                    ? "border-l-[3px] border-purple-500/60"
                     : "hover:bg-white/[0.05]"
                 )}
+                style={isDemo ? { background: "rgba(124,58,237,0.08)" } : undefined}
+                animate={isDemoStep ? { backgroundColor: ["rgba(59,130,246,0.05)", "rgba(59,130,246,0.15)", "rgba(59,130,246,0.05)"] } : {}}
+                transition={isDemoStep ? { duration: 1.2, repeat: Infinity } : {}}
               >
                 <div
                   className={cn(
                     "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
-                    isActive
+                    isActive && !isDemo
                       ? "bg-blue-500/20"
+                      : isDemo
+                      ? "bg-purple-500/15"
                       : "bg-white/[0.04] group-hover:bg-white/[0.07]"
                   )}
                 >
                   <Icon
                     className={cn(
                       "w-5 h-5",
-                      isActive
-                        ? "text-blue-400"
-                        : "text-slate-500 group-hover:text-slate-300"
+                      isActive && !isDemo ? "text-blue-400"
+                      : isDemo ? "text-purple-400"
+                      : "text-slate-500 group-hover:text-slate-300"
                     )}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div
-                    className={cn(
-                      "text-sm font-semibold leading-tight",
-                      isActive ? "text-blue-200" : "text-slate-300 group-hover:text-white"
-                    )}
-                  >
+                  <div className={cn(
+                    "text-sm font-semibold leading-tight",
+                    isActive && !isDemo ? "text-blue-200"
+                    : isDemo ? "text-purple-300"
+                    : "text-slate-300 group-hover:text-white"
+                  )}>
                     {item.label}
                   </div>
                   <div className="text-xs text-slate-600 mt-0.5">{item.sublabel}</div>
                 </div>
-                {isActive && (
-                  <ChevronRight className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                {isActive && !isDemo && <ChevronRight className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                {isDemoStep && (
+                  <motion.div
+                    animate={{ opacity: [1, 0.3, 1] }}
+                    transition={{ duration: 0.8, repeat: Infinity }}
+                    className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"
+                  />
                 )}
               </motion.div>
             </Link>

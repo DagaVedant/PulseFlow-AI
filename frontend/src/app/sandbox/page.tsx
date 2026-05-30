@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useDemoStore } from "@/store/demoStore";
 import { formatTime, formatPercent, cn } from "@/lib/utils";
 import type { EventType } from "@/types";
 
@@ -154,6 +155,22 @@ export default function SandboxPage() {
     setActiveEvents(new Set());
     triggerEvent("clear_event");
   };
+
+  const { pendingAction, clearAction } = useDemoStore();
+  useEffect(() => {
+    if (pendingAction !== "sandbox_demo") return;
+    clearAction();
+    setActiveEvents(new Set(["flu_outbreak" as EventType]));
+    triggerEvent("flu_outbreak", {});
+    const t1 = setTimeout(() => {
+      setCfg({ ...DEFAULTS, doctors: 40, nurses: 100, arrival_rate: DEFAULTS.arrival_rate });
+    }, 6000);
+    const t2 = setTimeout(() => {
+      setActiveEvents(new Set());
+      triggerEvent("clear_event");
+    }, 14000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [pendingAction]);
 
   const projected = useMemo(() => {
     const arr = cfg.arrival_rate / DEFAULTS.arrival_rate;

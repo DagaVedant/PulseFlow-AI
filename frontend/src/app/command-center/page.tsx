@@ -1,18 +1,86 @@
 /* Command Center page: hospital floor plan, live metrics, and active alerts. */
 "use client";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
 import {
   Activity, AlertTriangle, Bed, Clock, TrendingUp,
-  Users, Zap, RefreshCw
+  Users, Zap, RefreshCw, Radio
 } from "lucide-react";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { useSimulationStore } from "@/store/simulationStore";
 import { HospitalFloorPlan } from "@/components/hospital/HospitalFloorPlan";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import {
   formatTime, formatPercent, statusColor, cn, occupancyToStatus
 } from "@/lib/utils";
+import type { Patient } from "@/types";
 
-const DEPT_KEYS = ["er", "labs", "imaging", "icu", "ward", "discharge"] as const;
+const DEPT_KEYS = ["er", "labs", "imaging", "icu", "ward"] as const;
+
+function LiveEventLog({ patients, alerts }: { patients: Patient[]; alerts: any[] }) {
+  const [events, setEvents] = useState<{ id: string; text: string; color: string; ts: number }[]>([]);
+  const prevCountRef = useRef(0);
+
+  useEffect(() => {
+    const criticalNew = patients.filter(
+      (p) => (p.severity === "critical" || p.severity === "high") && p.state === "triage"
+    );
+    const count = patients.length;
+    if (count !== prevCountRef.current && count > 0) {
+      const p = patients[patients.length - 1];
+      const color = p?.severity === "critical" ? "#f87171" : p?.severity === "high" ? "#fbbf24" : "#60a5fa";
+      const text = p?.severity === "critical" || p?.severity === "high"
+        ? `${p.severity.toUpperCase()} — ${p.name || "Patient"} admitted · ${p.chief_complaint || ""}`
+        : `Patient admitted to ${p?.current_department?.toUpperCase() || "ER"}`;
+      setEvents((prev) => [{ id: `${Date.now()}`, text, color, ts: Date.now() }, ...prev.slice(0, 11)]);
+      prevCountRef.current = count;
+    }
+  }, [patients.length]);
+
+  useEffect(() => {
+    if (alerts.length === 0) return;
+    const latest = alerts[alerts.length - 1];
+    const color = latest.severity === "critical" ? "#f87171" : latest.severity === "warning" ? "#fbbf24" : "#60a5fa";
+    setEvents((prev) => [{ id: `alert-${latest.alert_id}`, text: `⚠ ${latest.message}`, color, ts: Date.now() }, ...prev.slice(0, 11)]);
+  }, [alerts.length]);
+
+  return (
+    <div
+      className="rounded-xl p-3 flex-shrink-0"
+      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.1)" }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <Radio className="w-3 h-3 text-blue-400" />
+        <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wide">Live Event Feed</span>
+        <motion.div
+          animate={{ opacity: [1, 0.3, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity }}
+          className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-auto"
+        />
+      </div>
+      <div className="space-y-1 max-h-[88px] overflow-hidden">
+        {events.length === 0 ? (
+          <div className="text-[10px] text-slate-700 font-mono py-1">Monitoring...</div>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {events.slice(0, 4).map((e) => (
+              <motion.div
+                key={e.id}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, height: 0 }}
+                className="text-[10px] font-mono truncate"
+                style={{ color: e.color }}
+              >
+                {e.text}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function CommandCenterPage() {
   const { hospitalState, criticalAlerts, isConnected } = useSimulationStore();
@@ -236,6 +304,9 @@ export default function CommandCenterPage() {
               })}
             </div>
           </div>
+
+          {}
+          <LiveEventLog patients={hospitalState?.patients ?? []} alerts={hospitalState?.alerts ?? []} />
 
           {}
           <div
