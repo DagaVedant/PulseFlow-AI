@@ -154,7 +154,7 @@ export function Sidebar() {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
           const isDemo = (item as any).accent;
-          const isDemoStep = isRunning && idx < 5 && currentStep === idx;
+          const isDemoStep = isRunning && currentStep === idx;
 
           return (
             <Link key={item.href} href={item.href}>

@@ -1,7 +1,13 @@
 /* Global demo orchestration store — persists across Next.js client-side navigation. */
 import { create } from "zustand";
 
-export type DemoAction = "analyze_patients" | "run_copilot" | "sandbox_demo" | null;
+export type DemoAction =
+  | "analyze_patients"
+  | "run_copilot"
+  | "sandbox_demo"
+  | "add_constraint"
+  | "remove_constraint"
+  | null;
 
 interface DemoStore {
   isRunning: boolean;

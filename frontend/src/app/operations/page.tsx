@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useDemoStore } from "@/store/demoStore";
 import type { Specialist, FixedBottleneck, BottleneckType } from "@/types";
 
 const RESOURCE_TYPES: BottleneckType[] = [
@@ -24,12 +25,48 @@ function statusStyle(status: string) {
   return { color: "#ffaa00", label: "BUSY" };
 }
 
+const DEMO_CONSTRAINT = {
+  resource_name: "Dr. Nina Patel",
+  resource_type: "Specialist" as BottleneckType,
+  status: "In CABG Surgery",
+  priority: "critical" as const,
+  release_in_min: 90,
+  release_label: "3:30 PM",
+  notes: "Open-heart — OR 2 unavailable",
+};
+
 export default function OperationsPage() {
   const { hospitalState } = useSimulationStore();
   const { addBottleneck, removeBottleneck } = useWebSocket();
+  const { pendingAction, clearAction } = useDemoStore();
   const care = hospitalState?.care;
   const specialists = care?.specialists ?? [];
   const bottlenecks = care?.bottlenecks ?? [];
+
+  // highlight the demo-added constraint
+  const [demoConstraintId, setDemoConstraintId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (pendingAction === "add_constraint") {
+      clearAction();
+      addBottleneck(DEMO_CONSTRAINT);
+    } else if (pendingAction === "remove_constraint") {
+      clearAction();
+      if (demoConstraintId) {
+        removeBottleneck(demoConstraintId);
+        setDemoConstraintId(null);
+      } else {
+        const match = bottlenecks.find((b) => b.resource_name === DEMO_CONSTRAINT.resource_name);
+        if (match) removeBottleneck(match.bottleneck_id);
+      }
+    }
+  }, [pendingAction]);
+
+  // track the id of the demo-added constraint once it appears
+  useEffect(() => {
+    const match = bottlenecks.find((b) => b.resource_name === DEMO_CONSTRAINT.resource_name);
+    if (match && !demoConstraintId) setDemoConstraintId(match.bottleneck_id);
+  }, [bottlenecks]);
 
   const [form, setForm] = useState({
     resource_name: "",
@@ -212,7 +249,7 @@ export default function OperationsPage() {
             <div className="flex-1 overflow-y-auto pr-1 space-y-2.5">
               <AnimatePresence mode="popLayout">
                 {bottlenecks.map((bn) => (
-                  <BottleneckRow key={bn.bottleneck_id} bn={bn} onRemove={() => removeBottleneck(bn.bottleneck_id)} />
+                  <BottleneckRow key={bn.bottleneck_id} bn={bn} onRemove={() => removeBottleneck(bn.bottleneck_id)} isDemo={bn.bottleneck_id === demoConstraintId || bn.resource_name === DEMO_CONSTRAINT.resource_name} />
                 ))}
               </AnimatePresence>
               {bottlenecks.length === 0 && (
@@ -228,7 +265,7 @@ export default function OperationsPage() {
   );
 }
 
-function BottleneckRow({ bn, onRemove }: { bn: FixedBottleneck; onRemove: () => void }) {
+function BottleneckRow({ bn, onRemove, isDemo }: { bn: FixedBottleneck; onRemove: () => void; isDemo?: boolean }) {
   const [displayMin, setDisplayMin] = useState(bn.release_in_min ?? 0);
   const color = PRIORITY_COLOR[bn.priority] ?? "#3b82f6";
 
@@ -248,7 +285,11 @@ function BottleneckRow({ bn, onRemove }: { bn: FixedBottleneck; onRemove: () => 
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -12 }}
       className="rounded-xl p-3"
-      style={{ background: "rgba(255,255,255,0.025)", border: `1px solid ${color}30` }}
+      style={{
+        background: isDemo ? `${color}08` : "rgba(255,255,255,0.025)",
+        border: `1px solid ${isDemo ? color + "55" : color + "30"}`,
+        boxShadow: isDemo ? `0 0 18px ${color}18` : "none",
+      }}
     >
       <div className="flex items-start justify-between gap-2 mb-1">
         <div className="flex items-center gap-2 min-w-0 flex-1">
