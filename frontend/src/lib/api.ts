@@ -1,0 +1,47 @@
+/* REST API client for the backend, covering patient summaries and copilot analysis. */
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { "Content-Type": "application/json" },
+    ...options,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`API error ${res.status}: ${text}`);
+  }
+  return res.json();
+}
+
+export const api = {
+  getState: () => fetchJSON<any>("/simulation/state"),
+  getMetricsHistory: (minutes = 60) =>
+    fetchJSON<any>(`/simulation/metrics/history?minutes=${minutes}`),
+  triggerEvent: (eventType: string, params?: object) =>
+    fetchJSON<any>("/simulation/events/trigger", {
+      method: "POST",
+      body: JSON.stringify({ event_type: eventType, params: params || {} }),
+    }),
+  updateConfig: (config: object) =>
+    fetchJSON<any>("/simulation/config/update", {
+      method: "POST",
+      body: JSON.stringify(config),
+    }),
+  getForecast: (horizon = 60) =>
+    fetchJSON<any>(`/simulation/forecast?horizon_minutes=${horizon}`),
+  getPatients: (dept?: string, severity?: string) => {
+    const params = new URLSearchParams();
+    if (dept) params.set("department", dept);
+    if (severity) params.set("severity", severity);
+    return fetchJSON<any>(`/patients/?${params}`);
+  },
+  getPatient: (id: string) => fetchJSON<any>(`/patients/${id}`),
+  getPatientSummary: (id: string) => fetchJSON<any>(`/patients/${id}/summary`),
+  getPatientStats: () => fetchJSON<any>("/patients/stats/summary"),
+  getDepartments: () => fetchJSON<any>("/departments/"),
+  getDepartment: (id: string) => fetchJSON<any>(`/departments/${id}`),
+  getCopilotAnalysis: () => fetchJSON<any>("/copilot/analysis"),
+  runOptimization: () => fetchJSON<any>("/copilot/optimize"),
+  getShiftReport: () => fetchJSON<any>("/copilot/shift-report"),
+  getBottleneckPredictions: () => fetchJSON<any>("/copilot/forecast/bottlenecks"),
+};
