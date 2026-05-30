@@ -1,6 +1,6 @@
 /* Simulation Sandbox page: live configuration sliders and crisis-event toggles. */
 "use client";
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   FlaskConical, Zap, AlertTriangle, RefreshCw,
@@ -119,8 +119,13 @@ export default function SandboxPage() {
   const [cfg, setCfg] = useState<SimpleConfig>(DEFAULTS);
   const [activeEvents, setActiveEvents] = useState<Set<EventType>>(new Set());
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const mountedRef = useRef(false);
 
   useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       updateConfig(expandConfig(cfg));
@@ -149,6 +154,38 @@ export default function SandboxPage() {
     setActiveEvents(new Set());
     triggerEvent("clear_event");
   };
+
+  const projected = useMemo(() => {
+    const arr = cfg.arrival_rate / DEFAULTS.arrival_rate;
+
+    const erS  = Math.max(1, Math.round(cfg.doctors * 0.35) + Math.max(2, Math.round(cfg.nurses * 0.25)));
+    const erSD = Math.max(1, Math.round(DEFAULTS.doctors * 0.35) + Math.max(2, Math.round(DEFAULTS.nurses * 0.25)));
+    const erB  = Math.max(10, Math.round(cfg.beds * 0.28)) / 40;
+
+    const icuS  = Math.max(1, Math.round(cfg.doctors * 0.25) + Math.max(4, Math.round(cfg.nurses * 0.40)));
+    const icuSD = Math.max(1, Math.round(DEFAULTS.doctors * 0.25) + Math.max(4, Math.round(DEFAULTS.nurses * 0.40)));
+    const icuB  = Math.max(5, Math.round(cfg.beds * 0.14)) / 20;
+
+    const wS  = Math.max(1, cfg.doctors - Math.round(cfg.doctors * 0.35) - Math.round(cfg.doctors * 0.25)
+                          + cfg.nurses  - Math.max(2, Math.round(cfg.nurses * 0.25)) - Math.max(4, Math.round(cfg.nurses * 0.40)));
+    const wSD = Math.max(1, DEFAULTS.doctors - Math.round(DEFAULTS.doctors * 0.35) - Math.round(DEFAULTS.doctors * 0.25)
+                          + DEFAULTS.nurses  - Math.max(2, Math.round(DEFAULTS.nurses * 0.25)) - Math.max(4, Math.round(DEFAULTS.nurses * 0.40)));
+    const wB  = Math.max(20, cfg.beds - Math.round(cfg.beds * 0.28) - Math.round(cfg.beds * 0.14)) / 80;
+
+    const calc = (sNow: number, sDef: number, bRatio: number, baseQ: number, baseOcc: number) => {
+      const sr = sNow / sDef;
+      return {
+        queue:    Math.max(0, Math.round(arr * baseQ / sr)),
+        occupancy: Math.min(0.99, Math.max(0.02, arr * baseOcc * Math.min(1.5, sr) / bRatio)),
+      };
+    };
+
+    return {
+      er:   calc(erS,  erSD,  erB,  18, 0.52),
+      icu:  calc(icuS, icuSD, icuB,  3, 0.62),
+      ward: calc(wS,   wSD,   wB,    2, 0.40),
+    };
+  }, [cfg]);
 
   return (
     <div className="flex flex-col h-full p-5 gap-5 overflow-hidden">
@@ -284,9 +321,10 @@ export default function SandboxPage() {
                 Department Status — Adjust Sliders to See Changes
               </div>
               <div className="grid grid-cols-3 gap-3">
-                {["er", "icu", "ward"].map((dept) => {
+                {(["er", "icu", "ward"] as const).map((dept) => {
                   const d = hospitalState.departments[dept];
                   if (!d) return null;
+                  const p = projected[dept];
                   const deptColor = dept === "er" ? "#60a5fa" : dept === "icu" ? "#f59e0b" : "#22c55e";
                   return (
                     <div
@@ -303,14 +341,14 @@ export default function SandboxPage() {
                       <div className="space-y-2">
                         <div>
                           <div className="text-[10px] text-slate-600 font-mono mb-0.5">Occupancy</div>
-                          <div className="text-xl font-bold font-mono" style={{ color: d.occupancy > 0.9 ? "#ff3b3b" : d.occupancy > 0.7 ? "#ffaa00" : deptColor }}>
-                            {formatPercent(d.occupancy)}
+                          <div className="text-xl font-bold font-mono" style={{ color: p.occupancy > 0.9 ? "#ff3b3b" : p.occupancy > 0.7 ? "#ffaa00" : deptColor }}>
+                            {formatPercent(p.occupancy)}
                           </div>
                         </div>
                         <div>
                           <div className="text-[10px] text-slate-600 font-mono mb-0.5">Queue</div>
-                          <div className="text-xl font-bold font-mono" style={{ color: d.queue_length > 8 ? "#ff3b3b" : d.queue_length > 4 ? "#ffaa00" : "#64748b" }}>
-                            {d.queue_length}
+                          <div className="text-xl font-bold font-mono" style={{ color: p.queue > 8 ? "#ff3b3b" : p.queue > 4 ? "#ffaa00" : "#64748b" }}>
+                            {p.queue}
                           </div>
                         </div>
                         <div>
