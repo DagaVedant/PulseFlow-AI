@@ -1,6 +1,6 @@
 /* Patient Intelligence page: patient cards, risk scores, and on-demand AI summaries. */
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Users, AlertTriangle, Clock, MapPin, Activity, ChevronLeft, ChevronRight, Zap, RefreshCw } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
@@ -10,6 +10,7 @@ import {
   formatTime, departmentLabel, cn
 } from "@/lib/utils";
 import type { Patient, Severity } from "@/types";
+import { useDemoStore } from "@/store/demoStore";
 
 type FilterSeverity = "all" | Severity;
 
@@ -84,15 +85,21 @@ export default function PatientIntelPage() {
     if (selectedId !== id) loadSummary(id);
   };
 
-  const analyzeAll = async () => {
+  const analyzeAll = useCallback(async () => {
     setAnalyzingAll(true);
-
     const ids = visible.map((p) => p.patient_id);
     await Promise.all(ids.map((id) => loadSummary(id)));
-
     setSelectedId(null);
     setAnalyzingAll(false);
-  };
+  }, [visible]);
+
+  const { pendingAction, clearAction } = useDemoStore();
+  useEffect(() => {
+    if (pendingAction === "analyze_patients" && visible.length > 0) {
+      clearAction();
+      analyzeAll();
+    }
+  }, [pendingAction]);
 
   return (
     <div className="flex flex-col h-full p-6 gap-5 overflow-hidden">

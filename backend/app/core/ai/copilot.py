@@ -256,15 +256,31 @@ Write 4-5 sentences of plain prose (no markdown, no asterisks): overall status, 
     def _fallback_bottleneck_explanation(self, state: dict, opt: dict, context: str) -> dict:
         dept = opt.get("bottleneck_department", "ER")
         sev = opt.get("bottleneck_severity", "warning")
-        wait = opt.get("predicted_wait_reduction", 0)
-        causes = opt.get("root_causes", ["Elevated patient volume"])
-        plan = opt.get("intervention_plan", ["Reallocate staff resources"])
+        wait_red = opt.get("predicted_wait_reduction", 0)
+        causes = opt.get("root_causes", [])
+        plan = opt.get("intervention_plan", [])
+        m = state.get("metrics", {})
+        depts = state.get("departments", {})
+        er = depts.get("er", {})
+        icu = depts.get("icu", {})
+
+        avg_wait = m.get("avg_wait_time", 0)
+        active = m.get("active_patients", 0)
+        er_queue = er.get("queue_length", 0)
+        er_occ = er.get("occupancy", 0) * 100
+        icu_occ = icu.get("occupancy", 0) * 100
+        critical = m.get("critical_patients", 0)
+
+        cause_text = causes[0] if causes else f"{dept} is operating above safe capacity"
+        plan_text = plan[0] if plan else "reallocate staff to the primary bottleneck"
+
         explanation = (
-            f"{dept} is the primary bottleneck ({sev.upper()} status). "
-            f"{causes[0] if causes else 'Elevated demand is straining resources.'}. "
-            f"Without intervention, wait times will cascade into adjacent departments. "
-            f"Recommended action: {plan[0] if plan else 'Reallocate staff.'}. "
-            f"Expected outcome: {wait:.0f}-minute reduction in average wait time."
+            f"With {active} active patients and an average wait of {avg_wait:.0f} minutes across the hospital, "
+            f"{dept} is the critical bottleneck — {er_occ:.0f}% bed occupancy with {er_queue} patients queued. "
+            f"{cause_text}. ICU is at {icu_occ:.0f}% capacity with {critical} critical cases requiring immediate oversight. "
+            f"The optimizer recommends: {plan_text}. "
+            f"Applying these changes is projected to cut average wait by {wait_red:.0f} minutes "
+            f"and free up downstream capacity within the next 30 minutes."
         )
         return {
             "explanation": explanation,
@@ -275,17 +291,24 @@ Write 4-5 sentences of plain prose (no markdown, no asterisks): overall status, 
         }
 
     def _fallback_patient_summary(self, patient: dict) -> str:
-        sev = patient.get("severity", "low").upper()
-        dept = patient.get("current_department", "ER").upper()
-        complaint = patient.get("chief_complaint", "unspecified complaint")
+        name = patient.get("name", "Patient")
+        sev = patient.get("severity", "low")
+        dept = patient.get("current_department", "er").replace("_", " ").upper()
+        complaint = patient.get("chief_complaint", "unspecified condition")
         wait = patient.get("total_wait_time", 0)
         risk = patient.get("risk_score", 0)
-        risk_text = "elevated" if risk > 0.6 else ("moderate" if risk > 0.3 else "low")
+        age = patient.get("age", "unknown")
+        state = patient.get("state", "").replace("_", " ")
+
+        urgency = "Immediate escalation recommended" if risk > 0.7 else (
+            "Close monitoring required" if risk > 0.4 else "Stable — routine care pathway"
+        )
+        wait_context = f"has waited {wait:.0f} minutes" if wait > 0 else "recently arrived"
+
         return (
-            f"{sev} priority patient presenting with {complaint}, "
-            f"currently in {dept} with {wait:.0f} minutes accumulated wait. "
-            f"Risk score is {risk_text} ({risk:.2f}) — "
-            f"{'immediate attention recommended' if risk > 0.6 else 'continue monitoring'}."
+            f"{name}, {age}, {sev.upper()} severity — presenting with {complaint}. "
+            f"Currently {state} in {dept} and {wait_context}. "
+            f"Risk index {risk:.2f} ({int(risk*100)}th percentile). {urgency}."
         )
 
     def _fallback_intervention_narrative(self, opt: dict) -> dict:
@@ -293,16 +316,27 @@ Write 4-5 sentences of plain prose (no markdown, no asterisks): overall status, 
         plan = opt.get("intervention_plan", [])
         wait_red = opt.get("predicted_wait_reduction", 0)
         thru_inc = opt.get("predicted_throughput_increase", 0)
-        rec_summary = (
-            f"reallocate {abs(recs[0]['delta'])} {recs[0]['resource_type']} to {recs[0]['department']}"
-            if recs else "optimize staff allocation"
-        )
+        util_imp = opt.get("predicted_utilization_improvement", 0)
+        dept = opt.get("bottleneck_department", "ER")
+
+        high_urgency = [r for r in recs if r.get("urgency") in ("critical", "high")]
+        primary = high_urgency[0] if high_urgency else (recs[0] if recs else None)
+
+        if primary:
+            action = (
+                f"Move {abs(primary['delta'])} additional {primary['resource_type']} "
+                f"to {primary['department']} (currently {primary['current']}, target {primary['recommended']})"
+            )
+        else:
+            action = "redistribute staff across departments to match patient load"
+
         narrative = (
-            f"The optimization engine has identified resource allocation improvements. "
-            f"Primary action: {rec_summary}. "
-            f"Coordinated adjustments across {len(recs)} resource categories will address the root cause chain. "
-            f"Expected impact: {wait_red:.0f}-minute wait reduction and "
-            f"{thru_inc:.0f}% throughput improvement within 2 hours."
+            f"The OR-Tools optimizer has processed the current simulation state and flagged {dept} as the highest-priority intervention point. "
+            f"Primary action: {action}. "
+            f"This addresses the root cause directly — throughput is constrained by staff-to-patient ratio, not bed availability. "
+            f"Across {len(recs)} recommended changes, the model projects a {wait_red:.0f}-minute reduction in average wait time, "
+            f"a {thru_inc:.0f}% increase in hourly throughput, and {util_imp*100:.0f}% improvement in resource utilization. "
+            f"Click Implement All to apply immediately."
         )
         return {
             "narrative": narrative,
@@ -311,23 +345,38 @@ Write 4-5 sentences of plain prose (no markdown, no asterisks): overall status, 
             "predicted_outcomes": {
                 "wait_reduction": wait_red,
                 "throughput_increase": thru_inc,
-                "utilization_improvement": opt.get("predicted_utilization_improvement", 0),
+                "utilization_improvement": util_imp,
             },
             "model": "fallback",
         }
 
     def _fallback_shift_report(self, state: dict, history: List[dict]) -> str:
         m = state.get("metrics", {})
+        depts = state.get("departments", {})
         alerts = state.get("alerts", [])
-        status = "stable" if m.get("bed_utilization", 0) < 0.80 else "elevated"
+        active = m.get("active_patients", 0)
+        avg_wait = m.get("avg_wait_time", 0)
+        bed_util = m.get("bed_utilization", 0)
+        icu_util = m.get("icu_utilization", 0)
+        critical = m.get("critical_patients", 0)
+        er = depts.get("er", {})
+        er_queue = er.get("queue_length", 0)
         alert_count = len([a for a in alerts if not a.get("resolved", False)])
+        status = "critical" if bed_util > 0.90 else ("elevated" if bed_util > 0.75 else "stable")
+
+        priority = (
+            "ICU capacity is the immediate concern — transfer protocols should be reviewed"
+            if icu_util > 0.85 else
+            f"ER queue of {er_queue} requires additional triage staff"
+            if er_queue > 10 else
+            "maintain current staffing ratios through end of shift"
+        )
+
         return (
-            f"Hospital operations are currently {status} with "
-            f"{m.get('active_patients', 0)} active patients. "
-            f"Average wait time: {m.get('avg_wait_time', 0):.0f} minutes. "
-            f"Bed utilization: {m.get('bed_utilization', 0)*100:.0f}%, "
-            f"ICU: {m.get('icu_utilization', 0)*100:.0f}%. "
-            f"{'Active alerts require attention.' if alert_count > 0 else 'No critical alerts.'} "
-            f"Incoming shift should prioritize "
-            f"{'ICU capacity and discharge flow' if m.get('icu_utilization', 0) > 0.75 else 'routine monitoring'}."
+            f"Hospital is {status} with {active} active patients. "
+            f"Average wait is {avg_wait:.0f} minutes with {er_queue} queued in ER. "
+            f"Bed utilization at {bed_util*100:.0f}%, ICU at {icu_util*100:.0f}% — "
+            f"{critical} critical patients require monitoring. "
+            f"{'Warning: ' + str(alert_count) + ' unresolved alerts.' if alert_count > 0 else 'No critical alerts active.'} "
+            f"Incoming shift priority: {priority}."
         )

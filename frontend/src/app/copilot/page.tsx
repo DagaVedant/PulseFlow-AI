@@ -1,6 +1,6 @@
 /* AI Copilot page: bottleneck analysis, optimization recommendations, and the AI narrative. */
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain, Zap, AlertTriangle, TrendingUp,
@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { formatTime, formatPercent, cn } from "@/lib/utils";
 import type { CopilotAnalysis, StaffingRecommendation } from "@/types";
+import { useDemoStore } from "@/store/demoStore";
 
 const URGENCY_COLORS: Record<string, string> = {
   low: "#475569",
@@ -49,13 +50,23 @@ export default function CopilotPage() {
   const [error, setError] = useState<string | null>(null);
   const [implemented, setImplemented] = useState(false);
   const [implementing, setImplementing] = useState(false);
+  const [snapshot, setSnapshot] = useState<typeof hospitalState["metrics"] | null>(null);
 
   const metrics = hospitalState?.metrics;
+
+  const { pendingAction, clearAction } = useDemoStore();
+  useEffect(() => {
+    if (pendingAction === "run_copilot") {
+      clearAction();
+      runAnalysis();
+    }
+  }, [pendingAction]);
 
   const runAnalysis = useCallback(async () => {
     setLoading(true);
     setError(null);
     setImplemented(false);
+    setSnapshot((hospitalState as any)?.metrics ?? null);
     try {
       const result = await api.getCopilotAnalysis();
       setAnalysis(result);
@@ -65,7 +76,7 @@ export default function CopilotPage() {
     } finally {
       setLoading(false);
     }
-  }, [setLatestOptimization]);
+  }, [setLatestOptimization, hospitalState?.metrics]);
 
   const implementAll = useCallback(async () => {
     if (!analysis?.optimization?.recommendations?.length) return;
@@ -378,6 +389,31 @@ export default function CopilotPage() {
                           <p className="text-sm text-slate-300 leading-relaxed">
                             {opt.ai_narrative.narrative}
                           </p>
+                        </div>
+                      )}
+
+                      {}
+                      {snapshot && metrics && (
+                        <div
+                          className="p-4 rounded-xl"
+                          style={{ background: "rgba(0,255,136,0.04)", border: "1px solid rgba(0,255,136,0.15)" }}
+                        >
+                          <div className="text-xs text-emerald-500 font-mono uppercase mb-3 tracking-wider">
+                            Before → After Analysis
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            {[
+                              { label: "Avg Wait", before: formatTime(snapshot.avg_wait_time), after: formatTime(metrics.avg_wait_time), better: metrics.avg_wait_time < snapshot.avg_wait_time },
+                              { label: "Bed Util", before: formatPercent(snapshot.bed_utilization), after: formatPercent(metrics.bed_utilization), better: metrics.bed_utilization < snapshot.bed_utilization },
+                              { label: "Critical", before: String(snapshot.critical_patients), after: String(metrics.critical_patients), better: metrics.critical_patients < snapshot.critical_patients },
+                            ].map(({ label, before, after, better }) => (
+                              <div key={label} className="rounded-lg p-2" style={{ background: "rgba(0,0,0,0.2)" }}>
+                                <div className="text-[9px] text-slate-600 font-mono uppercase mb-1">{label}</div>
+                                <div className="text-xs text-slate-500 font-mono line-through">{before}</div>
+                                <div className="text-sm font-bold font-mono" style={{ color: better ? "#00ff88" : "#ff3b3b" }}>{after}</div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
 
