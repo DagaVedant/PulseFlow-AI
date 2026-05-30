@@ -1,6 +1,6 @@
 /* Operations Hub: specialist availability grid and the Fixed Bottlenecks & Operational Constraints input panel. */
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Network, Stethoscope, Lock, Plus, X, Clock, AlertOctagon
@@ -229,7 +229,18 @@ export default function OperationsPage() {
 }
 
 function BottleneckRow({ bn, onRemove }: { bn: FixedBottleneck; onRemove: () => void }) {
+  const [displayMin, setDisplayMin] = useState(bn.release_in_min ?? 0);
   const color = PRIORITY_COLOR[bn.priority] ?? "#3b82f6";
+
+  useEffect(() => {
+    setDisplayMin(bn.release_in_min ?? 0);
+    if ((bn.release_in_min ?? 0) <= 0) return;
+    const interval = setInterval(() => {
+      setDisplayMin((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [bn.release_in_min, bn.bottleneck_id]);
+
   return (
     <motion.div
       layout
@@ -261,7 +272,7 @@ function BottleneckRow({ bn, onRemove }: { bn: FixedBottleneck; onRemove: () => 
           {bn.release_label ? `until ${bn.release_label}` : ""}
         </span>
         {bn.release_in_min !== null && (
-          <span className="font-bold" style={{ color }}>frees in {bn.release_in_min}m</span>
+          <span className="font-bold" style={{ color }}>frees in {displayMin}m</span>
         )}
       </div>
     </motion.div>
