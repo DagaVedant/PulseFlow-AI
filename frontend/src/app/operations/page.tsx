@@ -266,17 +266,28 @@ export default function OperationsPage() {
 }
 
 function BottleneckRow({ bn, onRemove, isDemo }: { bn: FixedBottleneck; onRemove: () => void; isDemo?: boolean }) {
-  const [displayMin, setDisplayMin] = useState(bn.release_in_min ?? 0);
+  const serverMin = bn.release_in_min ?? 0;
+  const [displayMin, setDisplayMin] = useState(serverMin);
   const color = PRIORITY_COLOR[bn.priority] ?? "#3b82f6";
 
+  // Seed displayMin from the server value when first mounted or when the server
+  // value differs by more than 2 min from local state (genuine server-side change,
+  // not just the local tick racing the 0.8s broadcast).
   useEffect(() => {
-    setDisplayMin(bn.release_in_min ?? 0);
-    if ((bn.release_in_min ?? 0) <= 0) return;
+    setDisplayMin((prev) => {
+      if (Math.abs(prev - serverMin) > 2) return serverMin;
+      return prev;
+    });
+  }, [serverMin, bn.bottleneck_id]);
+
+  // Local tick — 1 real second = 1 sim minute at 60× speed
+  useEffect(() => {
+    if (serverMin <= 0) return;
     const interval = setInterval(() => {
       setDisplayMin((prev) => Math.max(0, prev - 1));
     }, 1000);
     return () => clearInterval(interval);
-  }, [bn.release_in_min, bn.bottleneck_id]);
+  }, [bn.bottleneck_id]);
 
   return (
     <motion.div

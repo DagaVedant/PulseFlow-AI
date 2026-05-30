@@ -127,11 +127,10 @@ class CareCoordinator:
         self.specialists: List[Specialist] = []
         self.bottlenecks: Dict[str, FixedBottleneck] = {}
         self.tracked: List[TrackedPatient] = []
-        self._anchored = False
-        self._seed()
+        self._seed_done = False
 
     # ── Seeding ──────────────────────────────────────────────────────────────
-    def _seed(self):
+    def _seed(self, now: float = 0.0):
         s = lambda *a, **k: self.specialists.append(Specialist(*a, **k))
         sid = lambda: uuid.uuid4().hex[:6].upper()
 
@@ -162,7 +161,7 @@ class CareCoordinator:
         s(sid(), "L. Tran, RN",      "Shared", "Case Manager",          20, 7, 2, 8)
         s(sid(), "P. Adeyemi, MSW",  "Shared", "Social Worker",         30, 5, 1, 25)
 
-        # One default fixed bottleneck matching the canonical demo example
+        # Seeded constraints anchored to real sim_time so countdowns start correctly
         self.add_bottleneck({
             "resource_name": "Dr. Sarah Chen",
             "resource_type": "Specialist",
@@ -171,7 +170,7 @@ class CareCoordinator:
             "notes": "Cardiac surgeon — cannot be interrupted for consults",
             "release_label": "2:45 PM",
             "release_in_min": 75,
-        }, now=0.0)
+        }, now=now)
         self.add_bottleneck({
             "resource_name": "MRI Suite 2",
             "resource_type": "Equipment",
@@ -180,8 +179,7 @@ class CareCoordinator:
             "notes": "Coil calibration — imaging routed to MRI Suite 1",
             "release_label": "1:30 PM",
             "release_in_min": 40,
-        }, now=0.0)
-        # Blocks Maria's preferred specialist → her recommendation reroutes to an alternative
+        }, now=now)
         self.add_bottleneck({
             "resource_name": "Dr. Omar Haddad",
             "resource_type": "Specialist",
@@ -190,22 +188,22 @@ class CareCoordinator:
             "notes": "Heart failure specialist pulled to ICU — unavailable for ED consults",
             "release_label": "3:10 PM",
             "release_in_min": 100,
-        }, now=0.0)
+        }, now=now)
 
-        # Four tracked executive-view patients
+        # Four tracked executive-view patients — created_at anchored to real sim_time
         self.tracked = [
             TrackedPatient("EXEC-1001", "James Wilson", 67, "Acute Stroke", "critical", "critical",
                            "Neurology", "Stroke Specialist", 52, 25, 0.93,
-                           ["CT Angiography", "Neuro ICU", "tPA Window"]),
+                           ["CT Angiography", "Neuro ICU", "tPA Window"], created_at=now),
             TrackedPatient("EXEC-1002", "Maria Rodriguez", 74, "Heart Failure Exacerbation", "high", "high",
                            "Cardiology", "Heart Failure Specialist", 94, 60, 0.87,
-                           ["Labs", "Echocardiogram", "Telemetry", "Ward"]),
+                           ["Labs", "Echocardiogram", "Telemetry", "Ward"], created_at=now),
             TrackedPatient("EXEC-1003", "Kevin Thompson", 46, "Pneumonia", "medium", "moderate",
                            "Pulmonology", "Pulmonary Specialist", 37, 120, 0.43,
-                           ["Chest X-Ray", "Labs", "Ward"]),
+                           ["Chest X-Ray", "Labs", "Ward"], created_at=now),
             TrackedPatient("EXEC-1004", "Emily Carter", 28, "Minor Fracture", "low", "low",
                            "Orthopedics", "Trauma Surgeon", 18, 180, 0.12,
-                           ["X-Ray", "Casting", "Discharge"]),
+                           ["X-Ray", "Casting", "Discharge"], created_at=now),
         ]
 
     # ── Bottleneck CRUD ──────────────────────────────────────────────────────
@@ -386,23 +384,20 @@ class CareCoordinator:
         return pool[0]
 
     def get_state(self, now: float) -> dict:
-        self._ensure_anchor(now)
+        self._ensure_seeded(now)
         return {
             "specialists": [self._specialist_dict(sp, now) for sp in self.specialists],
             "bottlenecks": [bn.to_dict(now) for bn in self.bottlenecks.values()],
             "tracked_patients": [self._patient_dict(tp, now) for tp in self.tracked],
         }
 
-    def _ensure_anchor(self, now: float) -> None:
-        """On first read, shift seeded constraints so their countdowns start from now
-        (they were seeded at sim_time 0, which is long past once the sim has been running)."""
-        if self._anchored:
+    def _ensure_seeded(self, now: float) -> None:
+        """Seed specialists, patients, and constraints on first real get_state call so
+        release_at values are anchored to actual sim_time (not 0)."""
+        if self._seed_done:
             return
-        self._anchored = True
-        for bn in self.bottlenecks.values():
-            if bn.release_at is not None:
-                bn.release_at += now
-                bn.created_at = now
+        self._seed_done = True
+        self._seed(now)
 
     def get_recommendations(self, now: float) -> List[dict]:
         order = {"critical": 0, "high": 1, "moderate": 2, "low": 3}
