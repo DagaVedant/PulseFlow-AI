@@ -43,7 +43,6 @@ export default function OperationsPage() {
   const specialists = care?.specialists ?? [];
   const bottlenecks = care?.bottlenecks ?? [];
 
-  // highlight the demo-added constraint
   const [demoConstraintId, setDemoConstraintId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,7 +61,6 @@ export default function OperationsPage() {
     }
   }, [pendingAction]);
 
-  // track the id of the demo-added constraint once it appears
   useEffect(() => {
     const match = bottlenecks.find((b) => b.resource_name === DEMO_CONSTRAINT.resource_name);
     if (match && !demoConstraintId) setDemoConstraintId(match.bottleneck_id);
@@ -84,7 +82,6 @@ export default function OperationsPage() {
     setForm({ ...form, resource_name: "", status: "", notes: "", release_label: "" });
   };
 
-  // Group specialists by specialty
   const groups: Record<string, Specialist[]> = {};
   for (const sp of specialists) {
     (groups[sp.specialty] ??= []).push(sp);
@@ -94,7 +91,6 @@ export default function OperationsPage() {
   return (
     <div className="flex flex-col h-full p-6 gap-5 overflow-hidden">
 
-      {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
@@ -119,7 +115,6 @@ export default function OperationsPage() {
 
       <div className="flex flex-1 gap-5 min-h-0 overflow-hidden">
 
-        {/* Left: specialist roster */}
         <div className="flex-1 flex flex-col min-w-0 rounded-2xl p-5 overflow-hidden"
           style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}>
           <div className="flex items-center gap-2 mb-4 flex-shrink-0">
@@ -165,10 +160,8 @@ export default function OperationsPage() {
           </div>
         </div>
 
-        {/* Right: fixed bottlenecks */}
         <div className="w-[400px] flex-shrink-0 flex flex-col gap-4 overflow-hidden">
 
-          {/* Add form */}
           <div className="rounded-2xl p-5 flex-shrink-0"
             style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,170,0,0.18)" }}>
             <div className="flex items-center gap-2 mb-4">
@@ -240,7 +233,6 @@ export default function OperationsPage() {
             </div>
           </div>
 
-          {/* Active constraints list */}
           <div className="flex-1 rounded-2xl p-5 overflow-hidden flex flex-col"
             style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}>
             <div className="text-xs font-mono text-slate-500 uppercase tracking-wider mb-3 flex-shrink-0">
@@ -270,9 +262,6 @@ function BottleneckRow({ bn, onRemove, isDemo }: { bn: FixedBottleneck; onRemove
   const [displayMin, setDisplayMin] = useState(serverMin);
   const color = PRIORITY_COLOR[bn.priority] ?? "#3b82f6";
 
-  // Seed displayMin from the server value when first mounted or when the server
-  // value differs by more than 2 min from local state (genuine server-side change,
-  // not just the local tick racing the 0.8s broadcast).
   useEffect(() => {
     setDisplayMin((prev) => {
       if (Math.abs(prev - serverMin) > 2) return serverMin;
@@ -280,7 +269,6 @@ function BottleneckRow({ bn, onRemove, isDemo }: { bn: FixedBottleneck; onRemove
     });
   }, [serverMin, bn.bottleneck_id]);
 
-  // Local tick — 1 real second = 1 sim minute at 60× speed
   useEffect(() => {
     if (serverMin <= 0) return;
     const interval = setInterval(() => {
