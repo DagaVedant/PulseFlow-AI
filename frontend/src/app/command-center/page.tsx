@@ -26,7 +26,7 @@ function DiversionBanner({ metrics }: { metrics: any }) {
   const deteriorating = metrics.deteriorating_count ?? 0;
   const sepsis = metrics.sepsis_count ?? 0;
 
-  const color = risk > 0.80 ? "#ef4444" : risk > 0.60 ? "#f59e0b" : "#22c55e";
+  const color = risk > 0.80 ? "#ff3b3b" : risk > 0.60 ? "#ffaa00" : "#22c55e";
   const label = risk > 0.80 ? "HIGH RISK" : risk > 0.60 ? "ELEVATED" : "NORMAL";
 
   return (
@@ -56,8 +56,8 @@ function DiversionBanner({ metrics }: { metrics: any }) {
       <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
 
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        <ShieldCheck className="w-3 h-3" style={{ color: sla < 0.70 ? "#ef4444" : "#22c55e" }} />
-        <span className="text-[10px] font-mono" style={{ color: sla < 0.70 ? "#ef4444" : "#22c55e" }}>
+        <ShieldCheck className="w-3 h-3" style={{ color: sla < 0.70 ? "#ff3b3b" : "#22c55e" }} />
+        <span className="text-[10px] font-mono" style={{ color: sla < 0.70 ? "#ff3b3b" : "#22c55e" }}>
           {Math.round(sla * 100)}% SLA
         </span>
       </div>
@@ -114,7 +114,7 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
     const count = patients.length;
     if (count !== prevCountRef.current && count > 0) {
       const p = patients[patients.length - 1];
-      const color = p?.severity === "critical" ? "#f87171" : p?.severity === "high" ? "#fbbf24" : "#60a5fa";
+      const color = p?.severity === "critical" ? "#ff3b3b" : p?.severity === "high" ? "#ffaa00" : "#60a5fa";
       const text = p?.severity === "critical" || p?.severity === "high"
         ? `${p.severity.toUpperCase()} — ${p.name || "Patient"} admitted · ${p.chief_complaint || ""}`
         : `Patient admitted to ${p?.current_department?.toUpperCase() || "ER"}`;
@@ -126,7 +126,7 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
   useEffect(() => {
     if (alerts.length === 0) return;
     const latest = alerts[alerts.length - 1];
-    const color = latest.severity === "critical" ? "#f87171" : latest.severity === "warning" ? "#fbbf24" : "#60a5fa";
+    const color = latest.severity === "critical" ? "#ff3b3b" : latest.severity === "warning" ? "#ffaa00" : "#60a5fa";
     setEvents((prev) => [{ id: `alert-${latest.alert_id}`, text: `⚠ ${latest.message}`, color, clock: simClock(simRef.current) }, ...prev.slice(0, 11)]);
   }, [alerts.length]);
 
@@ -300,9 +300,9 @@ export default function CommandCenterPage() {
             style={{ background: "rgba(10,14,26,0.85)", border: "1px solid rgba(59,130,246,0.15)" }}>
             {[
               { label: "Low", color: "#22c55e" },
-              { label: "Medium", color: "#f59e0b" },
-              { label: "High", color: "#ef4444" },
-              { label: "Critical", color: "#dc2626" },
+              { label: "Medium", color: "#ffe600" },
+              { label: "High", color: "#ffaa00" },
+              { label: "Critical", color: "#ff3b3b" },
             ].map((s) => (
               <div key={s.label} className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full" style={{ background: s.color, boxShadow: `0 0 4px ${s.color}` }} />
@@ -435,8 +435,8 @@ export default function CommandCenterPage() {
                     <span
                       className="flex-shrink-0 text-sm mt-0.5"
                       style={{
-                        color: alert.severity === "critical" ? "#f87171"
-                          : alert.severity === "warning" ? "#fbbf24"
+                        color: alert.severity === "critical" ? "#ff3b3b"
+                          : alert.severity === "warning" ? "#ffaa00"
                           : "#60a5fa",
                       }}
                     >
@@ -446,8 +446,8 @@ export default function CommandCenterPage() {
                       <div
                         className="text-xs font-mono font-semibold capitalize mb-0.5"
                         style={{
-                          color: alert.severity === "critical" ? "#fca5a5"
-                            : alert.severity === "warning" ? "#fde68a"
+                          color: alert.severity === "critical" ? "#ff3b3b"
+                            : alert.severity === "warning" ? "#ffaa00"
                             : "#93c5fd",
                         }}
                       >

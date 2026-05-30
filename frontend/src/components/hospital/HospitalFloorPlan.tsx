@@ -128,7 +128,7 @@ interface PatientDotData {
 
 function getPatientColor(severity: string): string {
   return (
-    { low: "#22c55e", medium: "#f59e0b", high: "#ef4444", critical: "#dc2626" }[severity] ?? "#64748b"
+    { low: "#22c55e", medium: "#ffe600", high: "#ffaa00", critical: "#ff3b3b" }[severity] ?? "#64748b"
   );
 }
 

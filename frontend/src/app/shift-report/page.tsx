@@ -80,16 +80,16 @@ export default function ShiftReportPage() {
           <Section title="Patient Census" icon={<Users className="w-4 h-4 text-blue-400" />}>
             <div className="grid grid-cols-5 gap-3">
               <StatBox label="Total Active" value={String(totalActive)} color="#60a5fa" />
-              <StatBox label="Critical"  value={String(sev.critical)} color="#ef4444" />
-              <StatBox label="High"      value={String(sev.high)}     color="#f59e0b" />
-              <StatBox label="Medium"    value={String(sev.medium)}   color="#3b82f6" />
+              <StatBox label="Critical"  value={String(sev.critical)} color="#ff3b3b" />
+              <StatBox label="High"      value={String(sev.high)}     color="#ffaa00" />
+              <StatBox label="Medium"    value={String(sev.medium)}   color="#ffe600" />
               <StatBox label="Low"       value={String(sev.low)}      color="#22c55e" />
             </div>
             <div className="grid grid-cols-4 gap-3 mt-3">
-              <StatBox label="Boarding"      value={String(boardingCount)}       color="#f97316" />
-              <StatBox label="Deteriorating" value={String(deterioratingCount)}  color="#ef4444" />
-              <StatBox label="Sepsis Risk"   value={String(sepsisCount)}         color="#dc2626" />
-              <StatBox label="SLA Compliant" value={m ? formatPercent(m.sla_compliance ?? 0) : "--"} color={(m?.sla_compliance ?? 1) < 0.7 ? "#ef4444" : "#22c55e"} />
+              <StatBox label="Boarding"      value={String(boardingCount)}       color="#ffaa00" />
+              <StatBox label="Deteriorating" value={String(deterioratingCount)}  color="#ff3b3b" />
+              <StatBox label="Sepsis Risk"   value={String(sepsisCount)}         color="#ff3b3b" />
+              <StatBox label="SLA Compliant" value={m ? formatPercent(m.sla_compliance ?? 0) : "--"} color={(m?.sla_compliance ?? 1) < 0.7 ? "#ff3b3b" : "#22c55e"} />
             </div>
           </Section>
 
@@ -176,11 +176,11 @@ export default function ShiftReportPage() {
 
           <Section title="Key Metrics" icon={<Activity className="w-4 h-4 text-blue-400" />}>
             {m && [
-              ["Avg Wait",     formatTime(m.avg_wait_time),           m.avg_wait_time > 120 ? "#ef4444" : "#60a5fa"],
-              ["Bed Util",     formatPercent(m.bed_utilization),       m.bed_utilization > 0.9 ? "#ef4444" : "#60a5fa"],
-              ["ICU Util",     formatPercent(m.icu_utilization),       m.icu_utilization > 0.9 ? "#ef4444" : "#60a5fa"],
+              ["Avg Wait",     formatTime(m.avg_wait_time),           m.avg_wait_time > 120 ? "#ff3b3b" : "#60a5fa"],
+              ["Bed Util",     formatPercent(m.bed_utilization),       m.bed_utilization > 0.9 ? "#ff3b3b" : "#60a5fa"],
+              ["ICU Util",     formatPercent(m.icu_utilization),       m.icu_utilization > 0.9 ? "#ff3b3b" : "#60a5fa"],
               ["Throughput",   `${m.throughput_per_hour.toFixed(1)}/hr`, "#60a5fa"],
-              ["Diversion",    `${((m.diversion_risk ?? 0) * 100).toFixed(0)}%`, (m.diversion_risk ?? 0) > 0.75 ? "#ef4444" : "#22c55e"],
+              ["Diversion",    `${((m.diversion_risk ?? 0) * 100).toFixed(0)}%`, (m.diversion_risk ?? 0) > 0.75 ? "#ff3b3b" : "#22c55e"],
               ["Cost/hr",      `$${(m.delay_cost_per_hour ?? 0).toLocaleString()}`, "#f59e0b"],
             ].map(([label, val, color]) => (
               <div key={label as string} className="flex justify-between items-center py-1.5 border-b border-slate-800/40 last:border-0">

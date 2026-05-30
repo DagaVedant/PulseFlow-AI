@@ -53,18 +53,18 @@ export function statusBorder(status: DepartmentStatus): string {
 export function severityColor(severity: Severity): string {
   return {
     low: "#22c55e",
-    medium: "#f59e0b",
-    high: "#ef4444",
-    critical: "#dc2626",
+    medium: "#ffe600",
+    high: "#ffaa00",
+    critical: "#ff3b3b",
   }[severity] ?? "#6b7280";
 }
 
 export function severityBadgeClass(severity: Severity): string {
   return {
     low: "bg-green-900/40 text-green-400 border border-green-800/50",
-    medium: "bg-yellow-900/40 text-yellow-400 border border-yellow-800/50",
-    high: "bg-red-900/40 text-red-400 border border-red-800/50",
-    critical: "bg-red-950/60 text-red-300 border border-red-700/60",
+    medium: "bg-yellow-900/40 text-yellow-300 border border-yellow-700/50",
+    high: "bg-amber-900/40 text-amber-400 border border-amber-700/50",
+    critical: "bg-red-950/60 text-red-400 border border-red-700/60",
   }[severity] ?? "bg-gray-900/40 text-gray-400";
 }
 
@@ -82,9 +82,9 @@ export function riskLabel(score: number): string {
 }
 
 export function riskColor(score: number): string {
-  if (score >= 0.75) return "#dc2626";
-  if (score >= 0.50) return "#ef4444";
-  if (score >= 0.25) return "#f59e0b";
+  if (score >= 0.75) return "#ff3b3b";
+  if (score >= 0.50) return "#ffaa00";
+  if (score >= 0.25) return "#ffe600";
   return "#22c55e";
 }
 

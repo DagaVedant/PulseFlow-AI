@@ -16,12 +16,12 @@ const RESOURCE_TYPES: BottleneckType[] = [
 const PRIORITIES = ["low", "medium", "high", "critical"] as const;
 
 const PRIORITY_COLOR: Record<string, string> = {
-  critical: "#ff3b3b", high: "#ffaa00", medium: "#3b82f6", low: "#22c55e",
+  critical: "#ff3b3b", high: "#ffaa00", medium: "#ffe600", low: "#22c55e",
 };
 
 function statusStyle(status: string) {
   if (status === "available") return { color: "#22c55e", label: "AVAILABLE" };
-  if (status === "in_surgery") return { color: "#ef4444", label: "IN SURGERY" };
+  if (status === "in_surgery") return { color: "#ff3b3b", label: "IN SURGERY" };
   return { color: "#ffaa00", label: "BUSY" };
 }
 
