@@ -151,14 +151,16 @@ function getDeptPatientPositions(patients: Patient[]): PatientDotData[] {
     const area = DEPT_PATIENT_AREA[deptKey];
     if (!area) continue;
     deptPatients.forEach((p) => {
-      const col = Math.floor(rng(p.patient_id + "x") * 12);
-      const row = Math.floor(rng(p.patient_id + "y") * 10);
-      const x = area.x + 8 + (col * (area.w - 16)) / 12;
-      const y = area.y + 8 + (row * (area.h - 16)) / 10;
+      const rx = rng(p.patient_id + "px");
+      const ry = rng(p.patient_id + "py");
+      const jx = (rng(p.patient_id + "jx") - 0.5) * 10;
+      const jy = (rng(p.patient_id + "jy") - 0.5) * 10;
+      const x = area.x + 10 + rx * (area.w - 20) + jx;
+      const y = area.y + 10 + ry * (area.h - 20) + jy;
       dots.push({
         id: p.patient_id,
-        x: Math.max(area.x + 4, Math.min(area.x + area.w - 4, x)),
-        y: Math.max(area.y + 4, Math.min(area.y + area.h - 4, y)),
+        x: Math.max(area.x + 6, Math.min(area.x + area.w - 6, x)),
+        y: Math.max(area.y + 6, Math.min(area.y + area.h - 6, y)),
         severity: p.severity,
         state: p.state,
       });

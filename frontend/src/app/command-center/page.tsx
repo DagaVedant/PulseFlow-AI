@@ -1,19 +1,19 @@
-/* Command Center page: hospital floor plan, live metrics, and active alerts. */
+/* Command Center page: hospital floor plan, live metrics, active alerts, and hospital score. */
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import {
   Activity, AlertTriangle, Bed, Clock, TrendingUp,
-  Users, Zap, RefreshCw, Radio, Siren, DollarSign, ShieldCheck, Flame, Anchor
+  Users, Zap, RefreshCw, Radio, Siren, DollarSign, ShieldCheck, Anchor, Award, Truck, MapPin, Timer
 } from "lucide-react";
-import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 import { useSimulationStore } from "@/store/simulationStore";
+import { useDemoStore } from "@/store/demoStore";
 import { HospitalFloorPlan } from "@/components/hospital/HospitalFloorPlan";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import {
-  formatTime, formatPercent, statusColor, cn, occupancyToStatus
+  formatTime, formatPercent, statusColor, occupancyToStatus
 } from "@/lib/utils";
-import type { Patient } from "@/types";
+import type { Patient, DepartmentKey, DepartmentState } from "@/types";
 
 const DEPT_KEYS = ["er", "labs", "imaging", "icu", "ward"] as const;
 
@@ -97,6 +97,255 @@ function DiversionBanner({ metrics }: { metrics: any }) {
   );
 }
 
+function computeHospitalScore(metrics: any): number {
+  if (!metrics) return 0;
+  const sla    = (metrics.sla_compliance ?? 1) * 100;
+  const bedUtil = metrics.bed_utilization ?? 0;
+  const waitPenalty = Math.max(0, Math.min(100, 100 - (metrics.avg_wait_time ?? 0) / 2));
+  const divPenalty  = (1 - (metrics.diversion_risk ?? 0)) * 100;
+  const throughput  = Math.min(100, (metrics.throughput_per_hour ?? 0) * 8);
+  const bedScore    = bedUtil < 0.95 ? 100 - Math.abs(bedUtil - 0.80) * 100 : 20;
+  return Math.round((sla * 0.25 + waitPenalty * 0.25 + divPenalty * 0.20 + throughput * 0.15 + bedScore * 0.15));
+}
+
+function HospitalScore({ metrics }: { metrics: any }) {
+  const score = computeHospitalScore(metrics);
+  const color = score >= 80 ? "#22c55e" : score >= 60 ? "#ffaa00" : "#ff3b3b";
+  const label = score >= 80 ? "GOOD" : score >= 60 ? "FAIR" : "CRITICAL";
+  const circumference = 2 * Math.PI * 20;
+  const dashOffset = circumference * (1 - score / 100);
+
+  return (
+    <div className="flex items-center gap-3 flex-shrink-0 rounded-xl px-4 py-2.5"
+      style={{ background: "rgba(10,14,26,0.8)", border: `1px solid ${color}30` }}>
+      <div className="relative w-12 h-12 flex-shrink-0">
+        <svg viewBox="0 0 50 50" className="w-full h-full -rotate-90">
+          <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
+          <motion.circle
+            cx="25" cy="25" r="20" fill="none" stroke={color} strokeWidth="4"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            animate={{ strokeDashoffset: dashOffset }}
+            transition={{ duration: 1.5, ease: "easeOut" }}
+            style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[11px] font-mono font-bold" style={{ color }}>{score}</span>
+        </div>
+      </div>
+      <div>
+        <div className="flex items-center gap-1.5 mb-0.5">
+          <Award className="w-3 h-3" style={{ color }} />
+          <span className="text-[10px] font-mono font-bold uppercase" style={{ color }}>Hospital Score</span>
+        </div>
+        <span className="text-[9px] font-mono text-slate-500">{label} — composite efficiency index</span>
+      </div>
+    </div>
+  );
+}
+
+const AMBULANCE_ORIGINS = [
+  "Cedar Rd & 5th Ave", "Lakeside Park", "Downtown Plaza", "Highway 12 Exit 7",
+  "Riverside Community", "Northgate Mall", "Airport Terminal B", "Industrial District",
+];
+
+interface AmbulanceUnit {
+  id: string;
+  unit: string;
+  origin: string;
+  eta_min: number;
+  severity: string;
+  complaint: string;
+  dispatched_at: number;
+}
+
+function useAmbulanceSimulation(simTime: number, patients: Patient[]) {
+  const [units, setUnits] = useState<AmbulanceUnit[]>([]);
+  const seenRef = useRef<Set<string>>(new Set());
+  const counterRef = useRef(1);
+
+  useEffect(() => {
+    const critHigh = patients.filter(
+      (p) => (p.severity === "critical" || p.severity === "high") && p.state === "arriving"
+    );
+    critHigh.forEach((p) => {
+      if (seenRef.current.has(p.patient_id)) return;
+      seenRef.current.add(p.patient_id);
+      const rng = (s: string) => {
+        let h = 0;
+        for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+        return Math.abs(h) / 2147483647;
+      };
+      const unit: AmbulanceUnit = {
+        id: p.patient_id,
+        unit: `AMB-${String(counterRef.current++).padStart(3, "0")}`,
+        origin: AMBULANCE_ORIGINS[Math.floor(rng(p.patient_id + "o") * AMBULANCE_ORIGINS.length)],
+        eta_min: Math.floor(rng(p.patient_id + "e") * 8) + 2,
+        severity: p.severity,
+        complaint: p.chief_complaint || "Trauma",
+        dispatched_at: simTime,
+      };
+      setUnits((prev) => [unit, ...prev.slice(0, 9)]);
+    });
+  }, [patients.length]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setUnits((prev) =>
+        prev
+          .map((u) => ({ ...u, eta_min: Math.max(0, u.eta_min - 1) }))
+          .filter((u) => u.eta_min > 0 || simTime - u.dispatched_at < 10)
+      );
+    }, 60000 / 60);
+    return () => clearInterval(interval);
+  }, [simTime]);
+
+  return units;
+}
+
+function AmbulancePanel({ patients, simTime }: { patients: Patient[]; simTime: number }) {
+  const units = useAmbulanceSimulation(simTime, patients);
+
+  const hourBuckets: Record<number, number> = {};
+  units.forEach((u) => {
+    const h = Math.floor(u.dispatched_at / 60) % 24;
+    hourBuckets[h] = (hourBuckets[h] ?? 0) + 1;
+  });
+  const peakHour = Object.entries(hourBuckets).sort((a, b) => b[1] - a[1])[0];
+
+  return (
+    <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+      <div className="flex gap-2 mb-3">
+        <div className="flex-1 rounded-lg px-3 py-2 text-center"
+          style={{ background: "rgba(255,170,0,0.08)", border: "1px solid rgba(255,170,0,0.2)" }}>
+          <div className="text-lg font-mono font-bold text-amber-400">{units.length}</div>
+          <div className="text-[9px] font-mono text-slate-500 uppercase">En Route</div>
+        </div>
+        <div className="flex-1 rounded-lg px-3 py-2 text-center"
+          style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)" }}>
+          <div className="text-lg font-mono font-bold text-red-400">
+            {units.filter((u) => u.severity === "critical").length}
+          </div>
+          <div className="text-[9px] font-mono text-slate-500 uppercase">Critical</div>
+        </div>
+        <div className="flex-1 rounded-lg px-3 py-2 text-center"
+          style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)" }}>
+          <div className="text-lg font-mono font-bold text-blue-400">
+            {peakHour ? `${String(Number(peakHour[0])).padStart(2, "0")}:00` : "--"}
+          </div>
+          <div className="text-[9px] font-mono text-slate-500 uppercase">Peak Hr</div>
+        </div>
+      </div>
+
+      {units.length === 0 ? (
+        <div className="text-xs text-slate-600 font-mono text-center py-6">
+          No ambulances currently dispatched
+        </div>
+      ) : (
+        <AnimatePresence mode="popLayout">
+          {units.map((u) => {
+            const color = u.severity === "critical" ? "#ff3b3b" : u.severity === "high" ? "#ffaa00" : "#60a5fa";
+            return (
+              <motion.div key={u.id}
+                initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
+                className="rounded-lg p-2.5 border"
+                style={{ background: `${color}08`, borderColor: `${color}30` }}>
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-1.5">
+                    <Truck className="w-3 h-3 flex-shrink-0" style={{ color }} />
+                    <span className="text-xs font-mono font-bold" style={{ color }}>{u.unit}</span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold"
+                      style={{ background: `${color}20`, color }}>{u.severity}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Timer className="w-3 h-3 text-slate-500" />
+                    <span className="text-[10px] font-mono font-bold" style={{ color }}>
+                      {u.eta_min === 0 ? "ARRIVING" : `${u.eta_min}m`}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 text-[10px] font-mono text-slate-500">
+                  <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
+                  <span className="truncate">{u.origin}</span>
+                </div>
+                <div className="text-[10px] font-mono text-slate-400 mt-0.5 truncate">{u.complaint}</div>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      )}
+    </div>
+  );
+}
+
+function AlertsAmbulancePanel({ alerts, patients, simTime }: { alerts: any[]; patients: Patient[]; simTime: number }) {
+  const [tab, setTab] = useState<"alerts" | "ambulances">("alerts");
+  const { pendingAction, clearAction } = useDemoStore();
+
+  useEffect(() => {
+    if (pendingAction === "view_ambulances") {
+      clearAction();
+      setTab("ambulances");
+    }
+  }, [pendingAction]);
+
+  return (
+    <div className="rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden"
+      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.1)" }}>
+      <div className="flex items-center border-b border-slate-800/60 flex-shrink-0">
+        <button
+          onClick={() => setTab("alerts")}
+          className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-mono uppercase tracking-wide transition-colors"
+          style={{ color: tab === "alerts" ? "#f87171" : "#475569", borderBottom: tab === "alerts" ? "2px solid #f87171" : "2px solid transparent" }}
+        >
+          <AlertTriangle className="w-3.5 h-3.5" />
+          Alerts
+          {alerts.length > 0 && (
+            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ml-0.5"
+              style={{ background: "rgba(255,59,59,0.2)", color: "#ff3b3b" }}>{alerts.length}</span>
+          )}
+        </button>
+        <button
+          onClick={() => setTab("ambulances")}
+          className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-mono uppercase tracking-wide transition-colors"
+          style={{ color: tab === "ambulances" ? "#fb923c" : "#475569", borderBottom: tab === "ambulances" ? "2px solid #fb923c" : "2px solid transparent" }}
+        >
+          <Truck className="w-3.5 h-3.5" />
+          Ambulances
+        </button>
+      </div>
+
+      {tab === "alerts" ? (
+        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+          {alerts.length === 0 ? (
+            <div className="text-xs text-slate-600 font-mono text-center py-6">No active alerts</div>
+          ) : (
+            [...alerts].reverse().map((alert) => (
+              <motion.div key={alert.alert_id} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
+                className="flex gap-2.5 py-2 border-b border-slate-800/40 last:border-0">
+                <span className="flex-shrink-0 text-sm mt-0.5"
+                  style={{ color: alert.severity === "critical" ? "#ff3b3b" : alert.severity === "warning" ? "#ffaa00" : "#60a5fa" }}>
+                  {alert.severity === "critical" ? "●" : alert.severity === "warning" ? "◆" : "○"}
+                </span>
+                <div className="min-w-0">
+                  <div className="text-xs font-mono font-semibold capitalize mb-0.5"
+                    style={{ color: alert.severity === "critical" ? "#ff3b3b" : alert.severity === "warning" ? "#ffaa00" : "#93c5fd" }}>
+                    {alert.department.toUpperCase()} — {alert.severity}
+                  </div>
+                  <div className="text-xs text-slate-400 leading-snug">{alert.message}</div>
+                </div>
+              </motion.div>
+            ))
+          )}
+        </div>
+      ) : (
+        <AmbulancePanel patients={patients} simTime={simTime} />
+      )}
+    </div>
+  );
+}
+
 function simClock(simTime: number): string {
   const totalMin = Math.max(0, Math.floor(simTime));
   const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, "0");
@@ -169,9 +418,9 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
 }
 
 export default function CommandCenterPage() {
-  const { hospitalState, criticalAlerts, isConnected } = useSimulationStore();
+  const { hospitalState, isConnected } = useSimulationStore();
   const metrics = hospitalState?.metrics;
-  const departments = hospitalState?.departments ?? {};
+  const departments = (hospitalState?.departments ?? {}) as Record<DepartmentKey, DepartmentState>;
   const kpis = [
     {
       icon: Clock,
@@ -269,7 +518,10 @@ export default function CommandCenterPage() {
       </div>
 
       {}
-      {metrics && <DiversionBanner metrics={metrics} />}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        {metrics && <DiversionBanner metrics={metrics} />}
+        {metrics && <HospitalScore metrics={metrics} />}
+      </div>
 
       {}
       <div className="flex flex-1 gap-4 overflow-hidden min-h-0">
@@ -398,70 +650,11 @@ export default function CommandCenterPage() {
           <LiveEventLog patients={hospitalState?.patients ?? []} alerts={hospitalState?.alerts ?? []} simTime={hospitalState?.sim_time ?? 0} />
 
           {}
-          <div
-            className="rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden"
-            style={{
-              background: "rgba(10,14,26,0.8)",
-              border: "1px solid rgba(59,130,246,0.1)",
-            }}
-          >
-            {}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-800/60 flex-shrink-0">
-              <AlertTriangle className="w-4 h-4 text-red-400" />
-              <span className="text-xs text-slate-400 font-mono uppercase tracking-wide">
-                Active Alerts
-              </span>
-              {(hospitalState?.alerts ?? []).length > 0 && (
-                <span className="ml-auto text-xs font-mono font-bold text-red-400 bg-red-950/50 px-2 py-0.5 rounded">
-                  {(hospitalState?.alerts ?? []).length}
-                </span>
-              )}
-            </div>
-
-            {}
-            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
-              {(hospitalState?.alerts ?? []).length === 0 ? (
-                <div className="text-xs text-slate-600 font-mono text-center py-6">
-                  No active alerts
-                </div>
-              ) : (
-                [...(hospitalState?.alerts ?? [])].reverse().map((alert) => (
-                  <motion.div
-                    key={alert.alert_id}
-                    initial={{ opacity: 0, x: 6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex gap-2.5 py-2 border-b border-slate-800/40 last:border-0"
-                  >
-                    <span
-                      className="flex-shrink-0 text-sm mt-0.5"
-                      style={{
-                        color: alert.severity === "critical" ? "#ff3b3b"
-                          : alert.severity === "warning" ? "#ffaa00"
-                          : "#60a5fa",
-                      }}
-                    >
-                      {alert.severity === "critical" ? "●" : alert.severity === "warning" ? "◆" : "○"}
-                    </span>
-                    <div className="min-w-0">
-                      <div
-                        className="text-xs font-mono font-semibold capitalize mb-0.5"
-                        style={{
-                          color: alert.severity === "critical" ? "#ff3b3b"
-                            : alert.severity === "warning" ? "#ffaa00"
-                            : "#93c5fd",
-                        }}
-                      >
-                        {alert.department.toUpperCase()} — {alert.severity}
-                      </div>
-                      <div className="text-xs text-slate-400 leading-snug">
-                        {alert.message}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          </div>
+          <AlertsAmbulancePanel
+            alerts={hospitalState?.alerts ?? []}
+            patients={hospitalState?.patients ?? []}
+            simTime={hospitalState?.sim_time ?? 0}
+          />
         </div>
       </div>
     </div>

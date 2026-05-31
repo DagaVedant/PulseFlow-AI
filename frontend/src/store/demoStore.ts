@@ -8,6 +8,7 @@ export type DemoAction =
   | "add_constraint"
   | "remove_constraint"
   | "print_preview"
+  | "view_ambulances"
   | null;
 
 interface DemoStore {
