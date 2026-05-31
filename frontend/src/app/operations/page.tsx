@@ -258,24 +258,8 @@ export default function OperationsPage() {
 }
 
 function BottleneckRow({ bn, onRemove, isDemo }: { bn: FixedBottleneck; onRemove: () => void; isDemo?: boolean }) {
-  const serverMin = bn.release_in_min ?? 0;
-  const [displayMin, setDisplayMin] = useState(serverMin);
+  const displayMin = bn.release_in_min ?? 0;
   const color = PRIORITY_COLOR[bn.priority] ?? "#3b82f6";
-
-  useEffect(() => {
-    setDisplayMin((prev) => {
-      if (Math.abs(prev - serverMin) > 2) return serverMin;
-      return prev;
-    });
-  }, [serverMin, bn.bottleneck_id]);
-
-  useEffect(() => {
-    if (serverMin <= 0) return;
-    const interval = setInterval(() => {
-      setDisplayMin((prev) => Math.max(0, prev - 1));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [bn.bottleneck_id]);
 
   return (
     <motion.div

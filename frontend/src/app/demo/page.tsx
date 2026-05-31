@@ -13,7 +13,7 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { route: "/command-center", duration: 7000 },
+  { route: "/command-center", duration: 10000, actions: [{ delay: 4000, action: "view_ambulances" }] },
   { route: "/digital-twin",   duration: 6000 },
   { route: "/patient-intel",  duration: 13000, actions: [{ delay: 1800, action: "analyze_patients" }] },
   { route: "/operations",     duration: 16000, actions: [{ delay: 2500, action: "add_constraint" }, { delay: 10000, action: "remove_constraint" }] },
