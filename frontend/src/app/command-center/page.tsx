@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Activity, AlertTriangle, Bed, Clock, TrendingUp,
-  Users, Zap, RefreshCw, Radio, Siren, DollarSign, ShieldCheck, Anchor, Award, Truck, MapPin, Timer
+  Users, Zap, Radio, Siren, DollarSign, ShieldCheck, Anchor, Award, Truck, MapPin, Timer
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useDemoStore } from "@/store/demoStore";
@@ -17,10 +17,10 @@ import type { LucideIcon } from "lucide-react";
 // ─── MetricCard (inlined from components/metrics/MetricCard.tsx) ──────────────
 
 const STATUS_STYLES = {
-  healthy: { border: "rgba(0,255,136,0.2)",   bg: "rgba(0,255,136,0.04)",  color: "#00ff88", glow: "0 0 20px rgba(0,255,136,0.08)" },
-  warning: { border: "rgba(255,170,0,0.25)",  bg: "rgba(255,170,0,0.05)",  color: "#ffaa00", glow: "0 0 20px rgba(255,170,0,0.08)" },
-  critical:{ border: "rgba(255,59,59,0.3)",   bg: "rgba(255,59,59,0.06)",  color: "#ff3b3b", glow: "0 0 20px rgba(255,59,59,0.12)" },
-  neutral: { border: "rgba(59,130,246,0.15)", bg: "rgba(59,130,246,0.04)", color: "#60a5fa", glow: "0 0 20px rgba(59,130,246,0.06)" },
+  healthy: { border: "rgba(12,200,212,0.22)",  bg: "rgba(12,200,212,0.06)", color: "#0CC8D4", glow: "none" },
+  warning: { border: "rgba(245,158,11,0.22)",  bg: "rgba(245,158,11,0.05)", color: "#f0a030", glow: "none" },
+  critical:{ border: "rgba(224,24,122,0.25)",  bg: "rgba(224,24,122,0.06)", color: "#E0187A", glow: "none" },
+  neutral: { border: "rgba(124,58,237,0.2)",   bg: "rgba(124,58,237,0.05)", color: "#9d6fe8", glow: "none" },
 };
 
 /**
@@ -89,7 +89,7 @@ function DiversionBanner({ metrics }: { metrics: any }) {
   const deteriorating = metrics.deteriorating_count ?? 0;
   const sepsis = metrics.sepsis_count ?? 0;
 
-  const color = risk > 0.80 ? "#ff3b3b" : risk > 0.60 ? "#ffaa00" : "#22c55e";
+  const color = risk > 0.80 ? "#ef4444" : risk > 0.60 ? "#f59e0b" : "#2a9c85";
   const label = risk > 0.80 ? "HIGH RISK" : risk > 0.60 ? "ELEVATED" : "NORMAL";
 
   return (
@@ -119,8 +119,8 @@ function DiversionBanner({ metrics }: { metrics: any }) {
       <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
 
       <div className="flex items-center gap-1.5 flex-shrink-0">
-        <ShieldCheck className="w-3 h-3" style={{ color: sla < 0.70 ? "#ff3b3b" : "#22c55e" }} />
-        <span className="text-[10px] font-mono" style={{ color: sla < 0.70 ? "#ff3b3b" : "#22c55e" }}>
+        <ShieldCheck className="w-3 h-3" style={{ color: sla < 0.70 ? "#ef4444" : "#2a9c85" }} />
+        <span className="text-[10px] font-mono" style={{ color: sla < 0.70 ? "#ef4444" : "#2a9c85" }}>
           {Math.round(sla * 100)}% SLA
         </span>
       </div>
@@ -188,7 +188,7 @@ function computeHospitalScore(metrics: any): number {
  */
 function HospitalScore({ metrics }: { metrics: any }) {
   const score = computeHospitalScore(metrics);
-  const color = score >= 80 ? "#22c55e" : score >= 60 ? "#ffaa00" : "#ff3b3b";
+  const color = score >= 80 ? "#2a9c85" : score >= 60 ? "#f59e0b" : "#ef4444";
   const label = score >= 80 ? "GOOD" : score >= 60 ? "FAIR" : "CRITICAL";
   const circumference = 2 * Math.PI * 20;
   const dashOffset = circumference * (1 - score / 100);
@@ -327,7 +327,7 @@ function AmbulancePanel({ patients, simTime }: { patients: Patient[]; simTime: n
           <div className="text-[9px] font-mono text-slate-500 uppercase">Critical</div>
         </div>
         <div className="flex-1 rounded-lg px-3 py-2 text-center"
-          style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)" }}>
+          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
           <div className="text-lg font-mono font-bold text-blue-400">
             {peakHour ? `${String(Number(peakHour[0])).padStart(2, "0")}:00` : "--"}
           </div>
@@ -342,7 +342,7 @@ function AmbulancePanel({ patients, simTime }: { patients: Patient[]; simTime: n
       ) : (
         <AnimatePresence mode="popLayout">
           {units.map((u) => {
-            const color = u.severity === "critical" ? "#ff3b3b" : u.severity === "high" ? "#ffaa00" : "#60a5fa";
+            const color = u.severity === "critical" ? "#ef4444" : u.severity === "high" ? "#f59e0b" : "#6b7fa3";
             return (
               <motion.div key={u.id}
                 initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
@@ -400,7 +400,7 @@ function AlertsAmbulancePanel({ alerts, patients, simTime }: { alerts: any[]; pa
 
   return (
     <div className="rounded-xl flex flex-col min-h-[180px] overflow-hidden"
-      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.1)", flex: "1 1 180px" }}>
+      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,255,255,0.04)", flex: "1 1 180px" }}>
       <div className="flex items-center border-b border-slate-800/60 flex-shrink-0">
         <button
           onClick={() => setTab("alerts")}
@@ -411,7 +411,7 @@ function AlertsAmbulancePanel({ alerts, patients, simTime }: { alerts: any[]; pa
           Alerts
           {alerts.length > 0 && (
             <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ml-0.5"
-              style={{ background: "rgba(255,59,59,0.2)", color: "#ff3b3b" }}>{alerts.length}</span>
+              style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>{alerts.length}</span>
           )}
         </button>
         <button
@@ -433,12 +433,12 @@ function AlertsAmbulancePanel({ alerts, patients, simTime }: { alerts: any[]; pa
               <motion.div key={alert.alert_id} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
                 className="flex gap-2.5 py-2 border-b border-slate-800/40 last:border-0">
                 <span className="flex-shrink-0 text-sm mt-0.5"
-                  style={{ color: alert.severity === "critical" ? "#ff3b3b" : alert.severity === "warning" ? "#ffaa00" : "#60a5fa" }}>
+                  style={{ color: alert.severity === "critical" ? "#ef4444" : alert.severity === "warning" ? "#f59e0b" : "#6b7fa3" }}>
                   {alert.severity === "critical" ? "●" : alert.severity === "warning" ? "◆" : "○"}
                 </span>
                 <div className="min-w-0">
                   <div className="text-xs font-mono font-semibold capitalize mb-0.5"
-                    style={{ color: alert.severity === "critical" ? "#ff3b3b" : alert.severity === "warning" ? "#ffaa00" : "#93c5fd" }}>
+                    style={{ color: alert.severity === "critical" ? "#ef4444" : alert.severity === "warning" ? "#f59e0b" : "#7d95b8" }}>
                     {alert.department.toUpperCase()} — {alert.severity}
                   </div>
                   <div className="text-xs text-slate-400 leading-snug">{alert.message}</div>
@@ -487,7 +487,7 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
     const count = patients.length;
     if (count !== prevCountRef.current && count > 0) {
       const p = patients[patients.length - 1];
-      const color = p?.severity === "critical" ? "#ff3b3b" : p?.severity === "high" ? "#ffaa00" : "#60a5fa";
+      const color = p?.severity === "critical" ? "#ef4444" : p?.severity === "high" ? "#f59e0b" : "#6b7fa3";
       const text = p?.severity === "critical" || p?.severity === "high"
         ? `${p.severity.toUpperCase()} — ${p.name || "Patient"} admitted · ${p.chief_complaint || ""}`
         : `Patient admitted to ${p?.current_department?.toUpperCase() || "ER"}`;
@@ -499,7 +499,7 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
   useEffect(() => {
     if (alerts.length === 0) return;
     const latest = alerts[alerts.length - 1];
-    const color = latest.severity === "critical" ? "#ff3b3b" : latest.severity === "warning" ? "#ffaa00" : "#60a5fa";
+    const color = latest.severity === "critical" ? "#ef4444" : latest.severity === "warning" ? "#f59e0b" : "#6b7fa3";
     setEvents((prev) => {
       const newEvent = { id: `alert-${latest.alert_id}-${Date.now()}`, text: `⚠ ${latest.message}`, color, clock: simClock(simRef.current) };
       return [newEvent, ...prev.slice(0, 11)];
@@ -509,7 +509,7 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
   return (
     <div
       className="rounded-xl p-3 flex-shrink-0"
-      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.1)" }}
+      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,255,255,0.04)" }}
     >
       <div className="flex items-center gap-2 mb-2">
         <Radio className="w-3 h-3 text-blue-400" />
@@ -573,7 +573,7 @@ const DEPT_ZONES: DeptZone[] = [
            {x:531,y:269,w:88,h:135,label:"ICU-3",type:"icu_bed"},{x:619,y:269,w:87,h:135,label:"ICU-4",type:"icu_bed"},
            {x:345,y:414,w:88,h:141,label:"ICU-5",type:"icu_bed"},{x:438,y:414,w:88,h:141,label:"ICU-6",type:"icu_bed"},
            {x:531,y:414,w:88,h:141,label:"ICU-7",type:"icu_bed"},{x:619,y:414,w:87,h:141,label:"ICU-8",type:"icu_bed"}]},
-  { key:"ward", label:"GENERAL WARD", x:720, y:264, w:370, h:296, color:"#22c55e",
+  { key:"ward", label:"GENERAL WARD", x:720, y:264, w:370, h:296, color:"#2a9c85",
     rooms:[{x:725,y:269,w:88,h:135,label:"W-A",type:"ward_bed"},{x:818,y:269,w:88,h:135,label:"W-B",type:"ward_bed"},
            {x:911,y:269,w:88,h:135,label:"W-C",type:"ward_bed"},{x:1000,y:269,w:85,h:135,label:"W-D",type:"ward_bed"},
            {x:725,y:414,w:88,h:141,label:"W-E",type:"ward_bed"},{x:818,y:414,w:88,h:141,label:"W-F",type:"ward_bed"},
@@ -592,7 +592,7 @@ const DEPT_PATIENT_AREA: Record<string,{x:number;y:number;w:number;h:number}> = 
  * @returns A hex color — green, yellow, amber, or red; grey if severity is unrecognized.
  * Called from: HospitalFloorPlan when rendering animated patient dots on the SVG.
  */
-function _fpColor(sev:string):string { return ({low:"#22c55e",medium:"#ffe600",high:"#ffaa00",critical:"#ff3b3b"} as any)[sev]??"#64748b"; }
+function _fpColor(sev:string):string { return ({low:"#34d399",medium:"#fbbf24",high:"#f59e0b",critical:"#ef4444"} as any)[sev]??"#64748b"; }
 /**
  * Computes the x/y pixel coordinates for each patient dot on the floor plan SVG.
  * Groups patients by current department, then distributes them randomly but consistently
@@ -601,20 +601,38 @@ function _fpColor(sev:string):string { return ({low:"#22c55e",medium:"#ffe600",h
  * @returns An array of dot descriptors, each with id, x, y, severity, and state.
  * Called from: HospitalFloorPlan via useMemo, recalculated whenever the patients array changes.
  */
+// Halton low-discrepancy sequence — produces evenly spread positions that never form diagonal lines
+function _halton(index: number, base: number): number {
+  let f = 1, r = 0, i = index + 1;
+  while (i > 0) { f /= base; r += f * (i % base); i = Math.floor(i / base); }
+  return r;
+}
+
+const SEV_ORDER: Record<string,number> = { critical:0, high:1, medium:2, low:3 };
+const MAX_DOTS_PER_DEPT = 14;
+
 function _fpDots(patients:Patient[]) {
   const groups: Record<string,Patient[]> = {};
   for (const p of patients) { (groups[p.current_department]??=[]).push(p); }
-  const rng=(s:string)=>{let h=0;for(let i=0;i<s.length;i++)h=(Math.imul(31,h)+s.charCodeAt(i))|0;return Math.abs(h)/2147483647;};
+
+  // Small hash used only for per-dot jitter (not for base position)
+  const jitter=(s:string,salt:string)=>{let h=0;const t=s+salt;for(let i=0;i<t.length;i++)h=(Math.imul(31,h)+t.charCodeAt(i))|0;return(Math.abs(h)/2147483647-0.5)*14;};
+
   const dots: {id:string;x:number;y:number;severity:string;state:string}[] = [];
   for (const [dk, dps] of Object.entries(groups)) {
     const a = DEPT_PATIENT_AREA[dk]; if (!a) continue;
-    dps.forEach(p=>{
-      const rx=rng(p.patient_id+"px"),ry=rng(p.patient_id+"py");
-      const jx=(rng(p.patient_id+"jx")-0.5)*10,jy=(rng(p.patient_id+"jy")-0.5)*10;
+    // Show most severe patients first, cap to MAX_DOTS_PER_DEPT
+    const visible = [...dps].sort((a,b)=>(SEV_ORDER[a.severity]??3)-(SEV_ORDER[b.severity]??3)).slice(0,MAX_DOTS_PER_DEPT);
+    visible.forEach((p, i) => {
+      // Halton base positions guarantee scatter — no diagonal lines possible
+      const bx = _halton(i, 2);
+      const by = _halton(i, 3);
+      const x = a.x + 12 + bx * (a.w - 24) + jitter(p.patient_id, "x");
+      const y = a.y + 12 + by * (a.h - 24) + jitter(p.patient_id, "y");
       dots.push({id:p.patient_id,
-        x:Math.max(a.x+6,Math.min(a.x+a.w-6,a.x+10+rx*(a.w-20)+jx)),
-        y:Math.max(a.y+6,Math.min(a.y+a.h-6,a.y+10+ry*(a.h-20)+jy)),
-        severity:p.severity,state:p.state});
+        x:Math.max(a.x+6, Math.min(a.x+a.w-6, x)),
+        y:Math.max(a.y+6, Math.min(a.y+a.h-6, y)),
+        severity:p.severity, state:p.state});
     });
   }
   return dots;
@@ -793,7 +811,7 @@ function HospitalFloorPlan() {
       <svg ref={svgRef} viewBox={`0 0 ${FLOOR.width} ${FLOOR.height}`} className="w-full h-full" style={{background:"transparent"}}>
         <defs>
           <pattern id="fp-grid" width="24" height="24" patternUnits="userSpaceOnUse">
-            <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(59,130,246,0.04)" strokeWidth="0.5"/>
+            <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="0.5"/>
           </pattern>
           {["healthy","warning","critical"].map(s=>(
             <radialGradient key={s} id={`fp-grad-${s}`} cx="50%" cy="50%" r="60%">
@@ -803,7 +821,7 @@ function HospitalFloorPlan() {
           ))}
         </defs>
         <rect width={FLOOR.width} height={FLOOR.height} fill="url(#fp-grid)"/>
-        <rect x={5} y={5} width={FLOOR.width-10} height={FLOOR.height-10} fill="none" stroke="rgba(59,130,246,0.12)" strokeWidth="1" rx="4"/>
+        <rect x={5} y={5} width={FLOOR.width-10} height={FLOOR.height-10} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" rx="4"/>
         {DEPT_ZONES.map(zone=>{
           const status=getDeptStatus(zone.key),occupancy=getDeptOcc(zone.key),sColor=statusColor(status);
           return (
@@ -817,22 +835,21 @@ function HospitalFloorPlan() {
                 </g>
               ))}
               <text x={zone.x+8} y={zone.y+14} fontSize="9" fontWeight="700" fill={sColor} fillOpacity="0.9" fontFamily="JetBrains Mono, monospace" letterSpacing="0.8">{zone.label}</text>
-              <circle cx={zone.x+zone.w-12} cy={zone.y+12} r="5" fill={sColor} style={{filter:`drop-shadow(0 0 5px ${sColor})`,animation:status==="critical"?"pulse-critical 1.5s infinite":undefined}}/>
+              <circle cx={zone.x+zone.w-12} cy={zone.y+12} r="5" fill={sColor} style={{animation:status==="critical"?"pulse-critical 2s infinite":undefined}}/>
               <text x={zone.x+zone.w-24} y={zone.y+15} textAnchor="end" fontSize="8" fill={sColor} fillOpacity="0.85" fontFamily="monospace">{Math.round(occupancy*100)}%</text>
               <rect x={zone.x+2} y={zone.y+zone.h-4} width={Math.max(0,(zone.w-4)*occupancy)} height="3" fill={sColor} fillOpacity="0.55" rx="1.5"/>
             </g>
           );
         })}
-        <rect x={10} y={254} width={1080} height={8} fill="rgba(59,130,246,0.03)" stroke="rgba(59,130,246,0.07)" strokeWidth="0.5"/>
+        <rect x={10} y={254} width={1080} height={8} fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5"/>
         <text x={550} y={260} textAnchor="middle" fontSize="6" fill="rgba(59,130,246,0.28)" fontFamily="monospace">— MAIN CORRIDOR —</text>
         <AnimatePresence mode="popLayout">
           {patientDots.map(dot=>(
             <motion.circle key={dot.id} cx={dot.x} cy={dot.y}
               r={dot.severity==="critical"?5:dot.severity==="high"?4.5:4}
               fill={_fpColor(dot.severity)} fillOpacity={0.88}
-              initial={{scale:0,opacity:0}} animate={{cx:dot.x,cy:dot.y,scale:1,opacity:0.88}} exit={{scale:0,opacity:0}}
+              initial={{scale:0,opacity:0}} animate={{cx:dot.x,cy:dot.y,scale:1,opacity:0.85}} exit={{scale:0,opacity:0}}
               transition={{type:"spring",stiffness:28,damping:24,duration:4.0}}
-              style={{filter:dot.severity==="critical"?`drop-shadow(0 0 6px ${_fpColor(dot.severity)})`:`drop-shadow(0 0 2px ${_fpColor(dot.severity)})`}}
             />
           ))}
         </AnimatePresence>
@@ -863,7 +880,7 @@ function HospitalFloorPlan() {
  * Called from: Next.js router at the /command-center route (and as the default redirect from /).
  */
 export default function CommandCenterPage() {
-  const { hospitalState, isConnected } = useSimulationStore();
+  const { hospitalState } = useSimulationStore();
   const metrics = hospitalState?.metrics;
   const departments = (hospitalState?.departments ?? {}) as Record<DepartmentKey, DepartmentState>;
   const kpis = [
@@ -929,24 +946,7 @@ export default function CommandCenterPage() {
             Real-time digital twin visualization • Patient flow simulation
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {!isConnected && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/40 border border-red-800/40">
-              <RefreshCw className="w-3 h-3 text-red-400 animate-spin" />
-              <span className="text-[11px] text-red-400 font-mono">Connecting...</span>
-            </div>
-          )}
-          <div
-            className="px-3 py-1.5 rounded-lg text-[11px] font-mono"
-            style={{
-              background: "rgba(59,130,246,0.08)",
-              border: "1px solid rgba(59,130,246,0.2)",
-              color: "#60a5fa",
-            }}
-          >
-            {isConnected ? "● LIVE SIMULATION" : "○ OFFLINE MODE"}
-          </div>
-        </div>
+        <div />
       </div>
 
       {}
@@ -975,8 +975,8 @@ export default function CommandCenterPage() {
           className="flex-1 rounded-xl overflow-hidden relative"
           style={{
             background: "rgba(6,10,20,0.95)",
-            border: "1px solid rgba(59,130,246,0.12)",
-            boxShadow: "inset 0 0 60px rgba(59,130,246,0.03)",
+            border: "1px solid rgba(255,255,255,0.05)",
+            boxShadow: "inset 0 0 60px rgba(255,255,255,0.015)",
           }}
         >
           <div className="absolute top-3 left-3 z-10">
@@ -984,7 +984,7 @@ export default function CommandCenterPage() {
               className="text-[9px] font-mono px-2 py-1 rounded"
               style={{
                 background: "rgba(10,14,26,0.8)",
-                border: "1px solid rgba(59,130,246,0.2)",
+                border: "1px solid rgba(255,255,255,0.07)",
                 color: "#475569",
               }}
             >
@@ -994,12 +994,12 @@ export default function CommandCenterPage() {
 
           {}
           <div className="absolute top-3 right-3 z-10 flex items-center gap-3 px-3 py-1.5 rounded"
-            style={{ background: "rgba(10,14,26,0.85)", border: "1px solid rgba(59,130,246,0.15)" }}>
+            style={{ background: "rgba(10,14,26,0.85)", border: "1px solid rgba(255,255,255,0.06)" }}>
             {[
-              { label: "Low", color: "#22c55e" },
-              { label: "Medium", color: "#ffe600" },
-              { label: "High", color: "#ffaa00" },
-              { label: "Critical", color: "#ff3b3b" },
+              { label: "Low", color: "#34d399" },
+              { label: "Medium", color: "#fbbf24" },
+              { label: "High", color: "#f59e0b" },
+              { label: "Critical", color: "#ef4444" },
             ].map((s) => (
               <div key={s.label} className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full" style={{ background: s.color, boxShadow: `0 0 4px ${s.color}` }} />
@@ -1018,7 +1018,7 @@ export default function CommandCenterPage() {
               className="text-[9px] font-mono px-2 py-1 rounded"
               style={{
                 background: "rgba(10,14,26,0.8)",
-                border: "1px solid rgba(59,130,246,0.2)",
+                border: "1px solid rgba(255,255,255,0.07)",
                 color: "#475569",
               }}
             >
@@ -1034,7 +1034,7 @@ export default function CommandCenterPage() {
             className="rounded-xl p-3 flex-shrink-0"
             style={{
               background: "rgba(10,14,26,0.8)",
-              border: "1px solid rgba(59,130,246,0.1)",
+              border: "1px solid rgba(255,255,255,0.04)",
             }}
           >
             <div className="text-[10px] text-slate-500 font-mono uppercase mb-2 tracking-wide">

@@ -5,18 +5,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg-primary: #0a0e1a;
-  --bg-secondary: #0f1629;
-  --bg-tertiary: #141d38;
-  --border-color: rgba(59, 130, 246, 0.15);
+  --bg-primary: #080c18;
+  --bg-secondary: #0d1225;
+  --bg-tertiary: #121a30;
+  --border-color: rgba(12, 200, 212, 0.12);
   --text-primary: #e2e8f0;
   --text-secondary: #94a3b8;
   --text-muted: #475569;
-  --accent: #3b82f6;
-  --accent-glow: rgba(59, 130, 246, 0.4);
-  --healthy: #00ff88;
-  --warning: #ffaa00;
-  --critical: #ff3b3b;
+  --accent: #0CC8D4;
+  --accent-pink: #E0187A;
+  --accent-purple: #7C3AED;
+  --healthy: #0CC8D4;
+  --warning: #f59e0b;
+  --critical: #E0187A;
 }
 
 * {
@@ -38,40 +39,32 @@ body {
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(255,255,255,0.02);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(59,130,246,0.3);
+  background: rgba(255,255,255,0.08);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(59,130,246,0.5);
-}
-
-/* Grid background */
-.grid-bg {
-  background-image:
-    linear-gradient(rgba(59,130,246,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59,130,246,0.04) 1px, transparent 1px);
-  background-size: 40px 40px;
+  background: rgba(255,255,255,0.10);
 }
 
 /* Glassmorphism card */
 .glass-card {
   background: rgba(15, 22, 41, 0.8);
-  border: 1px solid rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
 
-/* Status glow effects */
-.status-healthy { box-shadow: 0 0 20px rgba(0,255,136,0.15); border-color: rgba(0,255,136,0.25); }
-.status-warning { box-shadow: 0 0 20px rgba(255,170,0,0.15); border-color: rgba(255,170,0,0.25); }
-.status-critical { box-shadow: 0 0 20px rgba(255,59,59,0.2); border-color: rgba(255,59,59,0.3); }
+/* Status indicator dots — no glow, just solid color */
+.status-healthy { border-color: rgba(12,200,212,0.35); }
+.status-warning  { border-color: rgba(245,158,11,0.3); }
+.status-critical { border-color: rgba(224,24,122,0.4); }
 
 /* Animated patient dot */
 .patient-dot {
@@ -79,82 +72,68 @@ body {
   transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Pulse animation for critical alerts */
+/* Critical pulse — opacity only, no glow */
 @keyframes pulse-critical {
-  0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(255, 59, 59, 0.8); }
-  50% { opacity: 0.7; box-shadow: 0 0 20px rgba(255, 59, 59, 0.4); }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
-.pulse-critical { animation: pulse-critical 1.5s ease-in-out infinite; }
-
-/* Scan line */
-@keyframes scan-line {
-  0% { top: 0%; opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
-}
+.pulse-critical { animation: pulse-critical 2s ease-in-out infinite; }
 
 /* Number counter animation */
 @keyframes count-up {
   from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 .count-animate { animation: count-up 0.3s ease-out; }
 
-/* Flow edge animation */
-@keyframes flow-dash {
-  to { stroke-dashoffset: -20; }
-}
-.flow-edge { animation: flow-dash 1s linear infinite; }
-
 /* Department zone hover */
 .dept-zone {
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 .dept-zone:hover {
-  filter: brightness(1.15);
+  filter: brightness(1.08);
 }
 
-/* React Flow customization */
+/* React Flow */
 .react-flow__renderer { background: transparent !important; }
 .react-flow__background { background: transparent !important; }
 .react-flow__controls {
-  background: rgba(15,22,41,0.9) !important;
-  border: 1px solid rgba(59,130,246,0.2) !important;
+  background: rgba(13,18,37,0.9) !important;
+  border: 1px solid rgba(12,200,212,0.12) !important;
 }
 .react-flow__controls button {
   background: transparent !important;
-  color: #94a3b8 !important;
-  border-bottom: 1px solid rgba(59,130,246,0.15) !important;
+  color: #0CC8D4 !important;
+  border-bottom: 1px solid rgba(12,200,212,0.08) !important;
 }
 
-/* Recharts customization */
-.recharts-cartesian-grid line { stroke: rgba(59,130,246,0.08) !important; }
+/* Recharts */
+.recharts-cartesian-grid line { stroke: rgba(255,255,255,0.04) !important; }
 .recharts-text { fill: #64748b !important; font-size: 11px !important; }
 .recharts-tooltip-wrapper .recharts-default-tooltip {
-  background: rgba(15,22,41,0.95) !important;
-  border: 1px solid rgba(59,130,246,0.3) !important;
-  border-radius: 8px !important;
+  background: rgba(15,22,41,0.97) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  border-radius: 6px !important;
   font-size: 12px !important;
 }
 
-/* Sidebar nav active */
+/* Sidebar nav active state */
 .nav-active {
-  background: rgba(59, 130, 246, 0.12);
-  border-left: 2px solid #3b82f6;
-  color: #93c5fd;
+  background: rgba(12, 200, 212, 0.08);
+  border-left: 2px solid #0CC8D4;
+  color: #67e8f0;
 }
 
 /* Loading skeleton */
 @keyframes skeleton-wave {
-  0% { background-position: -200% 0; }
+  0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 .skeleton {
   background: linear-gradient(90deg,
     rgba(255,255,255,0.03) 25%,
-    rgba(255,255,255,0.07) 50%,
+    rgba(255,255,255,0.06) 50%,
     rgba(255,255,255,0.03) 75%
   );
   background-size: 200% 100%;

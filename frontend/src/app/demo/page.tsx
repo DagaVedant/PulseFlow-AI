@@ -97,8 +97,7 @@ export default function DemoPage() {
             whileTap={{ scale: 0.97 }}
             className="flex items-center gap-4 px-16 py-6 rounded-3xl text-xl font-black font-mono text-white"
             style={{
-              background: "linear-gradient(135deg, #22c55e 0%, #3b82f6 100%)",
-              boxShadow: "0 0 60px rgba(34,197,94,0.35), 0 0 120px rgba(59,130,246,0.2)",
+              background: "linear-gradient(135deg, #059669 0%, #2563eb 100%)",
             }}
           >
             <CheckCircle className="w-7 h-7" />
@@ -115,8 +114,7 @@ export default function DemoPage() {
             onClick={start}
             className="flex items-center gap-4 px-16 py-6 rounded-3xl text-xl font-black font-mono text-white"
             style={{
-              background: "linear-gradient(135deg, #22c55e 0%, #3b82f6 100%)",
-              boxShadow: "0 0 60px rgba(34,197,94,0.35), 0 0 120px rgba(59,130,246,0.2)",
+              background: "linear-gradient(135deg, #059669 0%, #2563eb 100%)",
             }}
           >
             <Play className="w-7 h-7" fill="white" />

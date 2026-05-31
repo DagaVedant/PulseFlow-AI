@@ -11,10 +11,10 @@ import { useDemoStore } from "@/store/demoStore";
 import type { TrackedPatient } from "@/types";
 
 const PRIORITY_STYLE: Record<string, { color: string; bg: string; label: string }> = {
-  critical: { color: "#ff3b3b", bg: "rgba(255,59,59,0.12)",   label: "CRITICAL" },
-  high:     { color: "#ffaa00", bg: "rgba(255,170,0,0.12)",   label: "HIGH" },
-  moderate: { color: "#ffe600", bg: "rgba(255,230,0,0.12)",   label: "MODERATE" },
-  low:      { color: "#22c55e", bg: "rgba(34,197,94,0.12)",   label: "LOW" },
+  critical: { color: "#ef4444", bg: "rgba(239,68,68,0.10)",   label: "CRITICAL" },
+  high:     { color: "#f59e0b", bg: "rgba(245,158,11,0.10)",  label: "HIGH" },
+  moderate: { color: "#fbbf24", bg: "rgba(251,191,36,0.10)",  label: "MODERATE" },
+  low:      { color: "#10b981", bg: "rgba(16,185,129,0.10)",  label: "LOW" },
 };
 
 /**
@@ -24,10 +24,10 @@ const PRIORITY_STYLE: Record<string, { color: string; bg: string; label: string 
  * Called from: TrackedCard to color the risk percentage display and progress bar.
  */
 function riskColor(pct: number): string {
-  if (pct >= 80) return "#ff3b3b";
-  if (pct >= 50) return "#ffaa00";
-  if (pct >= 25) return "#ffe600";
-  return "#22c55e";
+  if (pct >= 80) return "#ef4444";
+  if (pct >= 50) return "#f59e0b";
+  if (pct >= 25) return "#fbbf24";
+  return "#10b981";
 }
 
 /**
@@ -37,9 +37,9 @@ function riskColor(pct: number): string {
  * Called from: TrackedCard to style the specialist status badge.
  */
 function specialistStatusStyle(status: string) {
-  if (status === "available") return { color: "#22c55e", label: "AVAILABLE" };
-  if (status === "in_surgery") return { color: "#ff3b3b", label: "IN SURGERY" };
-  return { color: "#ffaa00", label: "BUSY" };
+  if (status === "available") return { color: "#10b981", label: "AVAILABLE" };
+  if (status === "in_surgery") return { color: "#ef4444", label: "IN SURGERY" };
+  return { color: "#f59e0b", label: "BUSY" };
 }
 
 /**
@@ -130,7 +130,7 @@ export default function PatientIntelPage() {
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         {patients.length === 0 ? (
           <div className="flex items-center justify-center py-20 text-slate-600 font-mono text-sm">
-            Connecting to care coordination feed...
+            Loading patient data...
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 items-start">
@@ -207,7 +207,7 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
             <Clock className="w-3 h-3 text-slate-600" />
             <span className="text-[10px] text-slate-600 font-mono uppercase">ED Wait</span>
           </div>
-          <div className="text-xl font-bold font-mono" style={{ color: p.over_target ? "#ff3b3b" : "#e2e8f0" }}>
+          <div className="text-xl font-bold font-mono" style={{ color: p.over_target ? "#ef4444" : "#e2e8f0" }}>
             {p.ed_wait_min}m
           </div>
           <div className="text-[9px] font-mono mt-0.5" style={{ color: p.over_target ? "#ff6b6b" : "#475569" }}>
@@ -246,7 +246,7 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
               style={{ background: `${specialistStatusStyle(sp.status).color}20`, color: specialistStatusStyle(sp.status).color }}>
               {specialistStatusStyle(sp.status).label}
             </span>
-            <span className="text-sm font-bold font-mono" style={{ color: sp.available_in_min === 0 ? "#22c55e" : "#ffaa00" }}>
+            <span className="text-sm font-bold font-mono" style={{ color: sp.available_in_min === 0 ? "#10b981" : "#f59e0b" }}>
               {sp.available_in_min === 0 ? "now" : `${sp.available_in_min}m`}
             </span>
           </div>
@@ -293,7 +293,7 @@ function TrackedCard({ patient: p, analyzing, analyzed }: {
                 {rec.blocked
                   ? <Ban className="w-4 h-4 text-amber-400 flex-shrink-0" />
                   : <ShieldAlert className="w-4 h-4 text-blue-400 flex-shrink-0" />}
-                <span className="text-xs font-bold font-mono leading-tight truncate" style={{ color: rec.blocked ? "#ffaa00" : "#93c5fd" }}>
+                <span className="text-xs font-bold font-mono leading-tight truncate" style={{ color: rec.blocked ? "#f59e0b" : "#93c5fd" }}>
                   {rec.title}
                 </span>
               </div>

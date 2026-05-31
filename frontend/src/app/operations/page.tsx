@@ -16,7 +16,7 @@ const RESOURCE_TYPES: BottleneckType[] = [
 const PRIORITIES = ["low", "medium", "high", "critical"] as const;
 
 const PRIORITY_COLOR: Record<string, string> = {
-  critical: "#ff3b3b", high: "#ffaa00", medium: "#ffe600", low: "#22c55e",
+  critical: "#ef4444", high: "#f59e0b", medium: "#fbbf24", low: "#10b981",
 };
 
 /**
@@ -26,9 +26,9 @@ const PRIORITY_COLOR: Record<string, string> = {
  * Called from: OperationsPage when rendering each specialist card in the availability grid.
  */
 function statusStyle(status: string) {
-  if (status === "available") return { color: "#22c55e", label: "AVAILABLE" };
-  if (status === "in_surgery") return { color: "#ff3b3b", label: "IN SURGERY" };
-  return { color: "#ffaa00", label: "BUSY" };
+  if (status === "available") return { color: "#10b981", label: "AVAILABLE" };
+  if (status === "in_surgery") return { color: "#ef4444", label: "IN SURGERY" };
+  return { color: "#f59e0b", label: "BUSY" };
 }
 
 const DEMO_CONSTRAINT = {
@@ -164,7 +164,7 @@ export default function OperationsPage() {
                         <div className="text-[10px] font-mono text-slate-600 truncate mb-2">{sp.current_assignment}</div>
                         <div className="flex items-center justify-between text-[10px] font-mono">
                           <span className="text-slate-600">Load {sp.patient_load} · Q{sp.queue_length}</span>
-                          <span className="font-bold" style={{ color: sp.available_in_min === 0 ? "#22c55e" : "#ffaa00" }}>
+                          <span className="font-bold" style={{ color: sp.available_in_min === 0 ? "#10b981" : "#f59e0b" }}>
                             {sp.available_in_min === 0 ? "free now" : `free in ${sp.available_in_min}m`}
                           </span>
                         </div>
@@ -175,7 +175,7 @@ export default function OperationsPage() {
               </div>
             ))}
             {specialists.length === 0 && (
-              <div className="text-center py-10 text-slate-600 font-mono text-sm">Connecting to roster...</div>
+              <div className="text-center py-10 text-slate-600 font-mono text-sm">Loading specialist roster...</div>
             )}
           </div>
         </div>
@@ -246,7 +246,7 @@ export default function OperationsPage() {
                 onClick={submit}
                 disabled={!form.resource_name.trim()}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-mono font-bold transition-all disabled:opacity-40"
-                style={{ background: "rgba(255,170,0,0.14)", border: "1px solid rgba(255,170,0,0.4)", color: "#ffaa00" }}
+                style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b" }}
               >
                 <Plus className="w-4 h-4" /> Add Constraint
               </button>
