@@ -9,6 +9,23 @@ router = APIRouter(prefix="/hospital", tags=["hospital"])
 
 @router.get("/patients")
 async def list_patients(department: Optional[str] = None, severity: Optional[str] = None, limit: int = 50):
+    """
+    Returns a filtered list of currently active patients in the simulation.
+
+    Parameters:
+        department: Optional string to filter patients by department name
+                    (e.g. "er", "icu", "ward").  Returns all departments if
+                    omitted.
+        severity:   Optional string to filter by severity level ("low",
+                    "medium", "high", or "critical").  Returns all severities
+                    if omitted.
+        limit:      Maximum number of patients to return.  Defaults to 50.
+
+    Returns a JSON object with a "patients" list and a "total" count before
+    the limit was applied.
+
+    REST endpoint: GET /api/v1/hospital/patients
+    """
     state = simulation_service.get_current_state()
     patients = state.get("patients", [])
     if department:
@@ -19,6 +36,20 @@ async def list_patients(department: Optional[str] = None, severity: Optional[str
 
 @router.get("/patients/stats")
 async def get_patient_stats():
+    """
+    Computes and returns summary statistics across all active patients,
+    including breakdowns by severity, department, and risk score bucket.
+
+    No query parameters.
+
+    Returns a JSON object with: total_active patient count,
+    severity_distribution (counts per level), department_distribution
+    (counts per department), risk_distribution (low/moderate/high/critical
+    buckets), avg_wait_time in simulated minutes, and the raw metrics dict
+    from the simulation state.
+
+    REST endpoint: GET /api/v1/hospital/patients/stats
+    """
     state    = simulation_service.get_current_state()
     patients = state.get("patients", [])
     severity_counts: dict = {}
@@ -39,6 +70,18 @@ async def get_patient_stats():
 
 @router.get("/patients/{patient_id}")
 async def get_patient(patient_id: str):
+    """
+    Looks up a single patient by their unique ID and returns all their data.
+
+    Parameters:
+        patient_id: The short alphanumeric ID string (e.g. "A3F2B1C9")
+                    taken from the URL path.
+
+    Returns the patient dict for that ID, or raises HTTP 404 if the patient
+    is not found among the currently active patients.
+
+    REST endpoint: GET /api/v1/hospital/patients/{patient_id}
+    """
     state    = simulation_service.get_current_state()
     patients = state.get("patients", [])
     patient  = next((p for p in patients if p.get("patient_id") == patient_id), None)
@@ -48,6 +91,20 @@ async def get_patient(patient_id: str):
 
 @router.get("/patients/{patient_id}/summary")
 async def get_patient_summary(patient_id: str):
+    """
+    Generates an AI-written clinical narrative summary for a specific
+    patient by passing their data to the Anthropic copilot model.
+
+    Parameters:
+        patient_id: The short alphanumeric ID string of the patient,
+                    taken from the URL path.
+
+    Returns a JSON object with "patient_id" and "summary" (a plain-English
+    paragraph describing the patient's condition and care status), or raises
+    HTTP 404 if the patient is not found.
+
+    REST endpoint: GET /api/v1/hospital/patients/{patient_id}/summary
+    """
     state    = simulation_service.get_current_state()
     patients = state.get("patients", [])
     patient  = next((p for p in patients if p.get("patient_id") == patient_id), None)
@@ -60,11 +117,35 @@ async def get_patient_summary(patient_id: str):
 
 @router.get("/departments")
 async def list_departments():
+    """
+    Returns the full departments dictionary from the current simulation
+    state, containing occupancy, capacity, queue lengths, and resource
+    utilisation for every department.
+
+    No query parameters.
+
+    Returns a JSON object with a "departments" key whose value is a dict
+    keyed by department name (e.g. "er", "icu").
+
+    REST endpoint: GET /api/v1/hospital/departments
+    """
     state = simulation_service.get_current_state()
     return {"departments": state.get("departments", {})}
 
 @router.get("/departments/{dept_id}")
 async def get_department(dept_id: str):
+    """
+    Returns the current state data for one specific hospital department.
+
+    Parameters:
+        dept_id: The department identifier string (e.g. "er", "icu", "labs",
+                 "imaging", "ward") taken from the URL path.
+
+    Returns the department's state dict, or raises HTTP 404 if the
+    department name is not recognised.
+
+    REST endpoint: GET /api/v1/hospital/departments/{dept_id}
+    """
     state = simulation_service.get_current_state()
     depts = state.get("departments", {})
     if dept_id not in depts:
@@ -73,6 +154,20 @@ async def get_department(dept_id: str):
 
 @router.get("/departments/{dept_id}/queue")
 async def get_department_queue(dept_id: str):
+    """
+    Returns the current waiting queue for a specific department, including
+    the full patient data for each patient currently queued there.
+
+    Parameters:
+        dept_id: The department identifier string (e.g. "er", "icu")
+                 taken from the URL path.
+
+    Returns a JSON object with "department" (the dept_id echo), "queue_length"
+    (integer count), and "queued_patients" (list of patient dicts in queue
+    order).  Raises HTTP 404 if the department is not found.
+
+    REST endpoint: GET /api/v1/hospital/departments/{dept_id}/queue
+    """
     state = simulation_service.get_current_state()
     depts = state.get("departments", {})
     if dept_id not in depts:

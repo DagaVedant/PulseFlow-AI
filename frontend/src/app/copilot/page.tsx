@@ -23,6 +23,13 @@ const URGENCY_COLORS: Record<string, string> = {
   critical: "#ff3b3b",
 };
 
+/**
+ * Converts an array of StaffingRecommendation objects into a flat config update object
+ * that can be sent to the backend via the updateConfig WebSocket message.
+ * @param recs - An array of StaffingRecommendation objects from the optimization result.
+ * @returns A flat Record mapping backend config keys (e.g. "er_doctors") to recommended counts.
+ * Called from: CopilotPage's implementAll function when applying all recommendations at once.
+ */
 function recsToConfig(recs: StaffingRecommendation[]): Record<string, number> {
   const map: Record<string, Record<string, string>> = {
     ER:        { doctors: "er_doctors",   nurses: "er_nurses" },
@@ -41,6 +48,15 @@ function recsToConfig(recs: StaffingRecommendation[]): Record<string, number> {
   return updates;
 }
 
+/**
+ * The AI Operations Copilot page with three columns: a radar chart + metrics panel on the left,
+ * the main analysis output (bottleneck explanation, optimization results, AI narrative) in the center,
+ * and a predicted bottlenecks sidebar on the right.
+ * A "Run Analysis" button triggers the full AI + optimization pipeline.
+ * An "Implement All Recommendations" button applies staffing changes to the live simulation.
+ * @returns The full-page AI Copilot layout.
+ * Called from: Next.js router at the /copilot route.
+ */
 export default function CopilotPage() {
   const { hospitalState, setLatestOptimization } = useSimulationStore();
   const { updateConfig } = useWebSocket();
@@ -62,6 +78,13 @@ export default function CopilotPage() {
     }
   }, [pendingAction]);
 
+  /**
+   * Calls the backend's /ai/analysis endpoint and populates the analysis state with the result.
+   * Also takes a snapshot of current metrics for the before/after comparison panel.
+   * Sets loading to true while the request is in flight and error if the request fails.
+   * @returns A Promise that resolves when the analysis is complete or an error is set.
+   * Called from: the "Run Analysis" button and the demo store pendingAction handler.
+   */
   const runAnalysis = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -78,6 +101,12 @@ export default function CopilotPage() {
     }
   }, [setLatestOptimization, hospitalState?.metrics]);
 
+  /**
+   * Converts the optimization recommendations into a config update and sends it to the backend via WebSocket.
+   * Shows an "Applying..." state for 600ms before marking as implemented.
+   * @returns A Promise that resolves once the config update has been sent and the implemented flag is set.
+   * Called from: the "Implement All AI Recommendations" button in CopilotPage.
+   */
   const implementAll = useCallback(async () => {
     if (!analysis?.optimization?.recommendations?.length) return;
     setImplementing(true);

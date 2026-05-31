@@ -7,6 +7,11 @@ import { formatTime, formatPercent, statusColor, riskColor, riskLabel } from "@/
 import { motion } from "framer-motion";
 import { ClipboardList, Printer, AlertTriangle, Users, Bed, Activity, Flame, Anchor } from "lucide-react";
 
+/**
+ * Returns the current real-world date and time formatted as a short human-readable string.
+ * @returns A string like "Mon, Jun 3, 02:45 PM" using the en-US locale.
+ * Called from: ShiftReportPage to display the report generation timestamp.
+ */
 function now() {
   return new Date().toLocaleString("en-US", {
     weekday: "short", month: "short", day: "numeric",
@@ -14,6 +19,14 @@ function now() {
   });
 }
 
+/**
+ * The Shift Handoff Report page, which auto-generates a summary for the outgoing charge nurse.
+ * Shows patient census by severity, top-5 highest-risk patients, boarding patients,
+ * department status, key metrics, and a prioritized action list for the incoming shift.
+ * Includes a Print button and responds to the demo store "print_preview" action.
+ * @returns A scrollable full-page report layout.
+ * Called from: Next.js router at the /shift-report route.
+ */
 export default function ShiftReportPage() {
   const { hospitalState } = useSimulationStore();
   const { pendingAction, clearAction } = useDemoStore();
@@ -206,6 +219,15 @@ export default function ShiftReportPage() {
   );
 }
 
+/**
+ * Renders a labeled card section with an icon, a title, and arbitrary child content.
+ * Used throughout the shift report to visually group related information.
+ * @param title - The heading text displayed next to the icon at the top of the section.
+ * @param icon - A React node (typically a Lucide icon) displayed to the left of the title.
+ * @param children - The content to render inside the section card.
+ * @returns A styled rounded card wrapping the title row and children.
+ * Called from: ShiftReportPage for every labeled section (Patient Census, Department Status, etc.).
+ */
 function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl p-4" style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.1)" }}>
@@ -218,6 +240,14 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
   );
 }
 
+/**
+ * Renders a compact centered stat box with a small uppercase label and a large bold value.
+ * @param label - A short descriptive label shown above the value (e.g. "Critical", "Boarding").
+ * @param value - The number or string to display prominently in the center of the box.
+ * @param color - A hex color string applied to both the border and the value text.
+ * @returns A styled stat tile for use in the Patient Census grid.
+ * Called from: ShiftReportPage's Patient Census section.
+ */
 function StatBox({ label, value, color }: { label: string; value: string; color: string }) {
   return (
     <div className="rounded-xl p-3 text-center" style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${color}25` }}>

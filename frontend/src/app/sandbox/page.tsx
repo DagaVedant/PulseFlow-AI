@@ -12,6 +12,14 @@ import { useDemoStore } from "@/store/demoStore";
 import { formatTime, formatPercent, cn } from "@/lib/utils";
 import type { EventType } from "@/types";
 
+/**
+ * Converts the simplified sandbox configuration (doctors, nurses, beds) into the detailed
+ * per-department config object that the backend simulation expects.
+ * Distributes staff and beds proportionally across ER, ICU, and Ward.
+ * @param s - A SimpleConfig object with high-level staffing and resource counts.
+ * @returns A flat object mapping backend config keys (e.g. "er_doctors", "icu_nurses") to numbers.
+ * Called from: SandboxPage's debounced useEffect whenever a slider value changes.
+ */
 function expandConfig(s: SimpleConfig): Record<string, number> {
   const doc = s.doctors;
   const nur = s.nurses;
@@ -64,6 +72,20 @@ interface SliderProps {
   unit?: string;
 }
 
+/**
+ * Renders a labeled range slider with increment and decrement buttons on either side.
+ * The filled portion of the slider track is colored to match the provided color prop.
+ * @param label - The text label shown above the slider on the left side.
+ * @param value - The current numeric value of the slider.
+ * @param min - The minimum numeric value the slider can be set to.
+ * @param max - The maximum numeric value the slider can be set to.
+ * @param step - How much the value changes per click of the +/- buttons or per tick (default 1).
+ * @param onChange - Callback function called with the new number whenever the value changes.
+ * @param color - A hex color string for the filled track and value display (default blue).
+ * @param unit - An optional unit suffix shown after the value, like "/hr" or "".
+ * @returns A slider control with label, value, minus button, range input, and plus button.
+ * Called from: SandboxPage for every staffing and infrastructure parameter.
+ */
 function Slider({ label, value, min, max, step = 1, onChange, color = "#3b82f6", unit = "" }: SliderProps) {
   const pct = ((value - min) / (max - min)) * 100;
   return (
@@ -112,6 +134,13 @@ const EVENTS: { key: EventType; label: string; desc: string; color: string; icon
   { key: "lab_slowdown",  label: "Lab Slowdown",   desc: "2.5× processing time", color: "#06b6d4", icon: Activity },
 ];
 
+/**
+ * The Simulation Sandbox page with left-side sliders for staffing/infrastructure
+ * and a right panel of toggleable emergency event buttons and a live department status preview.
+ * Config changes are debounced 600ms before being sent to the backend.
+ * @returns The full-page Sandbox layout.
+ * Called from: Next.js router at the /sandbox route.
+ */
 export default function SandboxPage() {
   const { hospitalState } = useSimulationStore();
   const { triggerEvent, updateConfig } = useWebSocket();
@@ -134,9 +163,23 @@ export default function SandboxPage() {
     return () => clearTimeout(debounceRef.current);
   }, [cfg]);
 
+  /**
+   * Returns a setter function for a single SimpleConfig field, used to wire up Slider onChange props.
+   * @param key - The key of the SimpleConfig field to update (e.g. "doctors", "beds").
+   * @returns A function that accepts a new number value and updates that field in the config state.
+   * Called from: each Slider component in SandboxPage.
+   */
   const set = (key: keyof SimpleConfig) => (v: number) =>
     setCfg((prev) => ({ ...prev, [key]: v }));
 
+  /**
+   * Toggles a crisis event on or off and sends the corresponding WebSocket message to the backend.
+   * If the event is already active, it is removed and a "clear_event" message is sent.
+   * If the event is new, it is added and its trigger message is sent.
+   * @param event - The EventType to toggle, e.g. "flu_outbreak", "ct_failure".
+   * @returns void — updates local activeEvents state and sends a WebSocket message.
+   * Called from: each event button in SandboxPage.
+   */
   const toggleEvent = useCallback((event: EventType) => {
     setActiveEvents((prev) => {
       const next = new Set(prev);
@@ -151,6 +194,11 @@ export default function SandboxPage() {
     });
   }, [triggerEvent]);
 
+  /**
+   * Clears all currently active crisis events and sends a "clear_event" message to the backend.
+   * @returns void — resets the activeEvents set and sends a WebSocket message.
+   * Called from: the "Clear Events" button that appears when at least one event is active.
+   */
   const clearAll = () => {
     setActiveEvents(new Set());
     triggerEvent("clear_event");

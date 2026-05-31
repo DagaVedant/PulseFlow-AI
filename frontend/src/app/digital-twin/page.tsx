@@ -26,6 +26,14 @@ const STATUS_GLOW: Record<DepartmentStatus, string> = {
   critical:"0 0 30px rgba(255,59,59,0.35)",
 };
 
+/**
+ * A memoized React Flow custom node that renders a department's status card inside the network graph.
+ * Displays occupancy bar, resource utilization bar, queue length, average wait time, and beds available.
+ * Also shows burnout and boarding badges when applicable.
+ * @param data - A DeptNodeData object containing the DepartmentState and the department key string.
+ * @returns A styled node card with React Flow connection handles on all four sides.
+ * Called from: React Flow's nodeTypes map in HospitalGraph.
+ */
 const DepartmentNode = memo(({ data }: NodeProps<DeptNodeData>) => {
   const { dept } = data;
   if (!dept) return null;
@@ -102,9 +110,28 @@ const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
   discharge: { x: 550, y: 550 },
 };
 
+/**
+ * Converts a patient flow count into a stroke width for a React Flow edge (between 1 and 5).
+ * @param v - The number of patients currently in transit on this connection.
+ * @returns A stroke width number — higher flow means a thicker line, capped at 5.
+ * Called from: buildEdges when constructing edge style objects.
+ */
 function flowWeight(v: number) { return Math.max(1, Math.min(5, 1 + v * 0.5)); }
+/**
+ * Returns a color for a React Flow edge based on how high the patient flow count is.
+ * @param v - The number of patients in transit on this connection.
+ * @returns Red for 5+ patients (high congestion), amber for 3–4, blue for 0–2 (normal flow).
+ * Called from: buildEdges when constructing edge style objects.
+ */
 function flowColor(v: number) { return v >= 5 ? "#ff3b3b" : v >= 3 ? "#ffaa00" : "#3b82f6"; }
 
+/**
+ * Converts a PatientFlow object into a list of React Flow Edge objects for all department connections.
+ * Each edge is styled with a color and stroke width that reflects the current flow count.
+ * @param flow - The PatientFlow snapshot from the latest hospital state, containing counts for every route.
+ * @returns An array of React Flow Edge objects, one per department-to-department connection.
+ * Called from: HospitalGraph when building the edges to pass to ReactFlow.
+ */
 function buildEdges(flow: PatientFlow): Edge[] {
   const edge = (id: string, src: string, tgt: string, val: number, labelColor = "#60a5fa", dasharray?: string): Edge => ({
     id, source: src, target: tgt, animated: val > 0,
@@ -132,6 +159,13 @@ function buildEdges(flow: PatientFlow): Edge[] {
   ];
 }
 
+/**
+ * Renders the interactive React Flow network graph showing all hospital departments as nodes
+ * connected by animated edges that represent live patient flow between them.
+ * Includes a background dot grid, pan/zoom controls, and a minimap.
+ * @returns A full-size React Flow canvas with department nodes and flow edges.
+ * Called from: DigitalTwinPage.
+ */
 function HospitalGraph() {
   const { hospitalState } = useSimulationStore();
   const departments = hospitalState?.departments ?? {};
@@ -163,6 +197,13 @@ function HospitalGraph() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────
 
+/**
+ * The Digital Twin page, showing a live interactive network graph of hospital departments
+ * and their real-time patient flow connections.
+ * Displays a total active-flows counter in the header and a color-coded legend at the bottom.
+ * @returns The full-page layout with the HospitalGraph component and surrounding UI chrome.
+ * Called from: Next.js router at the /digital-twin route.
+ */
 export default function DigitalTwinPage() {
   const { hospitalState } = useSimulationStore();
   const flow = hospitalState?.flow;
