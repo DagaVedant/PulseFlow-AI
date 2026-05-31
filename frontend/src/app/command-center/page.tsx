@@ -23,6 +23,20 @@ const STATUS_STYLES = {
   neutral: { border: "rgba(59,130,246,0.15)", bg: "rgba(59,130,246,0.04)", color: "#60a5fa", glow: "0 0 20px rgba(59,130,246,0.06)" },
 };
 
+/**
+ * Renders a single KPI metric card with an icon, label, large value, optional unit, trend badge, and subtitle.
+ * The card's border, background, and text color all change based on the status prop.
+ * @param icon - A Lucide icon component displayed in the top-left corner of the card.
+ * @param label - A short uppercase label identifying what the metric measures (e.g. "Avg Wait").
+ * @param value - The current metric value to display prominently (string or number).
+ * @param unit - An optional unit suffix shown after the value in smaller text (e.g. "/hr").
+ * @param status - Visual severity level controlling card color: "healthy", "warning", "critical", or "neutral" (default).
+ * @param trend - An optional percent change number; positive is shown in red (worse), negative in green (better).
+ * @param subtitle - An optional small note displayed below the value.
+ * @param className - Additional Tailwind classes to merge onto the outer div.
+ * @returns A styled metric card element.
+ * Called from: CommandCenterPage for each of the six KPI metrics in the top row.
+ */
 function MetricCard({ icon: Icon, label, value, unit, status = "neutral", trend, subtitle, className }: {
   icon: LucideIcon; label: string; value: string | number; unit?: string;
   status?: "healthy" | "warning" | "critical" | "neutral";
@@ -58,6 +72,14 @@ function MetricCard({ icon: Icon, label, value, unit, status = "neutral", trend,
 
 const DEPT_KEYS = ["er", "labs", "imaging", "icu", "ward"] as const;
 
+/**
+ * Renders a horizontal status banner showing the hospital's current ambulance diversion risk level.
+ * Displays risk percentage (with an animated bar), estimated minutes to diversion, delay cost per hour,
+ * SLA compliance, number of boarding patients, number of deteriorating patients, and sepsis risk count.
+ * @param metrics - The HospitalMetrics object from the latest simulation state.
+ * @returns A compact banner element shown below the KPI row on the Command Center page.
+ * Called from: CommandCenterPage when metrics data is available.
+ */
 function DiversionBanner({ metrics }: { metrics: any }) {
   const risk = metrics.diversion_risk ?? 0;
   const mins = metrics.minutes_to_diversion ?? 0;
@@ -138,6 +160,14 @@ function DiversionBanner({ metrics }: { metrics: any }) {
   );
 }
 
+/**
+ * Calculates a composite 0–100 hospital efficiency score from five weighted metrics.
+ * Weights: SLA compliance (25%), average wait time (25%), diversion risk (20%),
+ * throughput (15%), and bed utilization (15%).
+ * @param metrics - The HospitalMetrics object from the latest simulation state, or null/undefined.
+ * @returns An integer score from 0 (worst) to 100 (best).
+ * Called from: HospitalScore to derive the displayed score number.
+ */
 function computeHospitalScore(metrics: any): number {
   if (!metrics) return 0;
   const sla    = (metrics.sla_compliance ?? 1) * 100;
@@ -149,6 +179,13 @@ function computeHospitalScore(metrics: any): number {
   return Math.round((sla * 0.25 + waitPenalty * 0.25 + divPenalty * 0.20 + throughput * 0.15 + bedScore * 0.15));
 }
 
+/**
+ * Renders an animated circular progress indicator showing the composite hospital efficiency score.
+ * The arc color is green for >= 80, amber for >= 60, and red below 60.
+ * @param metrics - The HospitalMetrics object passed to computeHospitalScore.
+ * @returns A compact widget with an SVG ring and a label, shown next to the DiversionBanner.
+ * Called from: CommandCenterPage when metrics data is available.
+ */
 function HospitalScore({ metrics }: { metrics: any }) {
   const score = computeHospitalScore(metrics);
   const color = score >= 80 ? "#22c55e" : score >= 60 ? "#ffaa00" : "#ff3b3b";
@@ -201,6 +238,16 @@ interface AmbulanceUnit {
   dispatched_at: number;
 }
 
+/**
+ * Custom hook that maintains a list of simulated ambulance units en route to the hospital.
+ * New units are created whenever a critical or high-severity patient arrives (state === "arriving").
+ * A real-time interval decrements each unit's ETA every simulated minute (1 real second at 60x speed).
+ * Units are removed once their ETA reaches zero and they have been on screen for 10+ simulated minutes.
+ * @param simTime - The current simulation time in minutes, used to timestamp and expire units.
+ * @param patients - The full patient list from the latest hospital state, used to detect new arrivals.
+ * @returns An array of AmbulanceUnit objects currently en route.
+ * Called from: AmbulancePanel.
+ */
 function useAmbulanceSimulation(simTime: number, patients: Patient[]) {
   const [units, setUnits] = useState<AmbulanceUnit[]>([]);
   const seenRef = useRef<Set<string>>(new Set());
@@ -245,6 +292,15 @@ function useAmbulanceSimulation(simTime: number, patients: Patient[]) {
   return units;
 }
 
+/**
+ * Renders the ambulance tracker sub-panel with summary counters and an animated list of units en route.
+ * Shows total en-route count, critical count, and the peak dispatch hour.
+ * Each ambulance row displays unit ID, severity badge, ETA, origin address, and chief complaint.
+ * @param patients - The full patient array from the hospital state, passed to useAmbulanceSimulation.
+ * @param simTime - The current simulation time in minutes, passed to useAmbulanceSimulation.
+ * @returns A scrollable panel of animated ambulance rows.
+ * Called from: AlertsAmbulancePanel when the "Ambulances" tab is selected.
+ */
 function AmbulancePanel({ patients, simTime }: { patients: Patient[]; simTime: number }) {
   const units = useAmbulanceSimulation(simTime, patients);
 
@@ -320,6 +376,17 @@ function AmbulancePanel({ patients, simTime }: { patients: Patient[]; simTime: n
   );
 }
 
+/**
+ * Renders a tabbed panel that switches between the live Alerts list and the Ambulance Tracker.
+ * The Alerts tab shows all active hospital alerts in reverse chronological order.
+ * The Ambulances tab renders the AmbulancePanel component.
+ * Also responds to the demo store "view_ambulances" action to auto-switch to the ambulances tab.
+ * @param alerts - The array of active HospitalAlert objects from the hospital state.
+ * @param patients - The full patient list from the hospital state, forwarded to AmbulancePanel.
+ * @param simTime - The current simulation time in minutes, forwarded to AmbulancePanel.
+ * @returns A tabbed card component in the right sidebar of the Command Center.
+ * Called from: CommandCenterPage.
+ */
 function AlertsAmbulancePanel({ alerts, patients, simTime }: { alerts: any[]; patients: Patient[]; simTime: number }) {
   const [tab, setTab] = useState<"alerts" | "ambulances">("alerts");
   const { pendingAction, clearAction } = useDemoStore();
@@ -387,6 +454,12 @@ function AlertsAmbulancePanel({ alerts, patients, simTime }: { alerts: any[]; pa
   );
 }
 
+/**
+ * Converts a simulation time in minutes to a 24-hour HH:MM clock string.
+ * @param simTime - The total simulated minutes elapsed; wraps around every 1440 minutes (24 hours).
+ * @returns A zero-padded time string like "09:05" or "23:47".
+ * Called from: LiveEventLog to timestamp each event entry.
+ */
 function simClock(simTime: number): string {
   const totalMin = Math.max(0, Math.floor(simTime));
   const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, "0");
@@ -394,6 +467,16 @@ function simClock(simTime: number): string {
   return `${hh}:${mm}`;
 }
 
+/**
+ * Renders a live scrolling event feed that appends a new entry whenever a patient is admitted or an alert fires.
+ * Shows up to four of the most recent events, each timestamped with the simulation clock.
+ * Critical and high-severity events are colored red/amber; normal events use blue.
+ * @param patients - The full patient array; changes in length trigger new patient-admission entries.
+ * @param alerts - The active alerts array; changes in length trigger new alert entries.
+ * @param simTime - The current simulation time in minutes, used to timestamp events.
+ * @returns A compact feed panel with a "Live Event Feed" header and an animated list of entries.
+ * Called from: CommandCenterPage in the right sidebar above the alerts panel.
+ */
 function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; alerts: any[]; simTime: number }) {
   const [events, setEvents] = useState<{ id: string; text: string; color: string; clock: string }[]>([]);
   const prevCountRef = useRef(0);
@@ -503,7 +586,21 @@ const DEPT_PATIENT_AREA: Record<string,{x:number;y:number;w:number;h:number}> = 
   registration:{x:350,y:274,w:355,h:281}, discharge:{x:20,y:274,w:300,h:281},
 };
 
+/**
+ * Returns a hex color for a patient dot on the floor plan based on severity.
+ * @param sev - The severity string from the patient object: "low", "medium", "high", or "critical".
+ * @returns A hex color — green, yellow, amber, or red; grey if severity is unrecognized.
+ * Called from: HospitalFloorPlan when rendering animated patient dots on the SVG.
+ */
 function _fpColor(sev:string):string { return ({low:"#22c55e",medium:"#ffe600",high:"#ffaa00",critical:"#ff3b3b"} as any)[sev]??"#64748b"; }
+/**
+ * Computes the x/y pixel coordinates for each patient dot on the floor plan SVG.
+ * Groups patients by current department, then distributes them randomly but consistently
+ * within the designated patient area rectangle for that department using a deterministic hash.
+ * @param patients - The full patient array from the latest hospital state.
+ * @returns An array of dot descriptors, each with id, x, y, severity, and state.
+ * Called from: HospitalFloorPlan via useMemo, recalculated whenever the patients array changes.
+ */
 function _fpDots(patients:Patient[]) {
   const groups: Record<string,Patient[]> = {};
   for (const p of patients) { (groups[p.current_department]??=[]).push(p); }
@@ -523,6 +620,18 @@ function _fpDots(patients:Patient[]) {
   return dots;
 }
 
+/**
+ * Renders an SVG illustration of a hospital bed for use inside a floor plan room cell.
+ * Optionally includes a heart monitor display above the bed for ICU/critical bay rooms.
+ * @param x - Left edge x coordinate of the room rectangle.
+ * @param y - Top edge y coordinate of the room rectangle.
+ * @param w - Width of the room rectangle in SVG units.
+ * @param h - Height of the room rectangle in SVG units.
+ * @param color - The department accent color used for bed rails and monitor glow.
+ * @param monitor - When true, adds a heart-monitor screen and IV pole above the bed (default false).
+ * @returns An SVG group element containing the bed illustration.
+ * Called from: _FpEquipment for "er_bay", "critical_bay", "icu_bed", and "ward_bed" room types.
+ */
 function _FpBed({x,y,w,h,color,monitor=false}:{x:number;y:number;w:number;h:number;color:string;monitor?:boolean}) {
   const bw=Math.min(w-18,70),bh=Math.min(h-36,38),bx=x+w/2-bw/2,by=y+h/2-bh/2+(monitor?8:5);
   return (<g opacity={0.75}>
@@ -539,6 +648,16 @@ function _FpBed({x,y,w,h,color,monitor=false}:{x:number;y:number;w:number;h:numb
     {!monitor&&<line x1={bx+bw+4} y1={by-5} x2={bx+bw+4} y2={by+bh+2} stroke={color} strokeWidth="0.8" opacity={0.25}/>}
   </g>);
 }
+/**
+ * Renders an SVG illustration of a CT scanner for use in an imaging room floor plan cell.
+ * @param x - Left edge x coordinate of the room rectangle.
+ * @param y - Top edge y coordinate of the room rectangle.
+ * @param w - Width of the room rectangle in SVG units.
+ * @param h - Height of the room rectangle in SVG units.
+ * @param color - The department accent color used for the scanner gantry rings.
+ * @returns An SVG group element showing a stylized CT scanner.
+ * Called from: _FpEquipment for "ct" room types.
+ */
 function _FpCT({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
   const cx=x+w/2-10,cy=y+h/2-5;
   return (<g opacity={0.72}><circle cx={cx} cy={cy} r={30} fill="none" stroke={color} strokeWidth="11" opacity={0.32}/>
@@ -549,6 +668,16 @@ function _FpCT({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string
     {[-13,-7,-1].map(dy=><rect key={dy} x={cx-46} y={cy+dy} width={8} height={3} rx="0.8" fill={color} opacity={0.4}/>)}
   </g>);
 }
+/**
+ * Renders an SVG illustration of an MRI machine for use in an imaging room floor plan cell.
+ * @param x - Left edge x coordinate of the room rectangle.
+ * @param y - Top edge y coordinate of the room rectangle.
+ * @param w - Width of the room rectangle in SVG units.
+ * @param h - Height of the room rectangle in SVG units.
+ * @param color - The department accent color used for the bore rings.
+ * @returns An SVG group element showing a stylized MRI machine.
+ * Called from: _FpEquipment for "mri" room types.
+ */
 function _FpMRI({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
   const cx=x+w/2-5,cy=y+h/2-5;
   return (<g opacity={0.72}><rect x={cx-42} y={cy-27} width={84} height={55} rx="27" fill="none" stroke={color} strokeWidth="11" opacity={0.32}/>
@@ -557,6 +686,16 @@ function _FpMRI({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:strin
     <rect x={cx-40} y={cy+28} width={80} height={8} rx="2" fill={color} opacity={0.18}/>
   </g>);
 }
+/**
+ * Renders an SVG illustration of an X-ray machine for use in an imaging room floor plan cell.
+ * @param x - Left edge x coordinate of the room rectangle.
+ * @param y - Top edge y coordinate of the room rectangle.
+ * @param w - Width of the room rectangle in SVG units.
+ * @param h - Height of the room rectangle in SVG units.
+ * @param color - The department accent color used for the X-ray tube and cassette.
+ * @returns An SVG group element showing a stylized X-ray unit.
+ * Called from: _FpEquipment for "xray" room types.
+ */
 function _FpXRay({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
   const cx=x+w/2,cy=y+h/2;
   return (<g opacity={0.72}><rect x={cx-3} y={cy-48} width={6} height={68} rx="2.5" fill={color} opacity={0.32}/>
@@ -568,6 +707,16 @@ function _FpXRay({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:stri
     <rect x={cx-6} y={cy+33} width={12} height={18} rx="2" fill={color} opacity={0.18}/>
   </g>);
 }
+/**
+ * Renders an SVG illustration of laboratory equipment (flasks, test tubes, an analyzer) for a lab room cell.
+ * @param x - Left edge x coordinate of the room rectangle.
+ * @param y - Top edge y coordinate of the room rectangle.
+ * @param w - Width of the room rectangle in SVG units.
+ * @param h - Height of the room rectangle in SVG units.
+ * @param color - The department accent color used for the equipment outlines.
+ * @returns An SVG group element showing lab benchtop equipment.
+ * Called from: _FpEquipment for "lab" room types.
+ */
 function _FpLab({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
   const lx=x+w/2-42,ly=y+h/2-18;
   return (<g opacity={0.72}><rect x={lx} y={ly+30} width={28} height={7} rx="2.5" fill={color} opacity={0.38}/>
@@ -580,6 +729,16 @@ function _FpLab({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:strin
     <rect x={lx+56} y={ly-2} width={9} height={34} rx="4.5" fill={color} opacity={0.14} stroke={color} strokeWidth="0.9}"/>
   </g>);
 }
+/**
+ * Renders an SVG illustration of a triage desk/station for use in the ER triage room cell.
+ * @param x - Left edge x coordinate of the room rectangle.
+ * @param y - Top edge y coordinate of the room rectangle.
+ * @param w - Width of the room rectangle in SVG units.
+ * @param h - Height of the room rectangle in SVG units.
+ * @param color - The department accent color used for the desk and chair outlines.
+ * @returns An SVG group element showing a stylized triage station.
+ * Called from: _FpEquipment for "triage" room types.
+ */
 function _FpTriage({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
   const cx=x+w/2,cy=y+h/2;
   return (<g opacity={0.65}><rect x={cx-35} y={cy-5} width={70} height={28} rx="3" fill="rgba(10,14,26,0.4)" stroke={color} strokeWidth="0.8" opacity={0.45}/>
@@ -590,6 +749,14 @@ function _FpTriage({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:st
     <rect x={cx+34} y={cy+5} width={14} height={18} rx="2" fill={color} opacity={0.18}/>
   </g>);
 }
+/**
+ * Routes a floor plan room to the correct SVG equipment illustration based on its room type.
+ * Acts as a dispatcher that returns the appropriate _Fp* component for each room type.
+ * @param room - The RoomDef object describing the room's position, dimensions, and type.
+ * @param color - The department accent color passed through to the equipment illustration.
+ * @returns The matching SVG equipment element, or null for unrecognized room types.
+ * Called from: HospitalFloorPlan when rendering each room inside a department zone.
+ */
 function _FpEquipment({room,color}:{room:RoomDef;color:string}) {
   const {x,y,w,h,type}=room;
   if(type==="er_bay")       return <_FpBed x={x} y={y} w={w} h={h} color={color}/>;
@@ -605,6 +772,13 @@ function _FpEquipment({room,color}:{room:RoomDef;color:string}) {
   return null;
 }
 
+/**
+ * Renders the full hospital floor plan as a responsive SVG.
+ * Draws all five department zones with occupancy bars, individual room cells with equipment illustrations,
+ * animated patient dots colored by severity, a main corridor divider, and a hover tooltip per department.
+ * @returns A container div wrapping the full SVG floor plan, sized to fill its parent.
+ * Called from: CommandCenterPage inside the main floor plan card.
+ */
 function HospitalFloorPlan() {
   const { hospitalState } = useSimulationStore();
   const [tooltip, setTooltip] = useState<{dept:DepartmentKey;x:number;y:number}|null>(null);
@@ -679,6 +853,15 @@ function HospitalFloorPlan() {
   );
 }
 
+/**
+ * The Hospital Command Center page — the primary dashboard of the PulseFlow AI application.
+ * Renders six KPI metric cards, the DiversionBanner, the HospitalScore widget,
+ * the full hospital floor plan with live patient dots, the department status sidebar,
+ * the LiveEventLog, and the AlertsAmbulancePanel.
+ * Shows a "Connecting..." spinner when the WebSocket is not yet connected.
+ * @returns The full Command Center page layout.
+ * Called from: Next.js router at the /command-center route (and as the default redirect from /).
+ */
 export default function CommandCenterPage() {
   const { hospitalState, isConnected } = useSimulationStore();
   const metrics = hospitalState?.metrics;

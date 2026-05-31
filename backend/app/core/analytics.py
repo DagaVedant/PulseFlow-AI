@@ -59,6 +59,18 @@ class ForecastResult:
     confidence: float
 
     def to_dict(self) -> dict:
+        """
+        Converts this ForecastResult into a plain dictionary so it can be serialized to JSON and sent over the API.
+
+        Parameters:
+            None — operates on the fields of the dataclass instance itself.
+
+        Returns:
+            A dictionary with all forecast fields rounded to a reasonable number of decimal places, ready for JSON serialization.
+
+        Called from:
+            Anywhere a ForecastResult needs to be included in an HTTP or WebSocket response (e.g., the /copilot/forecast API route).
+        """
         return {
             "horizon_minutes": self.horizon_minutes,
             "department": self.department,
@@ -81,6 +93,19 @@ class HospitalForecaster:
     HORIZONS = {"1h": 60, "3h": 180, "6h": 360, "24h": 1440}
 
     def forecast_all(self, metrics_history: List[dict], sim_time: float) -> Dict[str, ForecastResult]:
+        """
+        Runs all four time-horizon forecasts (1 h, 3 h, 6 h, 24 h) for every key hospital metric and returns them in one dictionary.
+
+        Parameters:
+            metrics_history: A list of past metric snapshots, each a dict containing keys like "avg_wait_time", "icu_utilization", "bed_utilization", and "er_utilization". Must have at least 5 entries or an empty dict is returned.
+            sim_time: The current simulation time in minutes, used as the starting timestamp for forecast points.
+
+        Returns:
+            A dictionary whose keys are strings like "wait_time_1h" or "icu_utilization_3h" and whose values are ForecastResult objects. Returns an empty dict if there is not enough history.
+
+        Called from:
+            The AI copilot service when a full forecast dashboard update is requested.
+        """
         results = {}
         if len(metrics_history) < 5:
             return {}
@@ -115,6 +140,26 @@ class HospitalForecaster:
         threshold_warning: float = 0.75, threshold_critical: float = 0.90,
         value_cap: Optional[float] = None, unit: str = "",
     ) -> ForecastResult:
+        """
+        Applies Holt-Winters double exponential smoothing to a single time series and projects it forward, producing a forecast with uncertainty bands.
+
+        Parameters:
+            values: A list of historical numeric readings for one metric (e.g., a series of ICU utilization percentages over time).
+            horizon: How many minutes into the future to forecast (e.g., 60 for a 1-hour horizon).
+            sim_time: The current simulation time in minutes, used to build the timestamp list for forecast points.
+            department: The name of the hospital department this metric belongs to (e.g., "ICU", "ER").
+            metric: A short label for what is being measured (e.g., "utilization", "avg_wait_time").
+            threshold_warning: The value at which the metric is considered a warning (default 0.75, meaning 75%).
+            threshold_critical: The value at which the metric is considered critical (default 0.90).
+            value_cap: If provided, forecast values are clamped to this maximum (e.g., 1.0 for utilization percentages).
+            unit: An optional unit string (e.g., "min") used for labeling, currently unused in the return value.
+
+        Returns:
+            A ForecastResult dataclass containing the forecasted values, lower and upper confidence bounds, trend direction, severity label, and confidence score.
+
+        Called from:
+            forecast_all, which calls this once per metric per time horizon.
+        """
         if not values:
             values = [0.0]
         if len(values) >= 5:
@@ -176,6 +221,20 @@ class HospitalForecaster:
         )
 
     def forecast_demand(self, history: List[dict], sim_time: float, horizon_minutes: int = 60) -> dict:
+        """
+        Estimates the expected patient arrival rate for each minute of the next N minutes, factoring in the current trend and a time-of-day adjustment.
+
+        Parameters:
+            history: A list of past simulation state snapshots, each containing an "active_patients" count. Needs at least 5 entries to produce a result.
+            sim_time: The current simulation time in minutes, used to determine what hour of the day it is.
+            horizon_minutes: How many minutes ahead to forecast (default 60, meaning one hour forward).
+
+        Returns:
+            A dictionary with keys: "horizon_minutes" (int), "arrival_rate_forecast" (list of per-minute arrival rates), "peak_hour_forecast" (the highest predicted rate), and "avg_forecast" (the mean predicted rate). Returns an empty dict if there is not enough history.
+
+        Called from:
+            The AI copilot service or sandbox API when demand forecasting is requested.
+        """
         if len(history) < 5:
             return {}
         active = [h.get("active_patients", 0) for h in history]
@@ -199,6 +258,19 @@ class HospitalForecaster:
         }
 
     def generate_bottleneck_predictions(self, state: dict, history: List[dict]) -> List[dict]:
+        """
+        Scans every department in the current hospital state and identifies which ones are trending toward a capacity breach, returning up to five sorted predictions.
+
+        Parameters:
+            state: The current hospital state dictionary, which must contain a "departments" key mapping department keys to dicts with "occupancy" and "queue_length".
+            history: A list of past state snapshots used to calculate occupancy trend over the last 10 readings.
+
+        Returns:
+            A list of up to 5 prediction dictionaries sorted by severity then confidence, each containing the department name, current occupancy, predicted breach value, estimated minutes until breach, and a severity label ("critical", "warning", or "info"). Returns an empty list if state or history are empty.
+
+        Called from:
+            The AI copilot service when generating a full analysis response for the frontend.
+        """
         predictions = []
         if not state or not history:
             return predictions
@@ -274,6 +346,18 @@ class OptimizationResult:
     solver: str = "ortools"
 
     def to_dict(self) -> dict:
+        """
+        Converts this OptimizationResult into a plain dictionary suitable for JSON serialization and sending over the API.
+
+        Parameters:
+            None — operates on the fields of the dataclass instance itself.
+
+        Returns:
+            A dictionary containing the objective value, a list of recommendation dicts, predicted metric improvements, bottleneck info, root causes, intervention plan, confidence, and solver name.
+
+        Called from:
+            The copilot API route after calling HospitalOptimizer.optimize, to serialize the result into the HTTP response.
+        """
         return {
             "objective_value": round(self.objective_value, 3),
             "recommendations": [
@@ -299,9 +383,33 @@ class HospitalOptimizer:
     """Multi-objective staffing optimizer: OR-Tools LP primary, SciPy SLSQP fallback."""
 
     def optimize(self, inp: OptimizationInput) -> OptimizationResult:
+        """
+        Runs the staffing optimizer, choosing OR-Tools LP if it is installed or falling back to SciPy SLSQP otherwise.
+
+        Parameters:
+            inp: An OptimizationInput dataclass containing the current patient counts, queue lengths, bed capacities, staff counts, and active event flags for every department.
+
+        Returns:
+            An OptimizationResult dataclass with staffing recommendations, predicted metric improvements, identified bottleneck, root causes, and intervention plan.
+
+        Called from:
+            The copilot API endpoint /api/v1/copilot/optimize, and indirectly from build_optimization_input_from_state.
+        """
         return self._optimize_ortools(inp) if ORTOOLS_AVAILABLE else self._optimize_scipy(inp)
 
     def _optimize_ortools(self, inp: OptimizationInput) -> OptimizationResult:
+        """
+        Solves the staffing allocation problem using Google OR-Tools linear programming (GLOP solver), minimizing wait-time-weighted staff deltas subject to budget and minimum-coverage constraints.
+
+        Parameters:
+            inp: An OptimizationInput dataclass with current staffing levels, patient loads, and available floating staff for ER, ICU, and Ward departments.
+
+        Returns:
+            An OptimizationResult with the LP-optimal staffing deltas translated into human-readable recommendations. Falls back to _optimize_scipy if OR-Tools cannot create a solver, or to _fallback_result if no feasible solution is found.
+
+        Called from:
+            optimize, when ORTOOLS_AVAILABLE is True.
+        """
         solver = pywraplp.Solver.CreateSolver("GLOP")
         if not solver:
             return self._optimize_scipy(inp)
@@ -346,6 +454,18 @@ class HospitalOptimizer:
         return result
 
     def _optimize_scipy(self, inp: OptimizationInput) -> OptimizationResult:
+        """
+        Solves the same staffing allocation problem as _optimize_ortools but uses SciPy's SLSQP (Sequential Least Squares Programming) solver instead, which works without the OR-Tools dependency.
+
+        Parameters:
+            inp: An OptimizationInput dataclass with current staffing levels, patient loads, and available floating staff.
+
+        Returns:
+            An OptimizationResult with SciPy-optimal staffing recommendations. Falls back to _fallback_result if the optimizer fails to converge.
+
+        Called from:
+            optimize when ORTOOLS_AVAILABLE is False, or from _optimize_ortools if OR-Tools cannot initialize a solver.
+        """
         bounds = [
             (-inp.er_doctors//2,  inp.available_doctors),
             (-inp.er_nurses//2,   inp.available_nurses),
@@ -355,6 +475,15 @@ class HospitalOptimizer:
             (-inp.ward_nurses//2, inp.available_nurses),
         ]
         def objective(x):
+            """
+            Computes the negated weighted load-reduction score for a given staffing delta vector, which SciPy minimizes (minimizing a negative value maximizes the positive score).
+
+            Parameters:
+                x: A list of six floats representing the staffing deltas in order: ER doctors, ER nurses, ICU doctors, ICU nurses, Ward doctors, Ward nurses.
+
+            Returns:
+                A negative float; the more negative, the better the proposed reallocation is at reducing load across departments.
+            """
             er, en, id_, in_, wd, wn = x
             er_l  = inp.er_queue  / max(1, inp.er_beds)
             icu_l = inp.icu_queue / max(1, inp.icu_beds) * 3
@@ -379,10 +508,43 @@ class HospitalOptimizer:
         icu_doc_delta=0, icu_nurse_delta=0,
         ward_doc_delta=0, ward_nurse_delta=0,
     ) -> List[StaffingRecommendation]:
+        """
+        Converts raw staffing delta values (how many doctors/nurses to add or remove per department) into a sorted list of StaffingRecommendation objects with human-readable reasons and urgency levels.
+
+        Parameters:
+            inp: The OptimizationInput dataclass, used to read current staffing levels and load factors for each department.
+            er_doc_delta: How many doctors to add (positive) or remove (negative) in the ER.
+            er_nurse_delta: How many nurses to add or remove in the ER.
+            icu_doc_delta: How many doctors to add or remove in the ICU.
+            icu_nurse_delta: How many nurses to add or remove in the ICU.
+            ward_doc_delta: How many doctors to add or remove in the Ward.
+            ward_nurse_delta: How many nurses to add or remove in the Ward.
+
+        Returns:
+            A list of StaffingRecommendation objects sorted by impact score descending, with only non-zero deltas included.
+
+        Called from:
+            _optimize_ortools and _optimize_scipy after the solver has produced delta values.
+        """
         recs = []
         er_l  = inp.er_queue  / max(1, inp.er_beds)
         icu_l = inp.icu_queue / max(1, inp.icu_beds)
         def add(dept, rtype, cur, delta, base_impact, reason, urgency):
+            """
+            Helper that appends a single StaffingRecommendation to the recs list, but only when the delta is non-zero.
+
+            Parameters:
+                dept: The department name (e.g., "ER", "ICU").
+                rtype: The resource type string (e.g., "doctors", "nurses").
+                cur: The current number of that resource in the department.
+                delta: The recommended change (positive = add, negative = remove).
+                base_impact: A weight representing how much this change improves outcomes per unit of delta.
+                reason: A plain-English sentence explaining why this change is needed.
+                urgency: A string label like "critical", "high", "medium", or "low".
+
+            Returns:
+                None — appends directly to the enclosing recs list.
+            """
             if delta:
                 recs.append(StaffingRecommendation(dept, rtype, cur, cur+delta, delta,
                                                    base_impact*abs(delta), reason, urgency))
@@ -406,6 +568,20 @@ class HospitalOptimizer:
     def _build_result(self, inp: OptimizationInput,
                       recommendations: List[StaffingRecommendation],
                       solver: str = "ortools") -> OptimizationResult:
+        """
+        Assembles the final OptimizationResult by estimating predicted metric improvements from the given recommendations and then detecting the current bottleneck and its root causes.
+
+        Parameters:
+            inp: The OptimizationInput dataclass containing current patient and resource counts.
+            recommendations: The list of StaffingRecommendation objects produced by _build_recommendations.
+            solver: A string label identifying which solver produced these results (e.g., "ortools", "scipy", "heuristic").
+
+        Returns:
+            A fully populated OptimizationResult dataclass with predicted wait reduction, throughput increase, utilization improvement, bottleneck info, root causes, and an intervention plan.
+
+        Called from:
+            _optimize_ortools, _optimize_scipy, and _fallback_result.
+        """
         er_l  = inp.er_queue  / max(1, inp.er_beds)
         icu_l = inp.icu_queue / max(1, inp.icu_beds)
         if recommendations:
@@ -428,6 +604,18 @@ class HospitalOptimizer:
         )
 
     def _fallback_result(self, inp: OptimizationInput) -> OptimizationResult:
+        """
+        Produces a simple rule-based optimization result when neither OR-Tools nor SciPy can find a solution, using hardcoded heuristics based on queue length and ICU capacity.
+
+        Parameters:
+            inp: The OptimizationInput dataclass with current patient and resource counts.
+
+        Returns:
+            An OptimizationResult built from heuristic recommendations (e.g., add a doctor when the ER queue is over 5, add ICU nurses when ICU is over 80% full).
+
+        Called from:
+            _optimize_ortools and _optimize_scipy when their respective solvers fail.
+        """
         recs = []
         if inp.er_queue > 5:
             recs.append(StaffingRecommendation("ER","doctors",inp.er_doctors,inp.er_doctors+1,1,0.45,"ER queue building","high"))
@@ -436,6 +624,18 @@ class HospitalOptimizer:
         return self._build_result(inp, recs, solver="heuristic")
 
     def _identify_root_causes(self, inp: OptimizationInput) -> List[str]:
+        """
+        Inspects the current hospital state and returns a list of plain-English sentences describing every condition that is contributing to patient flow problems.
+
+        Parameters:
+            inp: The OptimizationInput dataclass containing queue lengths, occupancy values, and active event flags (ct_failure, lab_slowdown, flu_outbreak).
+
+        Returns:
+            A list of strings, each describing one root cause (e.g., "ER queue backlog: 12 patients awaiting assessment"). Returns a list with a single "normal" message if nothing concerning is detected.
+
+        Called from:
+            _build_result, which includes root causes in every OptimizationResult.
+        """
         causes = []
         if inp.er_queue > 8:
             causes.append(f"ER queue backlog: {inp.er_queue} patients awaiting assessment")
@@ -456,6 +656,19 @@ class HospitalOptimizer:
         return causes or ["Hospital operating within normal parameters"]
 
     def _build_intervention_plan(self, inp: OptimizationInput, recs: List[StaffingRecommendation]) -> List[str]:
+        """
+        Converts the top staffing recommendations and current hospital conditions into an ordered list of plain-English action steps for the shift manager to execute.
+
+        Parameters:
+            inp: The OptimizationInput dataclass, checked for high queue or capacity thresholds that trigger additional steps (e.g., STAT lab protocol, scan prioritization, overflow ward).
+            recs: The list of StaffingRecommendation objects; the first five are translated into action sentences.
+
+        Returns:
+            A list of action strings sorted by most impactful recommendation first, with extra steps appended for lab backlogs, imaging queues, ICU pressure, and flu outbreaks.
+
+        Called from:
+            _build_result, which includes this plan in every OptimizationResult.
+        """
         plan = []
         for r in recs[:5]:
             plan.append(f"{'Add' if r.delta>0 else 'Redeploy'} {abs(r.delta)} {r.resource_type} to {r.department} (impact: {r.impact_score:.2f})")
@@ -473,6 +686,18 @@ class HospitalOptimizer:
         return plan
 
     def _detect_bottleneck(self, inp: OptimizationInput):
+        """
+        Scores each department by its effective load (queue length divided by capacity, weighted for criticality) and identifies the one that is most overloaded.
+
+        Parameters:
+            inp: The OptimizationInput dataclass containing patient counts, queue lengths, and capacities for ER, Laboratory, Imaging, ICU, and Ward.
+
+        Returns:
+            A tuple of three values: (bottleneck_department, bottleneck_metric, severity_label). The severity label is one of "critical", "high", "medium", or "low".
+
+        Called from:
+            _build_result, which records the bottleneck in every OptimizationResult.
+        """
         scores = {
             "ER":        inp.er_queue   / max(1, inp.er_beds)   + inp.er_patients  / max(1, inp.er_beds),
             "Laboratory":inp.lab_queue  / max(1, inp.lab_analyzers),
@@ -489,9 +714,32 @@ class HospitalOptimizer:
 
 
 def build_optimization_input_from_state(state: dict) -> OptimizationInput:
+    """
+    Reads the live hospital state dictionary (as broadcast by the simulation engine) and maps it into the flat OptimizationInput dataclass that the optimizer expects.
+
+    Parameters:
+        state: The hospital state dict from the simulation WebSocket broadcast. Must contain "departments" (a dict keyed by department slug), "metrics" (a dict with avg_wait_time and throughput_per_hour), and "config" (a dict with arrival_rate and event flags).
+
+    Returns:
+        A populated OptimizationInput dataclass with patient counts, queue lengths, bed capacities, staffing defaults, and active event flags ready to pass directly to HospitalOptimizer.optimize.
+
+    Called from:
+        The copilot API service when handling an on-demand optimization request triggered by the frontend.
+    """
     depts   = state.get("departments", {})
     metrics = state.get("metrics", {})
     def dept(key, f, default=0):
+        """
+        Safely retrieves a single field from a specific department dict, returning a default value when the department or field is missing.
+
+        Parameters:
+            key: The department slug string (e.g., "er", "icu", "labs").
+            f: The field name to look up within that department's dict (e.g., "current_patients", "queue_length").
+            default: The value to return when the key or field is not found (default 0).
+
+        Returns:
+            The field value from the department dict, or the default if absent.
+        """
         return depts.get(key, {}).get(f, default)
     return OptimizationInput(
         er_patients=dept("er","current_patients"),  er_queue=dept("er","queue_length"),
@@ -528,6 +776,18 @@ _OLLAMA_TTL = 20.0
 
 
 def _is_ollama_running(base_url: str) -> bool:
+    """
+    Checks whether a locally running Ollama server is reachable at the given URL, caching the result for 20 seconds to avoid hammering the endpoint.
+
+    Parameters:
+        base_url: The base URL of the Ollama server (e.g., "http://localhost:11434").
+
+    Returns:
+        True if the Ollama /api/tags endpoint responds with HTTP 200, False otherwise.
+
+    Called from:
+        AICopilot._available, which calls this before every LLM request.
+    """
     now = _time.monotonic()
     if now - _ollama_cache["ts"] < _OLLAMA_TTL:
         return _ollama_cache["ok"]
@@ -543,6 +803,21 @@ def _is_ollama_running(base_url: str) -> bool:
 
 
 def _ollama_chat(model: str, base_url: str, messages: list, max_tokens: int = 180) -> str:
+    """
+    Sends a chat request to the Ollama server and returns the assistant's reply as a plain string.
+
+    Parameters:
+        model: The Ollama model name to use (e.g., "llama3.2").
+        base_url: The base URL of the Ollama server (e.g., "http://localhost:11434").
+        messages: A list of message dicts in the format [{"role": "system"/"user"/"assistant", "content": "..."}].
+        max_tokens: The maximum number of tokens to generate in the response (default 180).
+
+    Returns:
+        The text content of the model's reply as a string.
+
+    Called from:
+        AICopilot._call, which wraps this in asyncio.to_thread so it does not block the async event loop.
+    """
     client = _ollama.Client(host=base_url)
     response = client.chat(model=model, messages=messages,
                            options={"num_predict": max_tokens, "temperature": 0.3})
@@ -553,17 +828,64 @@ class AICopilot:
     """Ollama-powered local LLM copilot. Falls back to deterministic text if Ollama is unavailable."""
 
     def __init__(self, base_url: str = "http://localhost:11434", model: str = "llama3.2"):
+        """
+        Initializes the AICopilot with the address of the local Ollama server and the model name to use for generation.
+
+        Parameters:
+            base_url: The base URL where the Ollama server is listening (default "http://localhost:11434").
+            model: The name of the Ollama model to load for chat completions (default "llama3.2").
+
+        Returns:
+            None — standard __init__ constructor.
+        """
         self.base_url = base_url
         self.model = model
 
     def _available(self) -> bool:
+        """
+        Returns True if the ollama Python package is installed and the local Ollama server is currently responding, meaning AI-generated text is possible.
+
+        Parameters:
+            None.
+
+        Returns:
+            True when both the package is importable and the server is reachable; False otherwise.
+
+        Called from:
+            _call, before every LLM request, to decide whether to attempt generation or skip to a fallback.
+        """
         return OLLAMA_AVAILABLE and _is_ollama_running(self.base_url)
 
     def _msgs(self, user_prompt: str) -> list:
+        """
+        Wraps a user prompt into the two-message list format that the Ollama chat API expects, prepending the system prompt that instructs the model to respond in plain prose only.
+
+        Parameters:
+            user_prompt: The user-facing text describing the hospital situation or question to answer.
+
+        Returns:
+            A list with two dicts: a system message containing the shared AI instructions, followed by the user message.
+
+        Called from:
+            _call, which passes the result directly to _ollama_chat.
+        """
         return [{"role": "system", "content": _AI_SYSTEM_PROMPT},
                 {"role": "user",   "content": user_prompt}]
 
     async def _call(self, prompt: str, max_tokens: int = 180) -> Optional[str]:
+        """
+        Sends a prompt to the local Ollama model asynchronously, with a 5-second timeout, and returns the generated text or None if unavailable or timed out.
+
+        Parameters:
+            prompt: The text prompt to send to the LLM (already formatted by the caller).
+            max_tokens: The maximum number of tokens the model should generate (default 180).
+
+        Returns:
+            The LLM's plain-text response as a string, or None if Ollama is unavailable, the call times out, or any exception occurs.
+
+        Called from:
+            explain_bottleneck, generate_patient_summary, generate_intervention_narrative, and generate_shift_report.
+        """
         if not self._available():
             return None
         try:
@@ -575,6 +897,19 @@ class AICopilot:
             return None
 
     async def explain_bottleneck(self, state: dict, opt: dict) -> dict:
+        """
+        Generates a 3-4 sentence plain-English explanation of the current hospital bottleneck — its root cause, consequence, and the best intervention — using the LLM if available or a deterministic fallback otherwise.
+
+        Parameters:
+            state: The current hospital state dict from the simulation, containing "departments" and "metrics".
+            opt: The optimization result dict (as produced by OptimizationResult.to_dict) containing "bottleneck_department", "bottleneck_severity", "root_causes", "predicted_wait_reduction", and "intervention_plan".
+
+        Returns:
+            A dictionary with keys "explanation" (the narrative text), "model" (the model name or "fallback"), "generated" (True if LLM-produced), "bottleneck_department", and "severity".
+
+        Called from:
+            The copilot API route when the frontend requests a bottleneck analysis.
+        """
         context = self._build_bottleneck_context(state, opt)
         prompt = (
             f"Hospital state:\n{context}\n\n"
@@ -592,6 +927,18 @@ class AICopilot:
         return self._fallback_bottleneck_explanation(state, opt, context)
 
     async def generate_patient_summary(self, patient: dict) -> str:
+        """
+        Produces a two-sentence plain-English summary of a single patient's clinical situation, covering where they are, what they need, their risk level, and urgency.
+
+        Parameters:
+            patient: A dict describing one patient, expected to contain keys like "age", "severity", "chief_complaint", "current_department", "state", "risk_score", and "total_wait_time".
+
+        Returns:
+            A short string (2 sentences) describing the patient. If the LLM is unavailable, returns a deterministic fallback string instead.
+
+        Called from:
+            The Patient Intelligence page API or copilot when summarizing an individual patient.
+        """
         prompt = (
             f"Patient: Age {patient.get('age','?')}, {patient.get('severity','?').upper()}, "
             f"{patient.get('chief_complaint','?')}. "
@@ -602,6 +949,19 @@ class AICopilot:
         return await self._call(prompt, 80) or self._fallback_patient_summary(patient)
 
     async def generate_intervention_narrative(self, opt: dict, state: dict) -> dict:
+        """
+        Writes a 3-4 sentence narrative describing the planned staff reallocation, the actions being taken, and the expected outcome improvements.
+
+        Parameters:
+            opt: The optimization result dict (from OptimizationResult.to_dict) with "recommendations", "intervention_plan", "predicted_wait_reduction", "predicted_throughput_increase", and "predicted_utilization_improvement".
+            state: The current hospital state dict (used only if the LLM call fails and the fallback needs context).
+
+        Returns:
+            A dict with keys "narrative" (the prose), "recommendations" (list), "intervention_plan" (list), "predicted_outcomes" (nested dict of metric improvements), and "model" (LLM name or "fallback").
+
+        Called from:
+            The copilot API route when the frontend requests an intervention plan narrative.
+        """
         recs  = opt.get("recommendations", [])
         plan  = opt.get("intervention_plan", [])
         recs_text = "\n".join([f"- {r['resource_type']} in {r['department']}: {'+' if r['delta']>0 else ''}{r['delta']}" for r in recs[:5]])
@@ -624,6 +984,19 @@ class AICopilot:
         return self._fallback_intervention_narrative(opt)
 
     async def generate_shift_report(self, state: dict, history: List[dict]) -> str:
+        """
+        Generates a 4-5 sentence end-of-shift summary covering current hospital status, any active incidents, department pressure points, and priority focus for the incoming shift.
+
+        Parameters:
+            state: The current hospital state dict containing "metrics" (active_patients, avg_wait_time, bed_utilization, icu_utilization, critical_patients) and "alerts" (list of active alert dicts).
+            history: A list of past state snapshots used by the fallback function to add context (currently unused by the LLM path).
+
+        Returns:
+            A plain-text string (4-5 sentences). If the LLM is unavailable, returns a deterministic fallback string instead.
+
+        Called from:
+            The copilot API route when the frontend requests a shift handover report.
+        """
         m = state.get("metrics", {})
         alerts = state.get("alerts", [])
         prompt = (
@@ -637,6 +1010,19 @@ class AICopilot:
     # ---- Deterministic fallbacks ----
 
     def _build_bottleneck_context(self, state: dict, opt: dict) -> str:
+        """
+        Formats the current hospital state into a compact multi-line text block that can be pasted into an LLM prompt as context.
+
+        Parameters:
+            state: The hospital state dict with "departments" and "metrics".
+            opt: The optimization result dict (used by the caller but not directly read here; included for signature consistency).
+
+        Returns:
+            A newline-separated string listing total active patients, average wait time, and each department's current/capacity/queue counts.
+
+        Called from:
+            explain_bottleneck, which passes this context string into both the LLM prompt and the fallback response.
+        """
         depts = state.get("departments", {})
         m     = state.get("metrics", {})
         lines = [f"Active: {m.get('active_patients',0)} | Avg wait: {m.get('avg_wait_time',0):.0f}m"]
@@ -645,6 +1031,20 @@ class AICopilot:
         return "\n".join(lines)
 
     def _fallback_bottleneck_explanation(self, state: dict, opt: dict, context: str) -> dict:
+        """
+        Generates a deterministic bottleneck explanation using real numbers from the hospital state when the LLM is unavailable.
+
+        Parameters:
+            state: The current hospital state dict containing "metrics" and "departments".
+            opt: The optimization result dict with "bottleneck_department", "bottleneck_severity", "root_causes", "predicted_wait_reduction", and "intervention_plan".
+            context: The pre-formatted context string produced by _build_bottleneck_context (included for completeness but not directly used in the output text).
+
+        Returns:
+            A dict with the same shape as explain_bottleneck's return value: "explanation" (string), "model" ("fallback"), "generated" (False), "bottleneck_department", and "severity".
+
+        Called from:
+            explain_bottleneck when _call returns None.
+        """
         dept = opt.get("bottleneck_department","ER")
         sev  = opt.get("bottleneck_severity","warning")
         wait_red = opt.get("predicted_wait_reduction",0)
@@ -663,6 +1063,18 @@ class AICopilot:
                 "bottleneck_department": dept, "severity": sev}
 
     def _fallback_patient_summary(self, patient: dict) -> str:
+        """
+        Builds a simple two-sentence patient summary using only the fields already present in the patient dict, without calling any external service.
+
+        Parameters:
+            patient: A dict describing one patient with keys such as "name", "age", "severity", "chief_complaint", "current_department", "total_wait_time", and "risk_score".
+
+        Returns:
+            A two-sentence plain-text string: first sentence covers identity and location; second sentence covers wait time, risk score, and a care urgency label.
+
+        Called from:
+            generate_patient_summary when _call returns None.
+        """
         name = patient.get("name","Patient")
         sev  = patient.get("severity","low")
         dept = patient.get("current_department","er").replace("_"," ").upper()
@@ -673,6 +1085,18 @@ class AICopilot:
                 f"In {dept}, waited {wait:.0f}m, risk {risk:.2f}. {urgency}.")
 
     def _fallback_intervention_narrative(self, opt: dict) -> dict:
+        """
+        Produces a deterministic intervention narrative from the optimization result dict when the LLM is not available.
+
+        Parameters:
+            opt: The optimization result dict with "bottleneck_department", "recommendations", "predicted_wait_reduction", "predicted_throughput_increase", "predicted_utilization_improvement", and "intervention_plan".
+
+        Returns:
+            A dict with the same shape as generate_intervention_narrative's return value: "narrative" (string), "recommendations" (list), "intervention_plan" (list), "predicted_outcomes" (nested dict), and "model" ("fallback").
+
+        Called from:
+            generate_intervention_narrative when _call returns None.
+        """
         recs = opt.get("recommendations",[])
         dept = opt.get("bottleneck_department","ER")
         primary = next((r for r in recs if r.get("urgency") in ("critical","high")), recs[0] if recs else None)
@@ -694,6 +1118,19 @@ class AICopilot:
                 }, "model": "fallback"}
 
     def _fallback_shift_report(self, state: dict, history: List[dict]) -> str:
+        """
+        Generates a deterministic shift handover report using real metric values from the hospital state when the LLM is unavailable.
+
+        Parameters:
+            state: The current hospital state dict with "metrics", "departments", and "alerts".
+            history: A list of past state snapshots. Currently not read in the fallback logic but included to match the async method's signature.
+
+        Returns:
+            A 5-sentence plain-text string covering overall hospital status, ER queue, bed and ICU utilization, active alert count, and priority for the incoming shift.
+
+        Called from:
+            generate_shift_report when _call returns None.
+        """
         m  = state.get("metrics",{})
         er = state.get("departments",{}).get("er",{})
         alerts = state.get("alerts",[])
@@ -727,6 +1164,18 @@ class Specialist:
     current_assignment: str = ""
 
     def _available_in(self, now: float) -> int:
+        """
+        Estimates how many minutes until this specialist becomes available, using a deterministic phase calculation based on their busy time and consult cycle.
+
+        Parameters:
+            now: The current simulation time in minutes, used to determine where in the specialist's work cycle they currently are.
+
+        Returns:
+            An integer number of minutes until available. Returns 0 immediately if the specialist is not currently busy.
+
+        Called from:
+            to_dict (via avail) and _find_specialist / _patient_dict inside CareCoordinator.
+        """
         if self.busy_min <= 0:
             return 0
         cycle = 30 + self.avg_consult_min
@@ -736,6 +1185,18 @@ class Specialist:
         return round(busy_window - phase) if phase < busy_window else 0
 
     def to_dict(self, now: float) -> dict:
+        """
+        Converts this Specialist dataclass into a plain dictionary with a computed availability status and current assignment label, suitable for sending over the API.
+
+        Parameters:
+            now: The current simulation time in minutes, used to calculate how many minutes until this specialist is available.
+
+        Returns:
+            A dictionary with all specialist fields plus "available_in_min" (int) and "status" (one of "available", "in_surgery", or "busy"). The current_assignment field shows "Available for consult" when they are free.
+
+        Called from:
+            CareCoordinator._specialist_dict, which may further overwrite fields based on active bottleneck constraints.
+        """
         avail = self._available_in(now)
         status = "available" if avail == 0 else (
             "in_surgery" if ("Surgery" in self.current_assignment or "OR" in self.current_assignment) else "busy"
@@ -758,6 +1219,18 @@ class FixedBottleneck:
     release_at: Optional[float] = None; created_at: float = 0.0
 
     def to_dict(self, now: float) -> dict:
+        """
+        Converts this FixedBottleneck dataclass into a plain dictionary, computing how many minutes remain until the constraint is released.
+
+        Parameters:
+            now: The current simulation time in minutes, used to calculate the remaining time before this bottleneck resolves.
+
+        Returns:
+            A dictionary with all bottleneck fields plus "release_in_min" (int or None if no release time is set) and "active" (True while the resource is still unavailable).
+
+        Called from:
+            CareCoordinator.get_state and CareCoordinator._matching_bottleneck.
+        """
         release_in = max(0, round(self.release_at - now)) if self.release_at is not None else None
         return {
             "bottleneck_id": self.bottleneck_id, "resource_name": self.resource_name,
@@ -776,9 +1249,33 @@ class TrackedPatient:
     pathway: List[str] = field(default_factory=list); created_at: float = 0.0
 
     def wait_min(self, now: float) -> float:
+        """
+        Calculates this tracked patient's current total wait time in minutes, combining their pre-existing ER wait baseline with up to 12 additional minutes of elapsed simulation time.
+
+        Parameters:
+            now: The current simulation time in minutes.
+
+        Returns:
+            A float representing the total minutes this patient has been waiting.
+
+        Called from:
+            CareCoordinator._patient_dict.
+        """
         return self.ed_wait_base + min(12.0, max(0.0, now - self.created_at))
 
     def risk(self, now: float) -> float:
+        """
+        Computes this tracked patient's current clinical risk score, starting from their base risk and slowly increasing as elapsed time approaches or exceeds the care target window.
+
+        Parameters:
+            now: The current simulation time in minutes.
+
+        Returns:
+            A float between 0.0 and 0.99 representing the patient's current risk, where higher values indicate greater urgency.
+
+        Called from:
+            CareCoordinator._patient_dict.
+        """
         elapsed = min(30.0, max(0.0, now - self.created_at))
         return min(0.99, self.base_risk + min(0.02, (elapsed / max(1, self.target_window_min)) * 0.02))
 
@@ -798,12 +1295,33 @@ class CareCoordinator:
     """Specialist roster, fixed bottlenecks, tracked patients, and constraint-aware recommendations."""
 
     def __init__(self):
+        """
+        Initializes an empty CareCoordinator with no specialists, no bottlenecks, and no tracked patients; the data is lazily seeded on the first call to get_state.
+
+        Parameters:
+            None.
+
+        Returns:
+            None — standard __init__ constructor.
+        """
         self.specialists: List[Specialist] = []
         self.bottlenecks: Dict[str, FixedBottleneck] = {}
         self.tracked: List[TrackedPatient] = []
         self._seed_done = False
 
     def _seed(self, now: float = 0.0):
+        """
+        Populates the coordinator with a realistic set of 19 named specialists, 3 pre-existing bottleneck constraints, and 4 tracked demo patients so the UI has meaningful data from the first request.
+
+        Parameters:
+            now: The current simulation time in minutes, used to set created_at and release_at timestamps correctly relative to the simulation clock.
+
+        Returns:
+            None — mutates self.specialists, self.bottlenecks, and self.tracked in place.
+
+        Called from:
+            _ensure_seeded, which calls this exactly once per CareCoordinator instance.
+        """
         s   = lambda *a, **k: self.specialists.append(Specialist(*a, **k))
         sid = lambda: uuid.uuid4().hex[:6].upper()
         s(sid(), "Dr. Alan Reyes",    "Cardiology",        "Interventional Cardiologist",   35, 4, 2, 28, "Cath Lab — STEMI")
@@ -844,11 +1362,36 @@ class CareCoordinator:
         ]
 
     def _ensure_seeded(self, now: float):
+        """
+        Calls _seed exactly once for the lifetime of this CareCoordinator instance, guarded by a flag so repeated calls are free.
+
+        Parameters:
+            now: The current simulation time in minutes, passed through to _seed for timestamp accuracy.
+
+        Returns:
+            None.
+
+        Called from:
+            get_state, which must ensure data is seeded before responding to any request.
+        """
         if not self._seed_done:
             self._seed_done = True
             self._seed(now)
 
     def add_bottleneck(self, data: dict, now: float = 0.0) -> dict:
+        """
+        Creates a new FixedBottleneck from the provided data dict, registers it in the internal bottlenecks store, and returns its serialized representation.
+
+        Parameters:
+            data: A dictionary describing the bottleneck. Recognized keys are "bottleneck_id" (auto-generated if absent), "resource_name", "resource_type", "status", "priority", "notes", "start_label", "release_label", and "release_in_min" (minutes from now until the constraint lifts).
+            now: The current simulation time in minutes, used to calculate the absolute release_at timestamp.
+
+        Returns:
+            A dictionary (via FixedBottleneck.to_dict) representing the newly created bottleneck, including the generated ID and computed release_in_min.
+
+        Called from:
+            _seed (for pre-seeding demo bottlenecks) and the care coordination API route when a user manually registers a new constraint.
+        """
         bid = data.get("bottleneck_id") or f"BN-{uuid.uuid4().hex[:5].upper()}"
         release_in = data.get("release_in_min")
         release_at = (now + float(release_in)) if release_in not in (None, "") else None
@@ -863,15 +1406,52 @@ class CareCoordinator:
         return bn.to_dict(now)
 
     def remove_bottleneck(self, bottleneck_id: str) -> bool:
+        """
+        Removes a bottleneck from the internal store by its ID.
+
+        Parameters:
+            bottleneck_id: The unique string ID of the bottleneck to remove (e.g., "BN-A3F21").
+
+        Returns:
+            True if a bottleneck with that ID existed and was removed; False if no matching ID was found.
+
+        Called from:
+            The care coordination API route when a user resolves or deletes a constraint.
+        """
         return self.bottlenecks.pop(bottleneck_id, None) is not None
 
     def get_patient(self, patient_id: str, now: float) -> Optional[dict]:
+        """
+        Looks up a single tracked patient by their ID and returns their full enriched dictionary, or None if not found.
+
+        Parameters:
+            patient_id: The unique string ID of the patient to find (e.g., "EXEC-1001").
+            now: The current simulation time in minutes, used to compute dynamic fields like current wait time and risk score.
+
+        Returns:
+            A patient dictionary (via _patient_dict) with all fields including specialist assignment and recommendation, or None if the ID does not match any tracked patient.
+
+        Called from:
+            The care coordination API route when fetching details for one specific patient.
+        """
         for tp in self.tracked:
             if tp.patient_id == patient_id:
                 return self._patient_dict(tp, now)
         return None
 
     def get_state(self, now: float) -> dict:
+        """
+        Returns a complete snapshot of the care coordination layer — all specialists, active bottlenecks, and tracked patients — with all time-dependent fields computed for the current moment.
+
+        Parameters:
+            now: The current simulation time in minutes, passed through to all child serialization methods that need to compute availability, wait times, and risk scores.
+
+        Returns:
+            A dictionary with three keys: "specialists" (list of specialist dicts), "bottlenecks" (list of bottleneck dicts), and "tracked_patients" (list of patient dicts). Seeds demo data on first call.
+
+        Called from:
+            The care coordination API route when the frontend loads the Care Coordination page or polls for updates.
+        """
         self._ensure_seeded(now)
         return {
             "specialists": [self._specialist_dict(sp, now) for sp in self.specialists],
@@ -880,6 +1460,18 @@ class CareCoordinator:
         }
 
     def get_recommendations(self, now: float) -> List[dict]:
+        """
+        Builds a priority-sorted list of care recommendations, one per tracked patient, combining each patient's current risk and wait data with the recommendation produced by _build_recommendation.
+
+        Parameters:
+            now: The current simulation time in minutes, used to compute up-to-date wait times and risk scores for each patient.
+
+        Returns:
+            A list of recommendation dicts sorted by patient priority (critical first), each containing patient identity fields, risk percentage, wait time, and the full recommendation dict.
+
+        Called from:
+            The care coordination API route when the frontend requests the recommendations panel.
+        """
         order = {"critical":0,"high":1,"moderate":2,"low":3}
         recs = []
         for tp in self.tracked:
@@ -892,6 +1484,20 @@ class CareCoordinator:
         return recs
 
     def _find_specialist(self, specialty: str, preferred_role: str, now: float) -> Optional[Specialist]:
+        """
+        Finds the best available specialist for a given specialty, preferring the exact role requested and then sorting by soonest available.
+
+        Parameters:
+            specialty: The medical specialty to match (e.g., "Neurology", "Cardiology").
+            preferred_role: The ideal role within that specialty (e.g., "Stroke Specialist").
+            now: The current simulation time in minutes, used to evaluate how soon each candidate becomes available.
+
+        Returns:
+            The Specialist object that is expected to be available soonest, preferring the exact role if any match. Returns None if no specialist with the given specialty is on the roster.
+
+        Called from:
+            _patient_dict, which needs the best specialist match to generate the patient's recommendation.
+        """
         pool = [sp for sp in self.specialists if sp.specialty == specialty]
         if not pool:
             return None
@@ -904,6 +1510,19 @@ class CareCoordinator:
         return pool[0]
 
     def _matching_bottleneck(self, name: str, now: float) -> Optional[FixedBottleneck]:
+        """
+        Checks the active bottleneck list for any specialist or doctor constraint whose resource name partially matches the given name string.
+
+        Parameters:
+            name: The full or partial name of the person or resource to check (e.g., "Dr. Sarah Chen").
+            now: The current simulation time in minutes, used to determine whether each bottleneck is still active.
+
+        Returns:
+            The first active FixedBottleneck whose resource name contains or is contained by the given name (case-insensitive), or None if no match is found.
+
+        Called from:
+            _specialist_dict (to overlay bottleneck status on a specialist) and _blocking_bottleneck (to check a specific specialist).
+        """
         low = name.lower()
         for bn in self.bottlenecks.values():
             if bn.resource_type not in ("Specialist","Doctor","Nurse"):
@@ -916,9 +1535,35 @@ class CareCoordinator:
         return None
 
     def _blocking_bottleneck(self, specialist: Optional[Specialist], now: float) -> Optional[FixedBottleneck]:
+        """
+        Returns the active bottleneck that is blocking the given specialist, or None if the specialist is unblocked or not provided.
+
+        Parameters:
+            specialist: The Specialist to check, or None. If None, this method always returns None.
+            now: The current simulation time in minutes, forwarded to _matching_bottleneck for active-status filtering.
+
+        Returns:
+            A FixedBottleneck if one is actively blocking this specialist's availability, otherwise None.
+
+        Called from:
+            _patient_dict, which needs to know whether the assigned specialist is constrained before building the recommendation.
+        """
         return self._matching_bottleneck(specialist.name, now) if specialist else None
 
     def _specialist_dict(self, sp: Specialist, now: float) -> dict:
+        """
+        Produces the serialized dictionary for a specialist, overlaying any active bottleneck constraint on top of the specialist's own availability fields.
+
+        Parameters:
+            sp: The Specialist dataclass instance to serialize.
+            now: The current simulation time in minutes, passed to both Specialist.to_dict and the bottleneck lookup.
+
+        Returns:
+            A dictionary based on Specialist.to_dict but with "available_in_min", "status", and "current_assignment" overwritten when an active bottleneck is constraining this specialist. Also adds a "constrained" boolean key.
+
+        Called from:
+            get_state (for the specialists list) and _patient_dict (for the "specialist" field on each patient).
+        """
         d  = sp.to_dict(now)
         bn = self._matching_bottleneck(sp.name, now)
         if bn:
@@ -932,6 +1577,19 @@ class CareCoordinator:
         return d
 
     def _patient_dict(self, tp: TrackedPatient, now: float) -> dict:
+        """
+        Builds the full enriched dictionary for a tracked patient, computing current wait time, risk score, specialist assignment, and a care recommendation in one pass.
+
+        Parameters:
+            tp: The TrackedPatient dataclass instance to serialize.
+            now: The current simulation time in minutes, used for all dynamic calculations (wait, risk, specialist availability).
+
+        Returns:
+            A dictionary with all patient identity fields, computed "ed_wait_min", "total_wait_time", "risk_score", "risk_pct", an "over_target" flag, the assigned "specialist" dict (or None), and a "recommendation" dict from _build_recommendation.
+
+        Called from:
+            get_state, get_patient, and get_recommendations.
+        """
         wait  = tp.wait_min(now)
         risk  = tp.risk(now)
         sp    = self._find_specialist(tp.awaiting_specialty, tp.preferred_role, now)
@@ -952,6 +1610,23 @@ class CareCoordinator:
         }
 
     def _build_recommendation(self, tp, sp, blocker, wait, risk, now) -> dict:
+        """
+        Constructs the care recommendation dict for one tracked patient, explaining whether they are on time or overdue, who their assigned specialist is, whether that specialist is blocked, and what the alternative or direct action should be.
+
+        Parameters:
+            tp: The TrackedPatient dataclass being evaluated.
+            sp: The best-matched Specialist for this patient, or None if no match exists on the roster.
+            blocker: The FixedBottleneck currently constraining sp, or None if sp is unblocked.
+            wait: The patient's current wait time in minutes (already computed by wait_min).
+            risk: The patient's current risk score between 0.0 and 0.99 (already computed by risk).
+            now: The current simulation time in minutes, used for specialist ETA and alternative specialist lookups.
+
+        Returns:
+            A dictionary with keys: "title" (action heading), "reasons" (list of plain-English sentences), "deterioration_reduction" (int percentage), "throughput_improvement" (int percentage), "blocked" (bool), "alternative" (alternative specialist name or None), and "urgency" (the patient's priority string).
+
+        Called from:
+            _patient_dict, which embeds this dict as the "recommendation" field.
+        """
         reasons: List[str] = []
         if wait > tp.target_window_min:
             reasons.append(f"{tp.condition} exceeds {tp.target_window_min}-min target (waited {round(wait)}m)")
@@ -984,6 +1659,20 @@ class CareCoordinator:
                 "blocked": blocker is not None, "alternative": alternative, "urgency": tp.priority}
 
     def _find_alternative(self, tp, blocked_sp, now) -> Optional[Specialist]:
+        """
+        Finds the next best specialist of the same specialty as the patient's preferred one, excluding the currently blocked specialist and any other specialist who is also constrained by a bottleneck.
+
+        Parameters:
+            tp: The TrackedPatient whose specialty and preference should be used to filter candidates.
+            blocked_sp: The Specialist who is already determined to be unavailable (excluded from results).
+            now: The current simulation time in minutes, used to evaluate bottleneck status and sort by availability.
+
+        Returns:
+            The unblocked specialist of the same specialty who can become available soonest, or None if no suitable alternative exists.
+
+        Called from:
+            _build_recommendation, when the primary specialist is blocked and an alternative needs to be suggested.
+        """
         pool = [sp for sp in self.specialists
                 if sp.specialty == tp.awaiting_specialty
                 and sp.specialist_id != blocked_sp.specialist_id

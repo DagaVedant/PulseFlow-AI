@@ -55,6 +55,17 @@ class DepartmentState:
     nurses_available: int = 0
 
     def compute_status(self):
+        """
+        Set the status field of this department to 'critical', 'warning', or 'healthy'
+        based on how full it is and how long the waiting queue is.
+
+        Parameters: None (reads self.occupancy and self.queue_length).
+
+        Returns: Nothing — updates self.status in place.
+
+        Called from: Any code that needs a human-readable status label for a department
+        before sending state to the frontend.
+        """
         if self.occupancy >= 0.90 or self.queue_length >= 10:
             self.status = "critical"
         elif self.occupancy >= 0.70 or self.queue_length >= 5:
@@ -127,6 +138,19 @@ class HospitalSimulation:
     """
 
     def __init__(self, config: SimulationConfig = None):
+        """
+        Create a new hospital simulation, set up all SimPy resources, and pre-populate
+        it with a small number of patients so the dashboard looks active immediately.
+
+        Parameters:
+            config: A SimulationConfig object holding all tunable parameters such as
+                    bed counts, staff numbers, arrival rate, and event flags. If not
+                    provided, sensible defaults are used.
+
+        Returns: Nothing — initialises all instance attributes.
+
+        Called from: Application startup (e.g. services layer or FastAPI lifespan hook).
+        """
         self.config = config or SimulationConfig()
         self.env = simpy.Environment()
 
@@ -159,7 +183,17 @@ class HospitalSimulation:
         self._warm_start()
 
     def _setup_resources(self):
-        """Initialize all SimPy resources for hospital departments."""
+        """
+        Create every SimPy PriorityResource (beds, doctors, nurses, equipment) for all
+        hospital departments using the values stored in self.config.
+
+        Parameters: None (reads from self.config).
+
+        Returns: Nothing — stores resource objects as instance attributes and
+                 builds the self._dept_capacity lookup dictionary.
+
+        Called from: __init__ during object construction.
+        """
         cfg = self.config
 
         self.er_beds = simpy.PriorityResource(self.env, capacity=cfg.er_beds)
@@ -199,7 +233,17 @@ class HospitalSimulation:
         }
 
     def _warm_start(self):
-        """Pre-populate the simulation with a modest number of existing patients."""
+        """
+        Pre-populate the simulation with a small set of patients already distributed
+        across departments so the dashboard is not empty when the app first loads.
+
+        Parameters: None.
+
+        Returns: Nothing — adds Patient objects directly to self.active_patients and
+                 increments self.total_admitted.
+
+        Called from: __init__ after _setup_resources().
+        """
         warm_count = 18
         departments = [
             Department.ER, Department.LABS, Department.IMAGING,
@@ -233,7 +277,22 @@ class HospitalSimulation:
             self.total_admitted += 1
 
     def _patient_journey(self, patient: Patient):
-        """SimPy process representing a single patient's journey through the hospital."""
+        """
+        Drive a single patient through every stage of their hospital stay as a SimPy
+        generator process — triage, ER treatment, optional labs, optional imaging,
+        optional ICU, optional general ward, and finally discharge.
+
+        Parameters:
+            patient: The Patient object whose pathway flags (needs_labs, needs_imaging,
+                     needs_icu, needs_ward) determine which departments they visit.
+                     Timestamps and state fields on the object are updated in-place.
+
+        Returns: Nothing — this is a SimPy generator; it yields timeouts and resource
+                 requests.  When the generator finishes the patient has been moved from
+                 self.active_patients to self.discharged_patients.
+
+        Called from: _patient_arrivals() and trigger_event() via self.env.process().
+        """
         cfg = self.config
         env = self.env
         p = patient
@@ -363,7 +422,25 @@ class HospitalSimulation:
     def _sample_time(
         self, low: float, high: float, severity: Severity, scale: float = 1.0
     ) -> float:
-        """Sample service time using log-normal distribution."""
+        """
+        Draw a realistic service-time duration in simulated minutes using a log-normal
+        distribution, scaled by the patient's severity so sicker patients take longer.
+
+        Parameters:
+            low:      Lower bound of the expected service-time range (in minutes).
+            high:     Upper bound of the expected service-time range (in minutes).
+            severity: The patient's Severity enum value (LOW / MEDIUM / HIGH / CRITICAL)
+                      which multiplies the mean — critical patients take roughly 2.4x
+                      longer than low-severity ones.
+            scale:    An additional multiplier that lets each department stretch or
+                      compress times (e.g. ICU uses scale=2.0).
+
+        Returns:
+            A positive float representing the sampled service time in simulated minutes.
+            The minimum returned value is 1.0 to avoid zero-length timeouts.
+
+        Called from: _patient_journey() at each department step.
+        """
         severity_multiplier = {
             Severity.LOW: 0.75,
             Severity.MEDIUM: 1.0,
@@ -376,7 +453,19 @@ class HospitalSimulation:
         return max(1.0, random.lognormvariate(mu, sigma))
 
     def _patient_arrivals(self):
-        """SimPy process: Poisson patient arrival generator."""
+        """
+        Continuously generate new patients arriving at the hospital using a Poisson
+        process — waiting an exponentially-distributed inter-arrival time, then
+        spawning a new _patient_journey process for each arrival.
+
+        Parameters: None (reads arrival rate and event flags from self.config at each
+                    iteration so that rate changes take effect immediately).
+
+        Returns: Nothing — this is an infinite SimPy generator process that runs for
+                 the lifetime of the simulation.
+
+        Called from: start() via self.env.process().
+        """
         while True:
             cfg = self.config
             rate = cfg.arrival_rate
@@ -407,7 +496,19 @@ class HospitalSimulation:
             self.env.process(self._patient_journey(patient))
 
     def _metrics_collector(self):
-        """SimPy process: collects metrics every simulated minute."""
+        """
+        Periodically snapshot key performance metrics every simulated minute and
+        append them to the rolling history deques used by the forecasting engine
+        and the frontend charts.
+
+        Parameters: None.
+
+        Returns: Nothing — this is an infinite SimPy generator process; it appends
+                 dicts to self.metrics_history, self.wait_time_history,
+                 self.throughput_history, and self._util_history.
+
+        Called from: start() via self.env.process().
+        """
         while True:
             yield self.env.timeout(1.0)
             metrics = self._extract_metrics()
@@ -425,7 +526,18 @@ class HospitalSimulation:
                     self.ward_doctors.count / max(1, self.ward_doctors.capacity))
 
     def _alert_monitor(self):
-        """SimPy process: monitors for system-wide alert conditions."""
+        """
+        Run _check_alerts() every five simulated minutes to detect capacity breaches,
+        long wait times, patient deterioration, sepsis risk, and SLA violations, then
+        post new HospitalAlert objects when thresholds are crossed.
+
+        Parameters: None.
+
+        Returns: Nothing — this is an infinite SimPy generator process that delegates
+                 all alert logic to _check_alerts().
+
+        Called from: start() via self.env.process().
+        """
         while True:
             yield self.env.timeout(5.0)
             self._check_alerts()
@@ -441,6 +553,21 @@ class HospitalSimulation:
     _SLA_THRESH = {"critical": 10, "high": 30, "medium": 60, "low": 120}
 
     def _check_alerts(self):
+        """
+        Inspect the current hospital state and every active patient to decide whether
+        any alert conditions have been triggered — including department overcrowding,
+        hospital-wide excessive wait times, individual patient deterioration due to
+        prolonged waiting, sepsis risk from high-risk chief complaints, patient
+        boarding after ER discharge, and SLA breaches.
+
+        Parameters: None (reads state from self and self.active_patients).
+
+        Returns: Nothing — calls _create_alert() to post new alerts and mutates
+                 patient flags such as deterioration_notified, sepsis_risk, and
+                 sla_breached directly on Patient objects.
+
+        Called from: _alert_monitor() every five simulated minutes.
+        """
         state = self.get_hospital_state()
         if not state:
             return
@@ -508,6 +635,23 @@ class HospitalSimulation:
                         p.sla_breached = True
 
     def _create_alert(self, severity: str, department: str, message: str):
+        """
+        Append a new HospitalAlert to self.active_alerts, de-duplicating against the
+        five most recent alerts so the same message is not repeated back-to-back, and
+        trimming the list to the 30 most recent entries if it grows beyond 50.
+
+        Parameters:
+            severity:   String label for how urgent the alert is, e.g. 'critical' or
+                        'warning'.
+            department: Short identifier of the affected area, e.g. 'er', 'icu',
+                        'hospital'.
+            message:    Human-readable description of the alert condition.
+
+        Returns: Nothing — mutates self.active_alerts in place.
+
+        Called from: _check_alerts(), _patient_journey(), and trigger_event() whenever
+                     an alert condition is detected.
+        """
         with self._lock:
             for alert in self.active_alerts[-5:]:
                 if alert.department == department and alert.message == message:
@@ -525,6 +669,25 @@ class HospitalSimulation:
                 self.active_alerts = self.active_alerts[-30:]
 
     def _extract_metrics(self) -> dict:
+        """
+        Compute a flat dictionary of key performance indicators from the current
+        live state of all SimPy resources and active patients — covering wait times,
+        utilisation rates, patient counts, severity breakdown, staff utilisation,
+        and mortality risk.
+
+        Parameters: None (reads self.active_patients, self.discharged_patients, and
+                    all SimPy resource objects).
+
+        Returns:
+            A dict with keys such as 'avg_wait_time', 'bed_utilization',
+            'icu_utilization', 'er_utilization', 'staff_utilization',
+            'active_patients', 'critical_patients', 'mortality_risk_index', etc.
+            Returns a safe all-zeros dict if an exception occurs so the caller never
+            receives None.
+
+        Called from: _metrics_collector() every simulated minute, and
+                     get_hospital_state() on each WebSocket broadcast.
+        """
         try:
             with self._lock:
                 patients = list(self.active_patients.values())
@@ -619,7 +782,23 @@ class HospitalSimulation:
             }
 
     def get_hospital_state(self) -> dict:
-        """Extract complete hospital state snapshot."""
+        """
+        Build and return a complete snapshot of the entire hospital at the current
+        simulation time — including per-department occupancy and queues, a sorted
+        patient list, aggregated metrics, active alerts, patient flow rates between
+        departments, a 24-hour arrival forecast, and the active configuration flags.
+
+        Parameters: None (reads all live simulation state under self._lock).
+
+        Returns:
+            A dict with top-level keys: 'sim_time', 'real_timestamp', 'departments',
+            'patients', 'metrics', 'alerts', 'flow', 'forecast_24h', and 'config'.
+            This dict is serialised directly to JSON and sent over the WebSocket to
+            the frontend every 0.8 real seconds.
+
+        Called from: The WebSocket broadcast loop in main.py, and internally by
+                     _check_alerts() to inspect current occupancy.
+        """
         with self._lock:
             env = self.env
             patients = list(self.active_patients.values())
@@ -630,6 +809,31 @@ class HospitalSimulation:
                 capacity: int,
                 dept_enum: Department,
             ) -> dict:
+                """
+                Compute a status dictionary for a single department by inspecting which
+                patients are currently receiving care there versus waiting in the queue,
+                and reading the associated SimPy resource to get available-bed counts.
+
+                Parameters:
+                    dept_id:   Short string key used to identify the department in the
+                               returned dict (e.g. 'er', 'icu').
+                    display:   Human-readable department name shown in the UI
+                               (e.g. 'Emergency Dept').
+                    bed_res:   The primary SimPy PriorityResource for this department
+                               (beds or analyzers).  Used to compute beds_available.
+                               May be None for departments without a direct bed resource.
+                    capacity:  Total number of slots (beds / machines) configured for
+                               this department.
+                    dept_enum: The Department enum value used to filter patients that
+                               belong to this department.
+
+                Returns:
+                    A dict with keys including 'occupancy', 'queue_length',
+                    'avg_wait_time', 'current_patients', 'beds_available', 'status',
+                    'patients_in', 'patients_queued', and 'resource_utilization'.
+
+                Called from: get_hospital_state() once for each of the six departments.
+                """
                 dept_patients = [p for p in patients if p.current_department == dept_enum]
                 in_service = [p for p in dept_patients if "waiting" not in p.state.value]
                 queued = [
@@ -766,7 +970,22 @@ class HospitalSimulation:
             }
 
     def _compute_flow(self, patients: List[Patient]) -> dict:
-        """Compute patient flow rates between departments."""
+        """
+        Count how many patients are currently in transit (in a waiting state) between
+        each pair of departments, producing a map of flow counts that the Digital Twin
+        graph uses to draw weighted edges.
+
+        Parameters:
+            patients: The list of all currently active Patient objects whose
+                      current_department and state attributes are inspected to
+                      determine which inter-department link they are waiting on.
+
+        Returns:
+            A dict whose keys are strings like 'er_to_labs' or 'ward_to_discharge'
+            and whose values are integer patient counts currently on each link.
+
+        Called from: get_hospital_state() on every WebSocket broadcast.
+        """
         flow = {
             "registration_to_er": 0,
             "er_to_labs": 0,
@@ -811,7 +1030,24 @@ class HospitalSimulation:
         return flow
 
     def get_forecast(self, horizon_minutes: int = 60) -> dict:
-        """Generate forecasts for key metrics over the given horizon."""
+        """
+        Generate short-term forecasts for wait times, bed utilisation, ICU utilisation,
+        and patient throughput using a simple exponential smoothing model, and identify
+        the department most likely to become a bottleneck next.
+
+        Parameters:
+            horizon_minutes: How many simulated minutes into the future to forecast.
+                             Defaults to 60 (one simulated hour).
+
+        Returns:
+            A dict with keys 'horizon_minutes', 'wait_time_forecast',
+            'icu_utilization_forecast', 'bed_utilization_forecast',
+            'throughput_forecast' (each a list of floats with length horizon_minutes),
+            and 'predicted_bottleneck' (a dict or None).
+            Returns an empty dict if fewer than 10 history points are available.
+
+        Called from: The /api/v1/copilot/forecast REST endpoint.
+        """
         with self._lock:
             history = list(self.metrics_history)
 
@@ -819,6 +1055,23 @@ class HospitalSimulation:
             return {}
 
         def ets_forecast(values: list, steps: int, alpha: float = 0.3) -> list:
+            """
+            Apply a single exponential smoothing model to a list of historical values
+            and project that smoothed level forward by the requested number of steps,
+            adding a small linear trend estimated from the full history.
+
+            Parameters:
+                values: List of historical metric observations, oldest first.
+                steps:  Number of future time steps to generate.
+                alpha:  Smoothing factor between 0 and 1; higher values weight recent
+                        observations more heavily.  Defaults to 0.3.
+
+            Returns:
+                A list of floats of length 'steps' representing the forecast. Values
+                are clipped to a minimum of 0.  Returns an empty list if values is empty.
+
+            Called from: get_forecast() once per metric being forecasted.
+            """
             if not values:
                 return []
             s = values[0]
@@ -846,7 +1099,26 @@ class HospitalSimulation:
     def _predict_bottleneck(
         self, icu_utils: list, bed_utils: list, wait_times: list
     ) -> Optional[dict]:
-        """Predict the next bottleneck to form."""
+        """
+        Examine the recent trend of ICU utilisation, overall bed utilisation, and
+        average wait time to predict which department is most likely to hit a critical
+        threshold next and how many simulated minutes away that event is.
+
+        Parameters:
+            icu_utils:  List of ICU utilisation fractions (0.0–1.0) in chronological
+                        order, one entry per simulated minute of history.
+            bed_utils:  List of overall bed utilisation fractions in the same format.
+            wait_times: List of average wait-time values (in minutes) in the same
+                        format.
+
+        Returns:
+            A dict describing the highest-priority predicted bottleneck, containing
+            keys 'department', 'metric', 'current_value', 'predicted_value',
+            'eta_minutes', 'confidence', and 'severity'; or None if no bottleneck
+            is predicted.
+
+        Called from: get_forecast() to populate the 'predicted_bottleneck' field.
+        """
         if not icu_utils:
             return None
 
@@ -896,6 +1168,26 @@ class HospitalSimulation:
         return candidates[0] if candidates else None
 
     def _compute_advanced_metrics(self, patients: list, departments: dict) -> dict:
+        """
+        Calculate a set of higher-level operational metrics that go beyond simple
+        utilisation numbers — including boarding counts, deteriorating and sepsis
+        patient counts, SLA compliance rate, ambulance diversion risk score, estimated
+        minutes to diversion, financial delay cost, and per-department staff burnout
+        risk based on sustained high utilisation.
+
+        Parameters:
+            patients:    List of all currently active Patient objects.
+            departments: Dict of per-department state dicts as produced by
+                         get_dept_state() inside get_hospital_state().
+
+        Returns:
+            A dict with keys 'boarding_count', 'deteriorating_count', 'sepsis_count',
+            'sla_compliance', 'diversion_risk', 'minutes_to_diversion',
+            'delay_cost_per_hour', and 'burnout_risk'.
+
+        Called from: get_hospital_state() to enrich the metrics payload before it is
+                     sent to the frontend.
+        """
         now = self.env.now
         er = departments.get("er", {})
         icu = departments.get("icu", {})
@@ -952,6 +1244,21 @@ class HospitalSimulation:
         }
 
     def _generate_24h_forecast(self) -> list:
+        """
+        Produce a 25-entry hour-by-hour arrival forecast for the next 24 hours by
+        combining the base arrival rate, an active crisis multiplier (flu/covid/heatwave),
+        and a time-of-day sinusoidal factor that peaks in the early afternoon.
+
+        Parameters: None (reads self.config and self.env.now).
+
+        Returns:
+            A list of 25 dicts (hours 0 through 24), each containing
+            'hour_offset', 'hour_of_day', 'predicted_arrivals', and
+            'staffing_capacity'.
+
+        Called from: get_hospital_state() to populate the 'forecast_24h' key sent
+                     to the frontend Command Center page.
+        """
         now_hour = (self.env.now / 60) % 24
         base = self.config.arrival_rate
         crisis_mult = (
@@ -976,6 +1283,21 @@ class HospitalSimulation:
         return forecast
 
     def _crisis_active(self) -> bool:
+        """
+        Return True if any emergency event flag is currently active in the simulation
+        configuration, which is used to decide whether to cap displayed wait times at
+        a realistic ceiling or let them grow unbounded.
+
+        Parameters: None (reads self.config).
+
+        Returns:
+            True if at least one of flu_outbreak, covid_surge, heatwave,
+            mass_casualty, ct_failure, mri_failure, or lab_slowdown is enabled;
+            False otherwise.
+
+        Called from: _extract_metrics() and get_dept_state() inside
+                     get_hospital_state() to conditionally suppress the wait-time cap.
+        """
         cfg = self.config
         return any([
             cfg.flu_outbreak, cfg.covid_surge, cfg.heatwave,
@@ -989,12 +1311,37 @@ class HospitalSimulation:
         reference to the old object — those processes would wait forever because
         the old resource never gets new capacity.  Instead we mutate _capacity
         directly (a plain integer attribute).
+
+        Parameters:
+            resource: The SimPy PriorityResource whose capacity should be changed
+                      (e.g. self.er_beds, self.icu_nurses).
+            new_cap:  The desired new capacity.  Enforced to be at least 1 so no
+                      resource is ever set to zero, which would deadlock patients.
+
+        Returns: Nothing — mutates resource._capacity in place.
+
+        Called from: update_config() when a live configuration hot-reload is applied.
         """
         new_cap = max(1, int(new_cap))
         resource._capacity = new_cap
 
     def update_config(self, new_config: SimulationConfig) -> None:
-        """Hot-reload simulation configuration — resizes live resources in-place."""
+        """
+        Apply a new SimulationConfig to the running simulation without stopping it —
+        replacing self.config and resizing every SimPy resource in-place so that
+        in-flight patient processes automatically see the updated capacities.
+
+        Parameters:
+            new_config: A SimulationConfig object with the desired new values for bed
+                        counts, staff numbers, arrival rate, and event flags.
+
+        Returns: Nothing — mutates self.config and all SimPy resource capacities
+                 in place; also adjusts queue timestamps via _adjust_queue_timestamps()
+                 so displayed wait times reflect the new configuration immediately.
+
+        Called from: The /api/v1/simulation/config REST endpoint and the WebSocket
+                     'update_config' message handler in main.py.
+        """
         with self._lock:
             old = self.config
             self.config = new_config
@@ -1019,9 +1366,43 @@ class HospitalSimulation:
         logger.info("Simulation config hot-reloaded (resources resized in-place)")
 
     def _adjust_queue_timestamps(self, old: SimulationConfig, new: SimulationConfig) -> None:
+        """
+        Retroactively rewrite the queue-entry timestamps for every currently waiting
+        patient so that the displayed wait time jumps immediately to reflect the new
+        staffing levels rather than carrying over arbitrarily long times from before
+        the configuration change.
+
+        Parameters:
+            old: The previous SimulationConfig (not currently used, retained for
+                 potential future comparison logic).
+            new: The newly applied SimulationConfig whose staff and arrival-rate values
+                 are used to compute a target wait time for each queue state.
+
+        Returns: Nothing — mutates the queue-entry timestamp attributes
+                 (er_queue_enter, icu_queue_enter, etc.) directly on Patient objects
+                 in self.active_patients.
+
+        Called from: update_config() immediately after resizing all resources.
+        """
         crisis = self._crisis_active()
         cap = 9999.0 if crisis else 240.0
         def target_wait(staff: float, arrival: float) -> float:
+            """
+            Estimate a sensible target wait time (in minutes) for a queue given the
+            current staffing level and arrival rate, capped at the crisis ceiling.
+
+            Parameters:
+                staff:   Total number of staff (doctors + nurses) available in the
+                         relevant department.
+                arrival: The effective arrival rate of patients destined for this
+                         queue, expressed as patients per hour.
+
+            Returns:
+                A float representing the target wait time in simulated minutes,
+                clamped between 3.0 and cap (240 minutes normally, 9999 in a crisis).
+
+            Called from: _adjust_queue_timestamps() once per queue state type.
+            """
             return min(cap, max(3.0, (arrival / max(1.0, staff)) * 30.0))
 
         now = self.env.now
@@ -1051,7 +1432,27 @@ class HospitalSimulation:
             setattr(p, attr, now - t)
 
     def trigger_event(self, event_type: str, params: dict = None):
-        """Trigger an emergency or operational event."""
+        """
+        Activate a named emergency or operational event in the simulation — adjusting
+        arrival rates, disabling equipment, injecting mass-casualty patients, or
+        clearing all active events — and post a corresponding alert to the dashboard.
+
+        Parameters:
+            event_type: A string identifying the event to trigger.  Supported values
+                        are 'flu_outbreak', 'ct_failure', 'mri_failure', 'lab_slowdown',
+                        'mass_casualty', 'heatwave', 'covid_surge', 'staff_shortage',
+                        and 'clear_event'.
+            params:     Optional dict of event-specific settings.  For 'flu_outbreak'
+                        this can include 'multiplier' (float); for 'mass_casualty' it
+                        can include 'count' (int); for 'staff_shortage' it must include
+                        'department' (str).
+
+        Returns: Nothing — mutates self.config flags and calls _create_alert() or
+                 spawns new patient processes via self.env.process().
+
+        Called from: The WebSocket 'trigger_event' message handler and the
+                     /api/v1/simulation/event REST endpoint in main.py.
+        """
         params = params or {}
         cfg = self.config
 
@@ -1114,7 +1515,19 @@ class HospitalSimulation:
             logger.info("All events cleared")
 
     def start(self):
-        """Start the simulation in a background thread."""
+        """
+        Register the three permanent SimPy processes (patient arrivals, metrics
+        collection, and alert monitoring) and spin up the background thread that
+        advances the SimPy clock at the configured simulation speed.
+
+        Parameters: None.
+
+        Returns: Nothing.  Does nothing if the simulation is already running
+                 (guarded by self._running).
+
+        Called from: Application startup — typically the FastAPI lifespan hook or
+                     the services orchestration layer.
+        """
         if self._running:
             return
         self._running = True
@@ -1126,12 +1539,33 @@ class HospitalSimulation:
         logger.info("Hospital simulation started")
 
     def stop(self):
-        """Stop the simulation."""
+        """
+        Signal the background simulation thread to stop by setting self._running to
+        False; the thread will exit at the end of its current iteration.
+
+        Parameters: None.
+
+        Returns: Nothing.
+
+        Called from: Application shutdown — typically the FastAPI lifespan teardown
+                     or a test fixture teardown.
+        """
         self._running = False
         logger.info("Hospital simulation stopped")
 
     def _run_loop(self):
-        """Run the SimPy simulation at configured speed."""
+        """
+        Advance the SimPy environment one simulated minute per iteration, then sleep
+        for the real-world delay determined by self.config.simulation_speed, so that
+        the simulation runs at the configured speed ratio (e.g. 60 means 1 real second
+        equals 1 simulated minute).
+
+        Parameters: None.
+
+        Returns: Nothing — runs until self._running is set to False by stop().
+
+        Called from: start() as the target of the background daemon thread.
+        """
         target_step = 1.0
         real_delay = 1.0 / self.config.simulation_speed
 
@@ -1145,9 +1579,37 @@ class HospitalSimulation:
 
     @property
     def sim_time(self) -> float:
+        """
+        Return the current simulated time as a float number of simulated minutes since
+        the simulation started (or since the SimPy environment was created).
+
+        Parameters: None.
+
+        Returns:
+            A float representing the current SimPy clock value in simulated minutes.
+
+        Called from: Any external code that needs to know the current simulation time
+                     without building a full hospital state snapshot.
+        """
         return self.env.now
 
     def get_metrics_history(self, minutes: int = 60) -> List[dict]:
+        """
+        Return the most recent metric snapshots from the rolling history buffer as a
+        list, limited to the requested number of simulated-minute entries.
+
+        Parameters:
+            minutes: How many of the most recent metric snapshots to return.
+                     Defaults to 60 (the last simulated hour).  The history buffer
+                     holds up to 720 entries so values up to 720 are valid.
+
+        Returns:
+            A list of metric dicts (each in the format returned by _extract_metrics()),
+            oldest entry first, containing at most 'minutes' entries.
+
+        Called from: The /api/v1/simulation/metrics REST endpoint and the AI copilot
+                     when it needs historical context for analysis.
+        """
         with self._lock:
             history = list(self.metrics_history)
         return history[-minutes:]

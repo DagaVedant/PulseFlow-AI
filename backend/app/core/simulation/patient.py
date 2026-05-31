@@ -103,6 +103,20 @@ class Patient:
 
     @classmethod
     def generate(cls, arrival_time: float) -> "Patient":
+        """
+        Creates a brand-new Patient with randomly chosen attributes that
+        reflect realistic hospital arrival patterns.
+
+        Parameters:
+            arrival_time: The simulated time (in minutes) when this patient
+                          arrives at the hospital.
+
+        Returns a fully populated Patient instance with a random severity
+        level, name, age, chief complaint, care pathway, and risk score.
+
+        Called by the simulation engine each time a new patient arrival
+        event fires in the SimPy event loop.
+        """
         severity = random.choices(
             list(SEVERITY_WEIGHTS.keys()),
             weights=list(SEVERITY_WEIGHTS.values()),
@@ -126,6 +140,19 @@ class Patient:
 
     @staticmethod
     def _generate_pathway(severity: Severity) -> PatientPathway:
+        """
+        Decides which hospital departments a patient must visit based on how
+        sick they are, using random probabilities that mirror real triage data.
+
+        Parameters:
+            severity: A Severity enum value (LOW, MEDIUM, HIGH, or CRITICAL)
+                      describing how ill the patient is.
+
+        Returns a PatientPathway dataclass with boolean flags for labs,
+        imaging, ICU, and ward, plus the imaging modality type (xray/ct/mri).
+
+        Called by the generate() class method when building a new Patient.
+        """
         if severity == Severity.LOW:
             return PatientPathway(
                 needs_labs=random.random() < 0.2,
@@ -163,6 +190,16 @@ class Patient:
 
     @staticmethod
     def _random_name() -> str:
+        """
+        Picks a random first name and last name from built-in lists and
+        joins them into a single full-name string.
+
+        No input parameters.
+
+        Returns a string like "James Garcia" for display in the patient list.
+
+        Called by generate() when creating a new Patient.
+        """
         first = random.choice([
             "James", "Mary", "Robert", "Patricia", "John", "Jennifer",
             "Michael", "Linda", "William", "Barbara", "David", "Susan",
@@ -180,6 +217,20 @@ class Patient:
 
     @staticmethod
     def _random_complaint(severity: Severity) -> str:
+        """
+        Selects a realistic chief complaint string that matches the patient's
+        severity level (e.g., critical patients get "Cardiac arrest", not
+        "Sore throat").
+
+        Parameters:
+            severity: A Severity enum value that determines which pool of
+                      complaint strings to draw from.
+
+        Returns a single complaint string such as "Chest pain (atypical)"
+        or "Multi-system trauma".
+
+        Called by generate() when building a new Patient.
+        """
         complaints = {
             Severity.LOW: [
                 "Minor laceration", "Mild headache", "Sore throat",
@@ -205,6 +256,23 @@ class Patient:
 
     @staticmethod
     def _calculate_risk(severity: Severity, age: int) -> float:
+        """
+        Computes a numeric risk score between 0.0 and 1.0 for a patient
+        using their severity level as the base and adding extra risk for
+        older patients (above 60) plus a small random noise value.
+
+        Parameters:
+            severity: A Severity enum value — higher severity means higher
+                      base risk (LOW=0.05, MEDIUM=0.25, HIGH=0.65,
+                      CRITICAL=0.90).
+            age:      The patient's age in years; patients over 60 receive
+                      an additional 0.01 per year above 60, capped at +0.30.
+
+        Returns a float clamped to [0.0, 1.0] representing the patient's
+        clinical risk score used for prioritisation in the UI.
+
+        Called by generate() when building a new Patient.
+        """
         base_risk = {
             Severity.LOW: 0.05,
             Severity.MEDIUM: 0.25,
@@ -216,14 +284,48 @@ class Patient:
 
     @property
     def priority(self) -> int:
+        """
+        Returns an integer priority number for this patient where 1 is the
+        most urgent (CRITICAL) and 4 is the least urgent (LOW), following
+        standard triage numbering.
+
+        No input parameters — reads self.severity.
+
+        Used by the simulation engine to sort patients when multiple are
+        waiting for the same resource.
+        """
         return SEVERITY_PRIORITY[self.severity]
 
     @property
     def current_wait_time(self) -> float:
-        """Returns wait time accumulated so far (for in-queue patients)."""
+        """
+        Returns the total wait time in simulated minutes that this patient
+        has accumulated so far while sitting in queues.
+
+        No input parameters — reads self.total_wait_time.
+
+        Returns a float number of minutes; used by the frontend to display
+        per-patient wait times and by metrics aggregation.
+
+        This property is a read-only alias for total_wait_time and is
+        accessed wherever live queue durations are needed.
+        """
         return self.total_wait_time
 
     def to_dict(self) -> dict:
+        """
+        Converts this Patient object into a plain Python dictionary so it
+        can be serialised to JSON and sent over the WebSocket or REST API.
+
+        No input parameters — reads all fields from self.
+
+        Returns a dict containing patient ID, name, age, arrival time,
+        severity, state, department, complaint, risk score, wait time,
+        pathway flags, timing milestones, and alert flags.
+
+        Called by the simulation engine when building the hospital_state
+        payload that is broadcast to all connected frontend clients.
+        """
         return {
             "patient_id": self.patient_id,
             "name": self.name,

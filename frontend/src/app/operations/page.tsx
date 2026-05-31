@@ -19,6 +19,12 @@ const PRIORITY_COLOR: Record<string, string> = {
   critical: "#ff3b3b", high: "#ffaa00", medium: "#ffe600", low: "#22c55e",
 };
 
+/**
+ * Returns a color and label string for a specialist's current availability status.
+ * @param status - The specialist's status string: "available", "in_surgery", or anything else (treated as "busy").
+ * @returns An object with a hex color and a short uppercase label.
+ * Called from: OperationsPage when rendering each specialist card in the availability grid.
+ */
 function statusStyle(status: string) {
   if (status === "available") return { color: "#22c55e", label: "AVAILABLE" };
   if (status === "in_surgery") return { color: "#ff3b3b", label: "IN SURGERY" };
@@ -35,6 +41,14 @@ const DEMO_CONSTRAINT = {
   notes: "Open-heart — OR 2 unavailable",
 };
 
+/**
+ * The Operations Hub page with two panels side by side.
+ * The left panel shows a grouped specialist availability grid.
+ * The right panel has a form for adding fixed bottleneck constraints and a list of active constraints.
+ * Also responds to demo store actions for automatically adding or removing a demo constraint.
+ * @returns The full-page Operations Hub layout.
+ * Called from: Next.js router at the /operations route.
+ */
 export default function OperationsPage() {
   const { hospitalState } = useSimulationStore();
   const { addBottleneck, removeBottleneck } = useWebSocket();
@@ -76,6 +90,12 @@ export default function OperationsPage() {
     notes: "",
   });
 
+  /**
+   * Validates the bottleneck form and sends the new constraint to the backend via WebSocket.
+   * Resets the text fields after a successful submission, keeping type/priority/time values.
+   * @returns void — fires addBottleneck over WebSocket and resets the form in place.
+   * Called from: the "Add Constraint" button's onClick handler in OperationsPage.
+   */
   const submit = () => {
     if (!form.resource_name.trim()) return;
     addBottleneck({ ...form });
@@ -257,6 +277,16 @@ export default function OperationsPage() {
   );
 }
 
+/**
+ * Renders a single row in the active constraints list for one fixed bottleneck.
+ * Displays the resource name, type badge, priority badge, status, notes, and time-until-free.
+ * When isDemo is true, applies a highlighted glow effect to make it stand out.
+ * @param bn - The FixedBottleneck data object to display.
+ * @param onRemove - Callback function called when the user clicks the X button to remove this constraint.
+ * @param isDemo - Optional flag; when true the row is visually highlighted as a demo-added constraint.
+ * @returns An animated constraint row element.
+ * Called from: OperationsPage for each bottleneck in the active constraints list.
+ */
 function BottleneckRow({ bn, onRemove, isDemo }: { bn: FixedBottleneck; onRemove: () => void; isDemo?: boolean }) {
   const displayMin = bn.release_in_min ?? 0;
   const color = PRIORITY_COLOR[bn.priority] ?? "#3b82f6";

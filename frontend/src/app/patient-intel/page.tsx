@@ -17,6 +17,12 @@ const PRIORITY_STYLE: Record<string, { color: string; bg: string; label: string 
   low:      { color: "#22c55e", bg: "rgba(34,197,94,0.12)",   label: "LOW" },
 };
 
+/**
+ * Returns a hex color for a patient risk percentage value (0–100).
+ * @param pct - A number from 0 to 100 representing the patient's risk percentage.
+ * @returns Red for >= 80%, amber for >= 50%, yellow for >= 25%, green otherwise.
+ * Called from: TrackedCard to color the risk percentage display and progress bar.
+ */
 function riskColor(pct: number): string {
   if (pct >= 80) return "#ff3b3b";
   if (pct >= 50) return "#ffaa00";
@@ -24,12 +30,25 @@ function riskColor(pct: number): string {
   return "#22c55e";
 }
 
+/**
+ * Returns a color and label string for a specialist's availability status.
+ * @param status - The specialist's status string: "available", "in_surgery", or anything else (treated as "busy").
+ * @returns An object with a hex color and a short uppercase label like "AVAILABLE", "IN SURGERY", or "BUSY".
+ * Called from: TrackedCard to style the specialist status badge.
+ */
 function specialistStatusStyle(status: string) {
   if (status === "available") return { color: "#22c55e", label: "AVAILABLE" };
   if (status === "in_surgery") return { color: "#ff3b3b", label: "IN SURGERY" };
   return { color: "#ffaa00", label: "BUSY" };
 }
 
+/**
+ * The Patient Intelligence page showing tracked high-acuity patients in a 2-column card grid.
+ * Provides an "Analyze All" button that triggers AI care plan generation for every tracked patient.
+ * Also shows a "HIGH RISK" warning badge if any patients have a risk percentage >= 80%.
+ * @returns The full-page layout with a header and a scrollable grid of TrackedCard components.
+ * Called from: Next.js router at the /patient-intel route.
+ */
 export default function PatientIntelPage() {
   const { hospitalState } = useSimulationStore();
   const patients = hospitalState?.care?.tracked_patients ?? [];
@@ -42,6 +61,12 @@ export default function PatientIntelPage() {
     setAnalyzing(false);
   }, []);
 
+  /**
+   * Triggers the AI analysis sequence for all tracked patients by showing a 1.1-second loading shimmer.
+   * Sets the "analyzed" flag to true when complete so each TrackedCard reveals its AI recommendation panel.
+   * @returns A Promise that resolves after the simulated analysis delay completes.
+   * Called from: the "Analyze All" button in PatientIntelPage, and the demo store pendingAction handler.
+   */
   const analyzeAll = useCallback(async () => {
     if (patients.length === 0) return;
     setAnalyzing(true);
@@ -126,6 +151,16 @@ export default function PatientIntelPage() {
   );
 }
 
+/**
+ * Renders a detailed card for a single tracked high-acuity patient.
+ * Shows patient identity, priority badge, ED wait time, risk percentage bar, specialist status,
+ * care pathway steps, and — once analyzed — the AI-generated care recommendation.
+ * @param patient - The TrackedPatient object with all clinical and recommendation data.
+ * @param analyzing - When true, shows a pulsing shimmer placeholder while analysis is in progress.
+ * @param analyzed - When true, reveals the full AI recommendation panel.
+ * @returns An animated card element for display in the PatientIntelPage grid.
+ * Called from: PatientIntelPage for each patient in the tracked patients array.
+ */
 function TrackedCard({ patient: p, analyzing, analyzed }: {
   patient: TrackedPatient;
   analyzing: boolean;
