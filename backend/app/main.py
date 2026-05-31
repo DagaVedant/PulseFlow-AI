@@ -14,8 +14,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.api.v1.router import api_router
-from app.services.websocket_manager import manager
-from app.services.simulation_service import simulation_service
+from app.services.service import manager, simulation_service
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),

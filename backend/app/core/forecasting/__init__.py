@@ -1,4 +1,4 @@
-"""Public exports for the forecasting package."""
-from app.core.forecasting.forecaster import HospitalForecaster, ForecastResult
+"""Forecasting — re-exported from core.analytics."""
+from app.core.analytics import HospitalForecaster, ForecastResult
 
 __all__ = ["HospitalForecaster", "ForecastResult"]
