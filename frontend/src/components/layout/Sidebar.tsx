@@ -97,16 +97,8 @@ export function Sidebar() {
       }}
     >
       {}
-      <div className="px-6 py-5 border-b" style={{ borderColor: "rgba(12,200,212,0.12)" }}>
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="PulseFlow logo" className="w-14 h-14 object-contain flex-shrink-0" />
-          <div>
-            <div className="text-lg font-bold text-white tracking-wide">PulseFlow</div>
-            <div className="text-xs font-mono tracking-widest uppercase mt-0.5" style={{ color: "#0CC8D4" }}>
-              AI Platform
-            </div>
-          </div>
-        </div>
+      <div className="px-4 py-4 border-b" style={{ borderColor: "rgba(12,200,212,0.12)" }}>
+        <img src="/logo-full.png" alt="PulseFlow AI" className="w-full object-contain" />
       </div>
 
       {}
