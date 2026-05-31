@@ -18,9 +18,9 @@ import { useDemoStore } from "@/store/demoStore";
 
 const URGENCY_COLORS: Record<string, string> = {
   low: "#475569",
-  medium: "#ffe600",
-  high: "#ffaa00",
-  critical: "#ff3b3b",
+  medium: "#fbbf24",
+  high: "#f59e0b",
+  critical: "#ef4444",
 };
 
 /**
@@ -150,9 +150,9 @@ export default function CopilotPage() {
           disabled={loading}
           className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl text-sm font-mono font-bold transition-all"
           style={{
-            background: loading ? "rgba(59,130,246,0.1)" : "rgba(59,130,246,0.18)",
-            border: "1px solid rgba(59,130,246,0.45)",
-            color: loading ? "#60a5fa" : "#93c5fd",
+            background: loading ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            color: loading ? "#6b7fa3" : "#7d95b8",
           }}
         >
           {loading
@@ -176,7 +176,7 @@ export default function CopilotPage() {
           {}
           <div
             className="rounded-2xl p-4"
-            style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}
+            style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,255,255,0.05)" }}
           >
             <div className="text-xs text-slate-500 font-mono uppercase mb-3 tracking-wider">
               System Health Radar
@@ -185,7 +185,7 @@ export default function CopilotPage() {
               <div className="h-[260px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={radarData} cx="50%" cy="50%">
-                    <PolarGrid stroke="rgba(59,130,246,0.12)" />
+                    <PolarGrid stroke="rgba(255,255,255,0.05)" />
                     <PolarAngleAxis
                       dataKey="metric"
                       tick={{ fontSize: 12, fill: "#64748b", fontFamily: "monospace", fontWeight: 600 }}
@@ -193,8 +193,8 @@ export default function CopilotPage() {
                     <Radar
                       name="Utilization"
                       dataKey="value"
-                      stroke="#3b82f6"
-                      fill="#3b82f6"
+                      stroke="#4a6fa8"
+                      fill="#4a6fa8"
                       fillOpacity={0.18}
                       strokeWidth={2}
                     />
@@ -212,17 +212,17 @@ export default function CopilotPage() {
           {metrics && (
             <div
               className="rounded-2xl p-4 space-y-3"
-              style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}
+              style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,255,255,0.05)" }}
             >
               <div className="text-xs text-slate-500 font-mono uppercase tracking-wider">
                 Current Metrics
               </div>
               {[
-                ["Avg Wait",   formatTime(metrics.avg_wait_time),      metrics.avg_wait_time > 120 ? "#ff3b3b" : metrics.avg_wait_time > 80 ? "#ffaa00" : "#00ff88"],
-                ["Bed Util",   formatPercent(metrics.bed_utilization),  metrics.bed_utilization > 0.92 ? "#ff3b3b" : "#60a5fa"],
-                ["ICU Util",   formatPercent(metrics.icu_utilization),  metrics.icu_utilization > 0.90 ? "#ff3b3b" : "#60a5fa"],
-                ["Staff Util", formatPercent(metrics.staff_utilization),"#60a5fa"],
-                ["Critical",   String(metrics.critical_patients),       metrics.critical_patients > 5 ? "#ff3b3b" : "#60a5fa"],
+                ["Avg Wait",   formatTime(metrics.avg_wait_time),      metrics.avg_wait_time > 120 ? "#ef4444" : metrics.avg_wait_time > 80 ? "#f59e0b" : "#2a9c85"],
+                ["Bed Util",   formatPercent(metrics.bed_utilization),  metrics.bed_utilization > 0.92 ? "#ef4444" : "#6b7fa3"],
+                ["ICU Util",   formatPercent(metrics.icu_utilization),  metrics.icu_utilization > 0.90 ? "#ef4444" : "#6b7fa3"],
+                ["Staff Util", formatPercent(metrics.staff_utilization),"#6b7fa3"],
+                ["Critical",   String(metrics.critical_patients),       metrics.critical_patients > 5 ? "#ef4444" : "#6b7fa3"],
               ].map(([label, val, color]) => (
                 <div key={label} className="flex items-center justify-between">
                   <span className="text-sm text-slate-500 font-mono">{label}</span>
@@ -244,7 +244,7 @@ export default function CopilotPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="rounded-2xl p-8 flex items-center justify-center gap-4"
-              style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}
+              style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,255,255,0.05)" }}
             >
               <Brain className="w-7 h-7 text-blue-400 animate-pulse" />
               <div>
@@ -266,8 +266,8 @@ export default function CopilotPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="rounded-2xl p-5"
                     style={{
-                      background: "rgba(59,130,246,0.06)",
-                      border: "1px solid rgba(59,130,246,0.22)",
+                      background: "rgba(255,255,255,0.025)",
+                      border: "1px solid rgba(255,255,255,0.08)",
                     }}
                   >
                     <div className="flex items-center gap-3 mb-3">
@@ -276,9 +276,6 @@ export default function CopilotPage() {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-blue-300 font-mono">AI COPILOT ANALYSIS</span>
-                        <span className="flex items-center gap-1 text-xs text-emerald-400 font-mono px-2 py-0.5 rounded bg-emerald-950/40">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> LIVE
-                        </span>
                         {explanation.severity && (
                           <span className={cn(
                             "text-xs font-mono px-2 py-0.5 rounded",
@@ -304,13 +301,13 @@ export default function CopilotPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.08 }}
                     className="rounded-2xl overflow-hidden"
-                    style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}
+                    style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,255,255,0.05)" }}
                   >
                     {}
-                    <div className="grid grid-cols-3" style={{ borderBottom: "1px solid rgba(59,130,246,0.08)" }}>
+                    <div className="grid grid-cols-3" style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
                       {[
-                        { icon: Clock,      label: "Wait Reduction",   value: `${opt.predicted_wait_reduction.toFixed(0)}m`,            color: "#00ff88" },
-                        { icon: TrendingUp, label: "Throughput +",     value: `${opt.predicted_throughput_increase.toFixed(0)}%`,        color: "#3b82f6" },
+                        { icon: Clock,      label: "Wait Reduction",   value: `${opt.predicted_wait_reduction.toFixed(0)}m`,            color: "#2a9c85" },
+                        { icon: TrendingUp, label: "Throughput +",     value: `${opt.predicted_throughput_increase.toFixed(0)}%`,        color: "#4a6fa8" },
                         { icon: Activity,   label: "Util Improvement", value: `${(opt.predicted_utilization_improvement * 100).toFixed(0)}%`, color: "#8b5cf6" },
                       ].map((kpi, idx) => {
                         const Icon = kpi.icon;
@@ -318,7 +315,7 @@ export default function CopilotPage() {
                           <div
                             key={kpi.label}
                             className="flex flex-col items-center justify-center py-5 text-center"
-                            style={{ borderRight: idx < 2 ? "1px solid rgba(59,130,246,0.08)" : "none" }}
+                            style={{ borderRight: idx < 2 ? "1px solid rgba(255,255,255,0.03)" : "none" }}
                           >
                             <Icon className="w-5 h-5 mb-2" style={{ color: kpi.color }} />
                             <div className="text-2xl font-bold font-mono" style={{ color: kpi.color }}>
@@ -356,7 +353,7 @@ export default function CopilotPage() {
                             <div key={i} className="flex items-start gap-3">
                               <div
                                 className="w-5 h-5 rounded-lg text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5"
-                                style={{ background: "rgba(59,130,246,0.18)", color: "#60a5fa" }}
+                                style={{ background: "rgba(255,255,255,0.06)", color: "#6b7fa3" }}
                               >
                                 {i + 1}
                               </div>
@@ -390,7 +387,7 @@ export default function CopilotPage() {
                                 <div className="flex items-center gap-2.5 flex-shrink-0 ml-4">
                                   <span className="text-sm font-mono text-slate-500">{rec.current}</span>
                                   <ChevronRight className="w-4 h-4 text-slate-700" />
-                                  <span className="text-sm font-bold font-mono" style={{ color: URGENCY_COLORS[rec.urgency] ?? "#60a5fa" }}>
+                                  <span className="text-sm font-bold font-mono" style={{ color: URGENCY_COLORS[rec.urgency] ?? "#6b7fa3" }}>
                                     {rec.recommended}
                                   </span>
                                   <span
@@ -439,7 +436,7 @@ export default function CopilotPage() {
                               <div key={label} className="rounded-lg p-2" style={{ background: "rgba(0,0,0,0.2)" }}>
                                 <div className="text-[9px] text-slate-600 font-mono uppercase mb-1">{label}</div>
                                 <div className="text-xs text-slate-500 font-mono line-through">{before}</div>
-                                <div className="text-sm font-bold font-mono" style={{ color: better ? "#00ff88" : "#ff3b3b" }}>{after}</div>
+                                <div className="text-sm font-bold font-mono" style={{ color: better ? "#2a9c85" : "#ef4444" }}>{after}</div>
                               </div>
                             ))}
                           </div>
@@ -454,10 +451,10 @@ export default function CopilotPage() {
                           className="w-full flex items-center justify-center gap-3 py-4 rounded-xl text-sm font-bold font-mono transition-all"
                           style={
                             implemented
-                              ? { background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.35)", color: "#00ff88" }
+                              ? { background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#2a9c85" }
                               : implementing
-                              ? { background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.3)", color: "#60a5fa" }
-                              : { background: "rgba(59,130,246,0.14)", border: "1px solid rgba(59,130,246,0.45)", color: "#93c5fd", cursor: "pointer" }
+                              ? { background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", color: "#6b7fa3" }
+                              : { background: "rgba(59,130,246,0.14)", border: "1px solid rgba(255,255,255,0.12)", color: "#7d95b8", cursor: "pointer" }
                           }
                         >
                           {implemented ? (
@@ -486,7 +483,7 @@ export default function CopilotPage() {
         <div className="w-[240px] flex flex-col gap-3 overflow-y-auto flex-shrink-0">
           <div
             className="rounded-2xl p-4"
-            style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}
+            style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,255,255,0.05)" }}
           >
             <div className="flex items-center gap-2 mb-4">
               <Target className="w-4 h-4 text-blue-400" />
@@ -502,8 +499,8 @@ export default function CopilotPage() {
             ) : (
               <div className="space-y-3">
                 {predictions.map((pred, i) => {
-                  const sc = pred.severity === "critical" ? "#ff3b3b"
-                    : pred.severity === "warning" ? "#ffaa00" : "#3b82f6";
+                  const sc = pred.severity === "critical" ? "#ef4444"
+                    : pred.severity === "warning" ? "#f59e0b" : "#4a6fa8";
                   return (
                     <motion.div
                       key={i}

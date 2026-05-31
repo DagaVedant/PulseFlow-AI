@@ -125,10 +125,10 @@ function Slider({ label, value, min, max, step = 1, onChange, color = "#3b82f6",
 }
 
 const EVENTS: { key: EventType; label: string; desc: string; color: string; icon: any }[] = [
-  { key: "flu_outbreak",  label: "Flu Outbreak",   desc: "2.5× arrivals",        color: "#ffaa00", icon: AlertTriangle },
-  { key: "covid_surge",   label: "COVID Surge",    desc: "1.8× + isolation",     color: "#ff3b3b", icon: AlertTriangle },
-  { key: "heatwave",      label: "Heatwave",       desc: "1.4× arrivals",        color: "#ffaa00", icon: Zap },
-  { key: "mass_casualty", label: "Mass Casualty",  desc: "15 critical patients", color: "#ff3b3b", icon: AlertTriangle },
+  { key: "flu_outbreak",  label: "Flu Outbreak",   desc: "2.5× arrivals",        color: "#f59e0b", icon: AlertTriangle },
+  { key: "covid_surge",   label: "COVID Surge",    desc: "1.8× + isolation",     color: "#ef4444", icon: AlertTriangle },
+  { key: "heatwave",      label: "Heatwave",       desc: "1.4× arrivals",        color: "#f59e0b", icon: Zap },
+  { key: "mass_casualty", label: "Mass Casualty",  desc: "15 critical patients", color: "#ef4444", icon: AlertTriangle },
   { key: "ct_failure",    label: "CT Failure",     desc: "Scanner offline",      color: "#8b5cf6", icon: Server },
   { key: "mri_failure",   label: "MRI Failure",    desc: "Scanner offline",      color: "#8b5cf6", icon: Server },
   { key: "lab_slowdown",  label: "Lab Slowdown",   desc: "2.5× processing time", color: "#06b6d4", icon: Activity },
@@ -406,7 +406,7 @@ export default function SandboxPage() {
                   const d = hospitalState.departments[dept];
                   if (!d) return null;
                   const p = projected[dept];
-                  const deptColor = dept === "er" ? "#60a5fa" : dept === "icu" ? "#f59e0b" : "#22c55e";
+                  const deptColor = dept === "er" ? "#60a5fa" : dept === "icu" ? "#f59e0b" : "#10b981";
                   return (
                     <div
                       key={dept}
@@ -422,19 +422,19 @@ export default function SandboxPage() {
                       <div className="space-y-2">
                         <div>
                           <div className="text-[10px] text-slate-600 font-mono mb-0.5">Occupancy</div>
-                          <div className="text-xl font-bold font-mono" style={{ color: p.occupancy > 0.9 ? "#ff3b3b" : p.occupancy > 0.7 ? "#ffe600" : deptColor }}>
+                          <div className="text-xl font-bold font-mono" style={{ color: p.occupancy > 0.9 ? "#ef4444" : p.occupancy > 0.7 ? "#fbbf24" : deptColor }}>
                             {formatPercent(p.occupancy)}
                           </div>
                         </div>
                         <div>
                           <div className="text-[10px] text-slate-600 font-mono mb-0.5">Queue</div>
-                          <div className="text-xl font-bold font-mono" style={{ color: p.queue > 8 ? "#ff3b3b" : p.queue > 4 ? "#ffaa00" : "#64748b" }}>
+                          <div className="text-xl font-bold font-mono" style={{ color: p.queue > 8 ? "#ef4444" : p.queue > 4 ? "#f59e0b" : "#64748b" }}>
                             {p.queue}
                           </div>
                         </div>
                         <div>
                           <div className="text-[10px] text-slate-600 font-mono mb-0.5">Wait</div>
-                          <div className="text-lg font-bold font-mono" style={{ color: d.avg_wait_time > 120 ? "#ff3b3b" : d.avg_wait_time > 80 ? "#ffaa00" : "#64748b" }}>
+                          <div className="text-lg font-bold font-mono" style={{ color: d.avg_wait_time > 120 ? "#ef4444" : d.avg_wait_time > 80 ? "#f59e0b" : "#64748b" }}>
                             {formatTime(d.avg_wait_time)}
                           </div>
                         </div>

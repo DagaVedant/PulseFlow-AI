@@ -140,26 +140,7 @@ class HospitalForecaster:
         threshold_warning: float = 0.75, threshold_critical: float = 0.90,
         value_cap: Optional[float] = None, unit: str = "",
     ) -> ForecastResult:
-        """
-        Applies Holt-Winters double exponential smoothing to a single time series and projects it forward, producing a forecast with uncertainty bands.
-
-        Parameters:
-            values: A list of historical numeric readings for one metric (e.g., a series of ICU utilization percentages over time).
-            horizon: How many minutes into the future to forecast (e.g., 60 for a 1-hour horizon).
-            sim_time: The current simulation time in minutes, used to build the timestamp list for forecast points.
-            department: The name of the hospital department this metric belongs to (e.g., "ICU", "ER").
-            metric: A short label for what is being measured (e.g., "utilization", "avg_wait_time").
-            threshold_warning: The value at which the metric is considered a warning (default 0.75, meaning 75%).
-            threshold_critical: The value at which the metric is considered critical (default 0.90).
-            value_cap: If provided, forecast values are clamped to this maximum (e.g., 1.0 for utilization percentages).
-            unit: An optional unit string (e.g., "min") used for labeling, currently unused in the return value.
-
-        Returns:
-            A ForecastResult dataclass containing the forecasted values, lower and upper confidence bounds, trend direction, severity label, and confidence score.
-
-        Called from:
-            forecast_all, which calls this once per metric per time horizon.
-        """
+        # Applying Holt-Winters double exponential smoothing to the input time series        
         if not values:
             values = [0.0]
         if len(values) >= 5:

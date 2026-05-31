@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   Activity, Network, Users, Brain, FlaskConical,
-  AlertTriangle, ChevronRight, Zap, Play, ClipboardList, Stethoscope, RotateCcw
+  AlertTriangle, ChevronRight, Play, ClipboardList, Stethoscope, RotateCcw
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useDemoStore } from "@/store/demoStore";
@@ -67,7 +67,7 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { isConnected, criticalAlerts, hospitalState } = useSimulationStore();
+  const { criticalAlerts, hospitalState } = useSimulationStore();
   const { isRunning, currentStep } = useDemoStore();
   const activePatients = hospitalState?.metrics?.active_patients ?? 0;
   const alertCount = criticalAlerts.length;
@@ -92,33 +92,17 @@ export function Sidebar() {
     <div
       className="w-[300px] flex-shrink-0 flex flex-col h-full"
       style={{
-        background: "linear-gradient(180deg, #0a0e1a 0%, #0f1629 100%)",
-        borderRight: "1px solid rgba(59,130,246,0.12)",
+        background: "linear-gradient(180deg, #080c18 0%, #0d1225 100%)",
+        borderRight: "1px solid rgba(12,200,212,0.12)",
       }}
     >
       {}
-      <div className="px-6 py-7 border-b border-blue-950/50">
-        <div className="flex items-center gap-4">
-          <div className="relative">
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center"
-              style={{
-                background: "linear-gradient(135deg, #1d4ed8, #3b82f6)",
-                boxShadow: "0 0 24px rgba(59,130,246,0.55)",
-              }}
-            >
-              <Zap className="w-6 h-6 text-white" />
-            </div>
-            {isConnected && (
-              <span
-                className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#0a0e1a]"
-                style={{ boxShadow: "0 0 8px rgba(52,211,153,0.9)" }}
-              />
-            )}
-          </div>
+      <div className="px-6 py-5 border-b" style={{ borderColor: "rgba(12,200,212,0.12)" }}>
+        <div className="flex items-center gap-3">
+          <img src="/logo.png" alt="PulseFlow logo" className="w-14 h-14 object-contain flex-shrink-0" />
           <div>
             <div className="text-lg font-bold text-white tracking-wide">PulseFlow</div>
-            <div className="text-xs text-blue-400 font-mono tracking-widest uppercase mt-0.5">
+            <div className="text-xs font-mono tracking-widest uppercase mt-0.5" style={{ color: "#0CC8D4" }}>
               AI Platform
             </div>
           </div>
@@ -126,41 +110,16 @@ export function Sidebar() {
       </div>
 
       {}
-      <div className="px-5 py-4 border-b border-blue-950/30">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                "w-2.5 h-2.5 rounded-full",
-                isConnected ? "bg-emerald-400" : "bg-red-500"
-              )}
-              style={isConnected ? { boxShadow: "0 0 8px rgba(52,211,153,0.9)" } : {}}
-            />
-            <span className="text-sm text-slate-400 font-mono font-medium">
-              {isConnected ? "LIVE" : "OFFLINE"}
-            </span>
-          </div>
-          {alertCount > 0 && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-950/60 border border-red-800/50">
-              <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-              <span className="text-sm text-red-400 font-mono font-bold">{alertCount}</span>
-            </div>
-          )}
-        </div>
+      <div className="px-5 py-4 border-b" style={{ borderColor: "rgba(12,200,212,0.1)" }}>
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-blue-950/30 rounded-lg px-3 py-2.5">
+          <div className="rounded-lg px-3 py-2.5" style={{ background: "rgba(12,200,212,0.06)", border: "1px solid rgba(12,200,212,0.1)" }}>
             <div className="text-xs text-slate-500 font-mono uppercase mb-1">Patients</div>
-            <div className="text-xl font-bold text-blue-300 font-mono">{activePatients}</div>
+            <div className="text-xl font-bold font-mono" style={{ color: "#0CC8D4" }}>{activePatients}</div>
           </div>
-          <div className="bg-blue-950/30 rounded-lg px-3 py-2.5">
+          <div className="rounded-lg px-3 py-2.5" style={{ background: alertCount > 0 ? "rgba(224,24,122,0.06)" : "rgba(255,255,255,0.03)", border: `1px solid ${alertCount > 0 ? "rgba(224,24,122,0.15)" : "rgba(255,255,255,0.05)"}` }}>
             <div className="text-xs text-slate-500 font-mono uppercase mb-1">Alerts</div>
-            <div
-              className={cn(
-                "text-xl font-bold font-mono",
-                alertCount > 0 ? "text-red-400" : "text-emerald-400"
-              )}
-            >
-              {alertCount > 0 ? alertCount : "CLEAR"}
+            <div className="text-xl font-bold font-mono" style={{ color: alertCount > 0 ? "#E0187A" : "#475569" }}>
+              {alertCount > 0 ? alertCount : "—"}
             </div>
           </div>
         </div>
@@ -181,51 +140,60 @@ export function Sidebar() {
                 className={cn(
                   "flex items-center gap-4 px-4 py-4 rounded-xl transition-all duration-200 group cursor-pointer",
                   isActive && !isDemo
-                    ? "bg-blue-500/12 border-l-[3px] border-blue-500"
+                    ? "border-l-[3px]"
                     : isDemo
-                    ? "border-l-[3px] border-purple-500/60"
+                    ? "border-l-[3px]"
                     : "hover:bg-white/[0.05]"
                 )}
-                style={isDemo ? { background: "rgba(124,58,237,0.08)" } : undefined}
-                animate={isDemoStep ? { backgroundColor: ["rgba(59,130,246,0.05)", "rgba(59,130,246,0.15)", "rgba(59,130,246,0.05)"] } : {}}
+                style={
+                  isActive && !isDemo
+                    ? { background: "rgba(12,200,212,0.08)", borderLeftColor: "#0CC8D4" }
+                    : isDemo
+                    ? { background: "rgba(124,58,237,0.08)", borderLeftColor: "rgba(124,58,237,0.6)" }
+                    : undefined
+                }
+                animate={isDemoStep ? { backgroundColor: ["rgba(12,200,212,0.04)", "rgba(12,200,212,0.14)", "rgba(12,200,212,0.04)"] } : {}}
                 transition={isDemoStep ? { duration: 1.2, repeat: Infinity } : {}}
               >
                 <div
-                  className={cn(
-                    "w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                  className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors bg-white/[0.04] group-hover:bg-white/[0.07]"
+                  style={
                     isActive && !isDemo
-                      ? "bg-blue-500/20"
+                      ? { background: "rgba(12,200,212,0.15)" }
                       : isDemo
-                      ? "bg-purple-500/15"
-                      : "bg-white/[0.04] group-hover:bg-white/[0.07]"
-                  )}
+                      ? { background: "rgba(124,58,237,0.15)" }
+                      : undefined
+                  }
                 >
                   <Icon
-                    className={cn(
-                      "w-5 h-5",
-                      isActive && !isDemo ? "text-blue-400"
-                      : isDemo ? "text-purple-400"
-                      : "text-slate-500 group-hover:text-slate-300"
-                    )}
+                    className="w-5 h-5"
+                    style={{
+                      color: isActive && !isDemo ? "#0CC8D4"
+                           : isDemo ? "#a78bfa"
+                           : undefined
+                    }}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className={cn(
-                    "text-sm font-semibold leading-tight",
-                    isActive && !isDemo ? "text-blue-200"
-                    : isDemo ? "text-purple-300"
-                    : "text-slate-300 group-hover:text-white"
-                  )}>
+                  <div
+                    className={cn("text-sm font-semibold leading-tight", !isActive && !isDemo && "text-slate-300 group-hover:text-white")}
+                    style={
+                      isActive && !isDemo ? { color: "#67e8f0" }
+                      : isDemo ? { color: "#c4b5fd" }
+                      : undefined
+                    }
+                  >
                     {item.label}
                   </div>
                   <div className="text-xs text-slate-600 mt-0.5">{item.sublabel}</div>
                 </div>
-                {isActive && !isDemo && <ChevronRight className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                {isActive && !isDemo && <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: "#0CC8D4" }} />}
                 {isDemoStep && (
                   <motion.div
                     animate={{ opacity: [1, 0.3, 1] }}
                     transition={{ duration: 0.8, repeat: Infinity }}
-                    className="w-2 h-2 rounded-full bg-blue-400 flex-shrink-0"
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ background: "#0CC8D4" }}
                   />
                 )}
               </motion.div>
@@ -235,26 +203,22 @@ export function Sidebar() {
       </nav>
 
       {}
-      <div className="px-5 py-4 border-t border-blue-950/30 space-y-3">
+      <div className="px-5 py-4 space-y-3" style={{ borderTop: "1px solid rgba(12,200,212,0.1)" }}>
         <button
           onClick={handleReset}
-          disabled={resetting || !isConnected}
+          disabled={resetting}
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-mono font-bold transition-all disabled:opacity-40"
           style={{
-            background: resetDone ? "rgba(34,197,94,0.1)" : "rgba(255,255,255,0.04)",
-            border: `1px solid ${resetDone ? "rgba(34,197,94,0.4)" : "rgba(255,255,255,0.08)"}`,
-            color: resetDone ? "#22c55e" : "#64748b",
+            background: resetDone ? "rgba(12,200,212,0.08)" : "rgba(224,24,122,0.06)",
+            border: `1px solid ${resetDone ? "rgba(12,200,212,0.3)" : "rgba(224,24,122,0.2)"}`,
+            color: resetDone ? "#0CC8D4" : "#E0187A",
           }}
         >
           <RotateCcw className={cn("w-3.5 h-3.5", resetting && "animate-spin")} />
           {resetDone ? "Reset Complete" : resetting ? "Resetting..." : "Reset Simulation"}
         </button>
-        <div className="text-[10px] text-slate-700 font-mono text-center">
-          PULSEFLOW AI v1.0 • SIMULATION ENGINE ACTIVE
-        </div>
-        <div className="text-[10px] font-mono text-center"
-          style={{ color: isConnected ? "#1e3a5f" : "#374151" }}>
-          {isConnected ? "● CONNECTED TO DIGITAL TWIN" : "○ CONNECTING..."}
+        <div className="text-[10px] font-mono text-center" style={{ color: "rgba(12,200,212,0.2)" }}>
+          PULSEFLOW AI v1.0
         </div>
       </div>
     </div>

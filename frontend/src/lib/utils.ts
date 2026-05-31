@@ -59,9 +59,9 @@ export function formatPercent(value: number, decimals = 0): string {
  */
 export function statusColor(status: DepartmentStatus): string {
   return {
-    healthy: "#00ff88",
-    warning: "#ffaa00",
-    critical: "#ff3b3b",
+    healthy: "#10b981",
+    warning: "#f59e0b",
+    critical: "#ef4444",
   }[status] ?? "#3b82f6";
 }
 
@@ -73,9 +73,9 @@ export function statusColor(status: DepartmentStatus): string {
  */
 export function statusBg(status: DepartmentStatus): string {
   return {
-    healthy: "rgba(0,255,136,0.08)",
-    warning: "rgba(255,170,0,0.08)",
-    critical: "rgba(255,59,59,0.12)",
+    healthy: "rgba(16,185,129,0.08)",
+    warning: "rgba(245,158,11,0.08)",
+    critical: "rgba(239,68,68,0.10)",
   }[status] ?? "rgba(59,130,246,0.08)";
 }
 
@@ -87,9 +87,9 @@ export function statusBg(status: DepartmentStatus): string {
  */
 export function statusBorder(status: DepartmentStatus): string {
   return {
-    healthy: "rgba(0,255,136,0.3)",
-    warning: "rgba(255,170,0,0.3)",
-    critical: "rgba(255,59,59,0.4)",
+    healthy: "rgba(16,185,129,0.3)",
+    warning: "rgba(245,158,11,0.3)",
+    critical: "rgba(239,68,68,0.35)",
   }[status] ?? "rgba(59,130,246,0.3)";
 }
 
@@ -101,10 +101,10 @@ export function statusBorder(status: DepartmentStatus): string {
  */
 export function severityColor(severity: Severity): string {
   return {
-    low: "#22c55e",
-    medium: "#ffe600",
-    high: "#ffaa00",
-    critical: "#ff3b3b",
+    low: "#34d399",
+    medium: "#fbbf24",
+    high: "#f59e0b",
+    critical: "#ef4444",
   }[severity] ?? "#6b7280";
 }
 
@@ -155,10 +155,10 @@ export function riskLabel(score: number): string {
  * Called from: shift-report page and patient intelligence page.
  */
 export function riskColor(score: number): string {
-  if (score >= 0.75) return "#ff3b3b";
-  if (score >= 0.50) return "#ffaa00";
-  if (score >= 0.25) return "#ffe600";
-  return "#22c55e";
+  if (score >= 0.75) return "#ef4444";
+  if (score >= 0.50) return "#f59e0b";
+  if (score >= 0.25) return "#fbbf24";
+  return "#34d399";
 }
 
 /**
