@@ -1,4 +1,4 @@
-"""Public exports for the AI copilot package."""
-from app.core.ai.copilot import AICopilot
+"""AI narrative — re-exported from core.analytics."""
+from app.core.analytics import AICopilot
 
 __all__ = ["AICopilot"]

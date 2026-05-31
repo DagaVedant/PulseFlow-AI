@@ -1,19 +1,60 @@
 /* Command Center page: hospital floor plan, live metrics, active alerts, and hospital score. */
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   Activity, AlertTriangle, Bed, Clock, TrendingUp,
   Users, Zap, RefreshCw, Radio, Siren, DollarSign, ShieldCheck, Anchor, Award, Truck, MapPin, Timer
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useDemoStore } from "@/store/demoStore";
-import { HospitalFloorPlan } from "@/components/hospital/HospitalFloorPlan";
-import { MetricCard } from "@/components/metrics/MetricCard";
 import {
-  formatTime, formatPercent, statusColor, occupancyToStatus
+  formatTime, formatPercent, statusColor, occupancyToStatus, cn
 } from "@/lib/utils";
-import type { Patient, DepartmentKey, DepartmentState } from "@/types";
+import type { Patient, DepartmentKey, DepartmentState, DepartmentStatus } from "@/types";
+import type { LucideIcon } from "lucide-react";
+
+// ─── MetricCard (inlined from components/metrics/MetricCard.tsx) ──────────────
+
+const STATUS_STYLES = {
+  healthy: { border: "rgba(0,255,136,0.2)",   bg: "rgba(0,255,136,0.04)",  color: "#00ff88", glow: "0 0 20px rgba(0,255,136,0.08)" },
+  warning: { border: "rgba(255,170,0,0.25)",  bg: "rgba(255,170,0,0.05)",  color: "#ffaa00", glow: "0 0 20px rgba(255,170,0,0.08)" },
+  critical:{ border: "rgba(255,59,59,0.3)",   bg: "rgba(255,59,59,0.06)",  color: "#ff3b3b", glow: "0 0 20px rgba(255,59,59,0.12)" },
+  neutral: { border: "rgba(59,130,246,0.15)", bg: "rgba(59,130,246,0.04)", color: "#60a5fa", glow: "0 0 20px rgba(59,130,246,0.06)" },
+};
+
+function MetricCard({ icon: Icon, label, value, unit, status = "neutral", trend, subtitle, className }: {
+  icon: LucideIcon; label: string; value: string | number; unit?: string;
+  status?: "healthy" | "warning" | "critical" | "neutral";
+  trend?: number; subtitle?: string; className?: string;
+}) {
+  const styles = STATUS_STYLES[status];
+  return (
+    <div className={cn("rounded-xl p-4 transition-all duration-300", className)}
+      style={{ background: styles.bg, border: `1px solid ${styles.border}`, boxShadow: styles.glow }}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="p-2 rounded-lg" style={{ background: `${styles.color}18` }}>
+          <Icon className="w-4 h-4" style={{ color: styles.color }} />
+        </div>
+        {trend !== undefined && (
+          <div className={cn("text-[10px] font-mono px-1.5 py-0.5 rounded",
+            trend > 0 ? "text-red-400 bg-red-950/40" : "text-emerald-400 bg-emerald-950/40")}>
+            {trend > 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(1)}%
+          </div>
+        )}
+      </div>
+      <div className="space-y-0.5">
+        <div className="text-xs text-slate-500 font-mono uppercase tracking-wide">{label}</div>
+        <motion.div key={String(value)} initial={{ opacity: 0.7 }} animate={{ opacity: 1 }}
+          transition={{ duration: 1.5 }} className="flex items-baseline gap-1">
+          <span className="text-3xl font-bold font-mono" style={{ color: styles.color }}>{value}</span>
+          {unit && <span className="text-sm text-slate-500 font-mono">{unit}</span>}
+        </motion.div>
+        {subtitle && <div className="text-[10px] text-slate-600 font-mono">{subtitle}</div>}
+      </div>
+    </div>
+  );
+}
 
 const DEPT_KEYS = ["er", "labs", "imaging", "icu", "ward"] as const;
 
@@ -291,8 +332,8 @@ function AlertsAmbulancePanel({ alerts, patients, simTime }: { alerts: any[]; pa
   }, [pendingAction]);
 
   return (
-    <div className="rounded-xl flex flex-col flex-1 min-h-0 overflow-hidden"
-      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.1)" }}>
+    <div className="rounded-xl flex flex-col min-h-[180px] overflow-hidden"
+      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.1)", flex: "1 1 180px" }}>
       <div className="flex items-center border-b border-slate-800/60 flex-shrink-0">
         <button
           onClick={() => setTab("alerts")}
@@ -376,7 +417,10 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
     if (alerts.length === 0) return;
     const latest = alerts[alerts.length - 1];
     const color = latest.severity === "critical" ? "#ff3b3b" : latest.severity === "warning" ? "#ffaa00" : "#60a5fa";
-    setEvents((prev) => [{ id: `alert-${latest.alert_id}`, text: `⚠ ${latest.message}`, color, clock: simClock(simRef.current) }, ...prev.slice(0, 11)]);
+    setEvents((prev) => {
+      const newEvent = { id: `alert-${latest.alert_id}-${Date.now()}`, text: `⚠ ${latest.message}`, color, clock: simClock(simRef.current) };
+      return [newEvent, ...prev.slice(0, 11)];
+    });
   }, [alerts.length]);
 
   return (
@@ -413,6 +457,224 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
           </AnimatePresence>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── HospitalFloorPlan (inlined from components/hospital/HospitalFloorPlan.tsx) ─
+
+const FLOOR = { width: 1100, height: 570 };
+type RoomType = "er_bay"|"critical_bay"|"triage"|"nurse_stn"|"corridor"|"icu_bed"|"ward_bed"|"ct"|"mri"|"xray"|"lab";
+interface RoomDef { x:number; y:number; w:number; h:number; label?:string; type?:RoomType; }
+interface DeptZone { key:DepartmentKey; label:string; x:number; y:number; w:number; h:number; color:string; rooms?:RoomDef[]; }
+
+const DEPT_ZONES: DeptZone[] = [
+  { key:"er", label:"EMERGENCY DEPARTMENT", x:10, y:10, w:720, h:240, color:"#ef4444",
+    rooms:[
+      {x:15,y:15,w:145,h:105,label:"Triage",type:"triage"},{x:170,y:15,w:105,h:105,label:"Bay 1",type:"er_bay"},
+      {x:285,y:15,w:105,h:105,label:"Bay 2",type:"er_bay"},{x:400,y:15,w:105,h:105,label:"Bay 3",type:"er_bay"},
+      {x:515,y:15,w:105,h:105,label:"Bay 4",type:"er_bay"},{x:620,y:15,w:105,h:105,label:"Bay 5",type:"er_bay"},
+      {x:15,y:130,w:145,h:105,label:"Critical",type:"critical_bay"},{x:170,y:130,w:105,h:105,label:"Bay 6",type:"er_bay"},
+      {x:285,y:130,w:105,h:105,label:"Bay 7",type:"er_bay"},{x:400,y:130,w:105,h:105,label:"Bay 8",type:"er_bay"},
+      {x:515,y:130,w:105,h:105,label:"Bay 9",type:"er_bay"},{x:620,y:130,w:105,h:105,label:"Bay 10",type:"er_bay"},
+      {x:10,y:243,w:375,h:6,type:"corridor"},{x:395,y:238,w:335,h:11,label:"Nurse Stn",type:"nurse_stn"},
+    ]},
+  { key:"labs", label:"LABORATORY", x:740, y:10, w:350, h:240, color:"#8b5cf6",
+    rooms:[{x:745,y:15,w:168,h:110,label:"Lab A",type:"lab"},{x:920,y:15,w:165,h:110,label:"Lab B",type:"lab"},
+           {x:745,y:135,w:168,h:110,label:"Lab C",type:"lab"},{x:920,y:135,w:165,h:110,label:"Lab D",type:"lab"}]},
+  { key:"imaging", label:"IMAGING", x:10, y:264, w:320, h:296, color:"#06b6d4",
+    rooms:[{x:15,y:269,w:150,h:135,label:"CT-1",type:"ct"},{x:175,y:269,w:150,h:135,label:"CT-2",type:"ct"},
+           {x:15,y:414,w:150,h:141,label:"MRI",type:"mri"},{x:175,y:414,w:150,h:141,label:"X-Ray",type:"xray"}]},
+  { key:"icu", label:"INTENSIVE CARE UNIT", x:340, y:264, w:370, h:296, color:"#f59e0b",
+    rooms:[{x:345,y:269,w:88,h:135,label:"ICU-1",type:"icu_bed"},{x:438,y:269,w:88,h:135,label:"ICU-2",type:"icu_bed"},
+           {x:531,y:269,w:88,h:135,label:"ICU-3",type:"icu_bed"},{x:619,y:269,w:87,h:135,label:"ICU-4",type:"icu_bed"},
+           {x:345,y:414,w:88,h:141,label:"ICU-5",type:"icu_bed"},{x:438,y:414,w:88,h:141,label:"ICU-6",type:"icu_bed"},
+           {x:531,y:414,w:88,h:141,label:"ICU-7",type:"icu_bed"},{x:619,y:414,w:87,h:141,label:"ICU-8",type:"icu_bed"}]},
+  { key:"ward", label:"GENERAL WARD", x:720, y:264, w:370, h:296, color:"#22c55e",
+    rooms:[{x:725,y:269,w:88,h:135,label:"W-A",type:"ward_bed"},{x:818,y:269,w:88,h:135,label:"W-B",type:"ward_bed"},
+           {x:911,y:269,w:88,h:135,label:"W-C",type:"ward_bed"},{x:1000,y:269,w:85,h:135,label:"W-D",type:"ward_bed"},
+           {x:725,y:414,w:88,h:141,label:"W-E",type:"ward_bed"},{x:818,y:414,w:88,h:141,label:"W-F",type:"ward_bed"},
+           {x:911,y:414,w:88,h:141,label:"W-G",type:"ward_bed"},{x:1000,y:414,w:85,h:141,label:"W-H",type:"ward_bed"}]},
+];
+
+const DEPT_PATIENT_AREA: Record<string,{x:number;y:number;w:number;h:number}> = {
+  er:{x:175,y:20,w:545,h:220}, triage:{x:20,y:20,w:140,h:105}, labs:{x:750,y:20,w:330,h:225},
+  imaging:{x:20,y:274,w:300,h:281}, icu:{x:350,y:274,w:355,h:281}, ward:{x:730,y:274,w:355,h:281},
+  registration:{x:350,y:274,w:355,h:281}, discharge:{x:20,y:274,w:300,h:281},
+};
+
+function _fpColor(sev:string):string { return ({low:"#22c55e",medium:"#ffe600",high:"#ffaa00",critical:"#ff3b3b"} as any)[sev]??"#64748b"; }
+function _fpDots(patients:Patient[]) {
+  const groups: Record<string,Patient[]> = {};
+  for (const p of patients) { (groups[p.current_department]??=[]).push(p); }
+  const rng=(s:string)=>{let h=0;for(let i=0;i<s.length;i++)h=(Math.imul(31,h)+s.charCodeAt(i))|0;return Math.abs(h)/2147483647;};
+  const dots: {id:string;x:number;y:number;severity:string;state:string}[] = [];
+  for (const [dk, dps] of Object.entries(groups)) {
+    const a = DEPT_PATIENT_AREA[dk]; if (!a) continue;
+    dps.forEach(p=>{
+      const rx=rng(p.patient_id+"px"),ry=rng(p.patient_id+"py");
+      const jx=(rng(p.patient_id+"jx")-0.5)*10,jy=(rng(p.patient_id+"jy")-0.5)*10;
+      dots.push({id:p.patient_id,
+        x:Math.max(a.x+6,Math.min(a.x+a.w-6,a.x+10+rx*(a.w-20)+jx)),
+        y:Math.max(a.y+6,Math.min(a.y+a.h-6,a.y+10+ry*(a.h-20)+jy)),
+        severity:p.severity,state:p.state});
+    });
+  }
+  return dots;
+}
+
+function _FpBed({x,y,w,h,color,monitor=false}:{x:number;y:number;w:number;h:number;color:string;monitor?:boolean}) {
+  const bw=Math.min(w-18,70),bh=Math.min(h-36,38),bx=x+w/2-bw/2,by=y+h/2-bh/2+(monitor?8:5);
+  return (<g opacity={0.75}>
+    <rect x={bx} y={by} width={bw} height={bh} rx="3" fill="rgba(10,14,26,0.5)" stroke={color} strokeWidth="0.9" opacity={0.5}/>
+    <rect x={bx} y={by} width={5} height={bh} rx="2" fill={color} opacity={0.45}/>
+    <rect x={bx+bw-5} y={by} width={5} height={bh} rx="2" fill={color} opacity={0.3}/>
+    <rect x={bx+7} y={by+3} width={bw*0.28} height={bh*0.65} rx="2" fill={color} opacity={0.28}/>
+    <rect x={bx+7+bw*0.28+2} y={by+3} width={bw*0.58} height={bh*0.75} rx="1" fill={color} opacity={0.1}/>
+    <rect x={bx+5} y={by+bh+1} width={6} height={3} rx="1.5" fill={color} opacity={0.28}/>
+    <rect x={bx+bw-11} y={by+bh+1} width={6} height={3} rx="1.5" fill={color} opacity={0.28}/>
+    {monitor&&<><rect x={bx+bw/2-16} y={by-24} width={32} height={19} rx="2" fill="rgba(10,14,26,0.8)" stroke={color} strokeWidth="0.6" opacity={0.65}/>
+      <polyline points={`${bx+bw/2-12},${by-14} ${bx+bw/2-6},${by-14} ${bx+bw/2-4},${by-20} ${bx+bw/2-2},${by-9} ${bx+bw/2},${by-14} ${bx+bw/2+10},${by-14}`} fill="none" stroke={color} strokeWidth="1.2" opacity={0.65}/>
+      <line x1={bx+bw+5} y1={by-18} x2={bx+bw+5} y2={by+bh+2} stroke={color} strokeWidth="1" opacity={0.35}/></>}
+    {!monitor&&<line x1={bx+bw+4} y1={by-5} x2={bx+bw+4} y2={by+bh+2} stroke={color} strokeWidth="0.8" opacity={0.25}/>}
+  </g>);
+}
+function _FpCT({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
+  const cx=x+w/2-10,cy=y+h/2-5;
+  return (<g opacity={0.72}><circle cx={cx} cy={cy} r={30} fill="none" stroke={color} strokeWidth="11" opacity={0.32}/>
+    <circle cx={cx} cy={cy} r={17} fill="rgba(6,182,212,0.05)" stroke={color} strokeWidth="1" opacity={0.45}/>
+    <rect x={cx+2} y={cy-5} width={52} height={10} rx="3" fill={color} opacity={0.22} stroke={color} strokeWidth="0.6"/>
+    <rect x={cx+46} y={cy+5} width={10} height={22} rx="2" fill={color} opacity={0.18}/>
+    <rect x={cx-48} y={cy-18} width={12} height={26} rx="2" fill={color} opacity={0.14} stroke={color} strokeWidth="0.5"/>
+    {[-13,-7,-1].map(dy=><rect key={dy} x={cx-46} y={cy+dy} width={8} height={3} rx="0.8" fill={color} opacity={0.4}/>)}
+  </g>);
+}
+function _FpMRI({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
+  const cx=x+w/2-5,cy=y+h/2-5;
+  return (<g opacity={0.72}><rect x={cx-42} y={cy-27} width={84} height={55} rx="27" fill="none" stroke={color} strokeWidth="11" opacity={0.32}/>
+    <rect x={cx-26} y={cy-17} width={52} height={35} rx="17" fill="rgba(6,182,212,0.04)" stroke={color} strokeWidth="1" opacity={0.4}/>
+    <rect x={cx-8} y={cy-5} width={65} height={10} rx="3" fill={color} opacity={0.22} stroke={color} strokeWidth="0.6"/>
+    <rect x={cx-40} y={cy+28} width={80} height={8} rx="2" fill={color} opacity={0.18}/>
+  </g>);
+}
+function _FpXRay({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
+  const cx=x+w/2,cy=y+h/2;
+  return (<g opacity={0.72}><rect x={cx-3} y={cy-48} width={6} height={68} rx="2.5" fill={color} opacity={0.32}/>
+    <rect x={cx-38} y={cy-48} width={76} height={5} rx="2" fill={color} opacity={0.28}/>
+    <rect x={cx-24} y={cy-65} width={48} height={20} rx="3" fill="rgba(10,14,26,0.6)" stroke={color} strokeWidth="0.8" opacity={0.55}/>
+    <line x1={cx-18} y1={cy-58} x2={cx+18} y2={cy-58} stroke={color} strokeWidth="0.7" opacity={0.35}/>
+    <line x1={cx-18} y1={cy-52} x2={cx+18} y2={cy-52} stroke={color} strokeWidth="0.7" opacity={0.35}/>
+    <rect x={cx-38} y={cy+22} width={76} height={11} rx="3" fill={color} opacity={0.2} stroke={color} strokeWidth="0.6}"/>
+    <rect x={cx-6} y={cy+33} width={12} height={18} rx="2" fill={color} opacity={0.18}/>
+  </g>);
+}
+function _FpLab({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
+  const lx=x+w/2-42,ly=y+h/2-18;
+  return (<g opacity={0.72}><rect x={lx} y={ly+30} width={28} height={7} rx="2.5" fill={color} opacity={0.38}/>
+    <rect x={lx+10} y={ly-2} width={5} height={33} rx="1.5" fill={color} opacity={0.32}/>
+    <rect x={lx+2} y={ly-2} width={21} height={5} rx="1.5" fill={color} opacity={0.3}/>
+    <rect x={lx+1} y={ly-10} width={11} height={10} rx="2" fill="rgba(10,14,26,0.5)" stroke={color} strokeWidth="0.7" opacity={0.55}/>
+    <rect x={lx+5} y={ly+13} width={23} height={5} rx="1" fill={color} opacity={0.3}/>
+    <circle cx={lx+12} cy={ly+22} r="3.5" fill="none" stroke={color} strokeWidth="1.2" opacity={0.4}/>
+    <path d={`M${lx+36} ${ly+32} L${lx+34} ${ly+14} L${lx+38} ${ly+8} L${lx+48} ${ly+8} L${lx+52} ${ly+14} L${lx+50} ${ly+32} Z`} fill={color} opacity={0.14} stroke={color} strokeWidth="0.9}"/>
+    <rect x={lx+56} y={ly-2} width={9} height={34} rx="4.5" fill={color} opacity={0.14} stroke={color} strokeWidth="0.9}"/>
+  </g>);
+}
+function _FpTriage({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
+  const cx=x+w/2,cy=y+h/2;
+  return (<g opacity={0.65}><rect x={cx-35} y={cy-5} width={70} height={28} rx="3" fill="rgba(10,14,26,0.4)" stroke={color} strokeWidth="0.8" opacity={0.45}/>
+    <rect x={cx-30} y={cy-22} width={28} height={18} rx="2" fill="rgba(10,14,26,0.7)" stroke={color} strokeWidth="0.6" opacity={0.55}/>
+    {[-18,-14,-10].map(dy=><rect key={dy} x={cx-26} y={cy+dy} width={dy===-10?14:20} height={2} rx="0.5" fill={color} opacity={0.3}/>)}
+    <rect x={cx+10} y={cy-18} width={18} height={14} rx="2" fill={color} opacity={0.12} stroke={color} strokeWidth="0.5}"/>
+    <rect x={cx-48} y={cy+5} width={14} height={18} rx="2" fill={color} opacity={0.18}/>
+    <rect x={cx+34} y={cy+5} width={14} height={18} rx="2" fill={color} opacity={0.18}/>
+  </g>);
+}
+function _FpEquipment({room,color}:{room:RoomDef;color:string}) {
+  const {x,y,w,h,type}=room;
+  if(type==="er_bay")       return <_FpBed x={x} y={y} w={w} h={h} color={color}/>;
+  if(type==="critical_bay") return <_FpBed x={x} y={y} w={w} h={h} color={color} monitor/>;
+  if(type==="icu_bed")      return <_FpBed x={x} y={y} w={w} h={h} color={color} monitor/>;
+  if(type==="ward_bed")     return <_FpBed x={x} y={y} w={w} h={h} color={color}/>;
+  if(type==="triage")       return <_FpTriage x={x} y={y} w={w} h={h} color={color}/>;
+  if(type==="ct")           return <_FpCT x={x} y={y} w={w} h={h} color={color}/>;
+  if(type==="mri")          return <_FpMRI x={x} y={y} w={w} h={h} color={color}/>;
+  if(type==="xray")         return <_FpXRay x={x} y={y} w={w} h={h} color={color}/>;
+  if(type==="lab")          return <_FpLab x={x} y={y} w={w} h={h} color={color}/>;
+  if(type==="nurse_stn") return (<g opacity={0.4}><rect x={x+4} y={y+1} width={w-8} height={h-2} rx="1" fill={color} opacity={0.12}/><text x={x+w/2} y={y+h/2+3} textAnchor="middle" fontSize="6" fill={color} opacity={0.5} fontFamily="monospace">NURSE STN</text></g>);
+  return null;
+}
+
+function HospitalFloorPlan() {
+  const { hospitalState } = useSimulationStore();
+  const [tooltip, setTooltip] = useState<{dept:DepartmentKey;x:number;y:number}|null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const depts  = (hospitalState?.departments ?? {}) as Record<DepartmentKey, DepartmentState>;
+  const patientDots = useMemo(() => _fpDots(hospitalState?.patients ?? []), [hospitalState?.patients]);
+  const getDeptStatus = (key:DepartmentKey): DepartmentStatus => (depts[key]?.status as DepartmentStatus) ?? "healthy";
+  const getDeptOcc    = (key:DepartmentKey): number => depts[key]?.occupancy ?? 0;
+
+  return (
+    <div className="relative w-full h-full select-none">
+      <svg ref={svgRef} viewBox={`0 0 ${FLOOR.width} ${FLOOR.height}`} className="w-full h-full" style={{background:"transparent"}}>
+        <defs>
+          <pattern id="fp-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+            <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(59,130,246,0.04)" strokeWidth="0.5"/>
+          </pattern>
+          {["healthy","warning","critical"].map(s=>(
+            <radialGradient key={s} id={`fp-grad-${s}`} cx="50%" cy="50%" r="60%">
+              <stop offset="0%" stopColor={s==="healthy"?"rgba(0,255,136,0.1)":s==="warning"?"rgba(255,170,0,0.1)":"rgba(255,59,59,0.13)"}/>
+              <stop offset="100%" stopColor="transparent"/>
+            </radialGradient>
+          ))}
+        </defs>
+        <rect width={FLOOR.width} height={FLOOR.height} fill="url(#fp-grid)"/>
+        <rect x={5} y={5} width={FLOOR.width-10} height={FLOOR.height-10} fill="none" stroke="rgba(59,130,246,0.12)" strokeWidth="1" rx="4"/>
+        {DEPT_ZONES.map(zone=>{
+          const status=getDeptStatus(zone.key),occupancy=getDeptOcc(zone.key),sColor=statusColor(status);
+          return (
+            <g key={zone.key} onMouseEnter={()=>setTooltip({dept:zone.key,x:zone.x+zone.w/2,y:zone.y})} onMouseLeave={()=>setTooltip(null)}>
+              <rect x={zone.x} y={zone.y} width={zone.w} height={zone.h} fill={`url(#fp-grad-${status})`} stroke={sColor} strokeWidth="1.2" strokeOpacity="0.4" rx="4"/>
+              {zone.rooms?.map((room,ri)=>(
+                <g key={ri}>
+                  {room.type!=="corridor"&&room.type!=="nurse_stn"&&<rect x={room.x+2} y={room.y+2} width={room.w-4} height={room.h-4} fill="rgba(0,0,0,0.18)" stroke="rgba(255,255,255,0.06)" strokeWidth="0.6" rx="2"/>}
+                  <_FpEquipment room={room} color={zone.color}/>
+                  {room.label&&room.type!=="corridor"&&<text x={room.x+room.w/2} y={room.y+room.h-7} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.35)" fontFamily="JetBrains Mono, monospace" fontWeight="600">{room.label}</text>}
+                </g>
+              ))}
+              <text x={zone.x+8} y={zone.y+14} fontSize="9" fontWeight="700" fill={sColor} fillOpacity="0.9" fontFamily="JetBrains Mono, monospace" letterSpacing="0.8">{zone.label}</text>
+              <circle cx={zone.x+zone.w-12} cy={zone.y+12} r="5" fill={sColor} style={{filter:`drop-shadow(0 0 5px ${sColor})`,animation:status==="critical"?"pulse-critical 1.5s infinite":undefined}}/>
+              <text x={zone.x+zone.w-24} y={zone.y+15} textAnchor="end" fontSize="8" fill={sColor} fillOpacity="0.85" fontFamily="monospace">{Math.round(occupancy*100)}%</text>
+              <rect x={zone.x+2} y={zone.y+zone.h-4} width={Math.max(0,(zone.w-4)*occupancy)} height="3" fill={sColor} fillOpacity="0.55" rx="1.5"/>
+            </g>
+          );
+        })}
+        <rect x={10} y={254} width={1080} height={8} fill="rgba(59,130,246,0.03)" stroke="rgba(59,130,246,0.07)" strokeWidth="0.5"/>
+        <text x={550} y={260} textAnchor="middle" fontSize="6" fill="rgba(59,130,246,0.28)" fontFamily="monospace">— MAIN CORRIDOR —</text>
+        <AnimatePresence mode="popLayout">
+          {patientDots.map(dot=>(
+            <motion.circle key={dot.id} cx={dot.x} cy={dot.y}
+              r={dot.severity==="critical"?5:dot.severity==="high"?4.5:4}
+              fill={_fpColor(dot.severity)} fillOpacity={0.88}
+              initial={{scale:0,opacity:0}} animate={{cx:dot.x,cy:dot.y,scale:1,opacity:0.88}} exit={{scale:0,opacity:0}}
+              transition={{type:"spring",stiffness:28,damping:24,duration:4.0}}
+              style={{filter:dot.severity==="critical"?`drop-shadow(0 0 6px ${_fpColor(dot.severity)})`:`drop-shadow(0 0 2px ${_fpColor(dot.severity)})`}}
+            />
+          ))}
+        </AnimatePresence>
+        {tooltip&&depts[tooltip.dept]&&(()=>{
+          const d=depts[tooltip.dept],s=d.status as DepartmentStatus,sc=statusColor(s);
+          const tx=Math.min(tooltip.x,850),ty=Math.max(tooltip.y-105,8);
+          return (<g>
+            <rect x={tx-88} y={ty} width={176} height={98} fill="rgba(10,14,26,0.97)" stroke={sc} strokeWidth="1" strokeOpacity="0.5" rx="5"/>
+            <text x={tx} y={ty+15} textAnchor="middle" fontSize="10" fontWeight="700" fill={sc} fontFamily="monospace">{d.display_name?.toUpperCase()}</text>
+            <line x1={tx-82} y1={ty+20} x2={tx+82} y2={ty+20} stroke={sc} strokeWidth="0.5" strokeOpacity="0.3"/>
+            {[["Occupancy",formatPercent(d.occupancy)],["Queue",`${d.queue_length} patients`],["Avg Wait",formatTime(d.avg_wait_time)],["Beds Avail",`${d.beds_available}`]].map(([label,val],i)=>(
+              <g key={label}><text x={tx-80} y={ty+34+i*15} fontSize="8.5" fill="rgba(148,163,184,0.85)" fontFamily="monospace">{label}</text><text x={tx+80} y={ty+34+i*15} textAnchor="end" fontSize="8.5" fill="rgba(226,232,240,0.95)" fontFamily="monospace" fontWeight="600">{val}</text></g>
+            ))}
+          </g>);
+        })()}
+      </svg>
     </div>
   );
 }
@@ -583,7 +845,7 @@ export default function CommandCenterPage() {
         </div>
 
         {}
-        <div className="w-[320px] flex flex-col gap-3 overflow-hidden flex-shrink-0">
+        <div className="w-[320px] flex flex-col gap-3 overflow-y-auto flex-shrink-0 min-h-0">
           {}
           <div
             className="rounded-xl p-3 flex-shrink-0"

@@ -1,4 +1,4 @@
-"""Care coordination layer: specialist roster, fixed operational bottlenecks, tracked executive patients, and constraint-aware care recommendations."""
-from app.core.care.coordinator import CareCoordinator
+"""Care coordination — re-exported from core.analytics."""
+from app.core.analytics import CareCoordinator
 
 __all__ = ["CareCoordinator"]
