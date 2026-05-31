@@ -14,12 +14,12 @@ interface Step {
 
 const STEPS: Step[] = [
   { route: "/command-center", duration: 10000, actions: [{ delay: 4000, action: "view_ambulances" }] },
-  { route: "/digital-twin",   duration: 6000 },
-  { route: "/patient-intel",  duration: 13000, actions: [{ delay: 1800, action: "analyze_patients" }] },
-  { route: "/operations",     duration: 16000, actions: [{ delay: 2500, action: "add_constraint" }, { delay: 10000, action: "remove_constraint" }] },
-  { route: "/copilot",        duration: 25000, actions: [{ delay: 1500, action: "run_copilot" }] },
-  { route: "/sandbox",        duration: 17000, actions: [{ delay: 1500, action: "sandbox_demo" }] },
-  { route: "/shift-report",   duration: 10000, actions: [{ delay: 2000, action: "print_preview" }] },
+  { route: "/digital-twin",   duration: 10000 },
+  { route: "/patient-intel",  duration: 10000, actions: [{ delay: 1800, action: "analyze_patients" }] },
+  { route: "/operations",     duration: 10000, actions: [{ delay: 2500, action: "add_constraint" }, { delay: 7000, action: "remove_constraint" }] },
+  { route: "/copilot",        duration: 10000, actions: [{ delay: 1500, action: "run_copilot" }] },
+  { route: "/sandbox",        duration: 10000, actions: [{ delay: 1500, action: "sandbox_demo" }] },
+  { route: "/shift-report",   duration: 10000 },
 ];
 
 function delay(ms: number, signal: AbortSignal) {
