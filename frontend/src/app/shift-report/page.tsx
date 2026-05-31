@@ -34,7 +34,6 @@ export default function ShiftReportPage() {
   useEffect(() => {
     if (pendingAction === "print_preview") {
       clearAction();
-      window.print();
     }
   }, [pendingAction]);
   const m = hospitalState?.metrics;
