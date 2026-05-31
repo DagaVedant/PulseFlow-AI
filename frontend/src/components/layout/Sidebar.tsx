@@ -98,7 +98,12 @@ export function Sidebar() {
     >
       {}
       <div className="px-4 py-4 border-b" style={{ borderColor: "rgba(12,200,212,0.12)" }}>
-        <img src="/logo-full.png" alt="PulseFlow AI" className="w-full object-contain" />
+        <img
+          src="/logo-full.png"
+          alt="PulseFlow AI"
+          className="w-full object-contain"
+          style={{ filter: "invert(1) hue-rotate(180deg)" }}
+        />
       </div>
 
       {}

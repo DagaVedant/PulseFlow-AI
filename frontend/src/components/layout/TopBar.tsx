@@ -3,11 +3,6 @@
 import { useSimulationStore } from "@/store/simulationStore";
 import { formatSimTime } from "@/lib/utils";
 
-/**
- * Renders the top navigation bar showing only the current simulation clock time.
- * @returns A fixed-height bar with a sim-time chip.
- * Called from: the root layout wrapping all pages.
- */
 export function TopBar() {
   const { hospitalState } = useSimulationStore();
   const simTime = hospitalState?.sim_time ?? 0;
