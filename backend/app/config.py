@@ -12,12 +12,13 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.2"
 
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:password@localhost:5432/pulseflow"
-    REDIS_URL: str = "redis://localhost:6379"
+    DATABASE_URL: Optional[str] = None
+    REDIS_URL: Optional[str] = None
 
     SECRET_KEY: str = "dev-secret-key-change-in-production"
+    ANTHROPIC_API_KEY: Optional[str] = None
 
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "https://pulseflow-ai.vercel.app"]
 
     SIMULATION_SPEED: int = 8
 
