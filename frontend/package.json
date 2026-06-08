@@ -28,6 +28,9 @@
     "date-fns": "^4.1.0",
     "immer": "^10.1.1"
   },
+  "overrides": {
+    "next": "15.3.3"
+  },
   "devDependencies": {
     "eslint": "^8.57.1",
     "eslint-config-next": "15.3.3",
