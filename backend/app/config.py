@@ -1,6 +1,6 @@
 """Centralized application settings loaded from environment variables via pydantic-settings."""
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 import os
 
 class Settings(BaseSettings):
