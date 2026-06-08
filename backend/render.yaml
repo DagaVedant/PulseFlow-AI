@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: pulseflow-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: '["https://pulseflow-ai.vercel.app"]'
+      - key: ANTHROPIC_API_KEY
+        sync: false
