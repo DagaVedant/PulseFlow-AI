@@ -1,34 +1,45 @@
-/* Operations Hub: specialist availability grid and the Fixed Bottlenecks & Operational Constraints input panel. */
 "use client";
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Network, Stethoscope, Lock, Plus, X, Clock, AlertOctagon
+  Network,
+  Stethoscope,
+  Lock,
+  Plus,
+  X,
+  Clock,
+  AlertOctagon,
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useDemoStore } from "@/store/demoStore";
+import { StatusBadge, type ClinicalStatus } from "@/components/ui/StatusBadge";
 import type { Specialist, FixedBottleneck, BottleneckType } from "@/types";
 
 const RESOURCE_TYPES: BottleneckType[] = [
-  "Doctor", "Specialist", "Operating Room", "Equipment", "Bed", "Nurse",
+  "Doctor",
+  "Specialist",
+  "Operating Room",
+  "Equipment",
+  "Bed",
+  "Nurse",
 ];
 const PRIORITIES = ["low", "medium", "high", "critical"] as const;
 
-const PRIORITY_COLOR: Record<string, string> = {
-  critical: "#ef4444", high: "#f59e0b", medium: "#fbbf24", low: "#10b981",
+const PRIORITY_STATUS: Record<string, ClinicalStatus> = {
+  critical: "critical",
+  high: "flagged",
+  medium: "flagged",
+  low: "safe",
 };
 
-/**
- * Returns a color and label string for a specialist's current availability status.
- * @param status - The specialist's status string: "available", "in_surgery", or anything else (treated as "busy").
- * @returns An object with a hex color and a short uppercase label.
- * Called from: OperationsPage when rendering each specialist card in the availability grid.
- */
-function statusStyle(status: string) {
-  if (status === "available") return { color: "#10b981", label: "AVAILABLE" };
-  if (status === "in_surgery") return { color: "#ef4444", label: "IN SURGERY" };
-  return { color: "#f59e0b", label: "BUSY" };
+function statusStyle(status: string): {
+  status: ClinicalStatus;
+  label: string;
+} {
+  if (status === "available") return { status: "safe", label: "Available" };
+  if (status === "in_surgery")
+    return { status: "critical", label: "In Surgery" };
+  return { status: "flagged", label: "Busy" };
 }
 
 const DEMO_CONSTRAINT = {
@@ -41,14 +52,6 @@ const DEMO_CONSTRAINT = {
   notes: "Open-heart — OR 2 unavailable",
 };
 
-/**
- * The Operations Hub page with two panels side by side.
- * The left panel shows a grouped specialist availability grid.
- * The right panel has a form for adding fixed bottleneck constraints and a list of active constraints.
- * Also responds to demo store actions for automatically adding or removing a demo constraint.
- * @returns The full-page Operations Hub layout.
- * Called from: Next.js router at the /operations route.
- */
 export default function OperationsPage() {
   const { hospitalState } = useSimulationStore();
   const { addBottleneck, removeBottleneck } = useWebSocket();
@@ -58,6 +61,7 @@ export default function OperationsPage() {
   const bottlenecks = care?.bottlenecks ?? [];
 
   const [demoConstraintId, setDemoConstraintId] = useState<string | null>(null);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
 
   useEffect(() => {
     if (pendingAction === "add_constraint") {
@@ -69,14 +73,18 @@ export default function OperationsPage() {
         removeBottleneck(demoConstraintId);
         setDemoConstraintId(null);
       } else {
-        const match = bottlenecks.find((b) => b.resource_name === DEMO_CONSTRAINT.resource_name);
+        const match = bottlenecks.find(
+          (b) => b.resource_name === DEMO_CONSTRAINT.resource_name,
+        );
         if (match) removeBottleneck(match.bottleneck_id);
       }
     }
   }, [pendingAction]);
 
   useEffect(() => {
-    const match = bottlenecks.find((b) => b.resource_name === DEMO_CONSTRAINT.resource_name);
+    const match = bottlenecks.find(
+      (b) => b.resource_name === DEMO_CONSTRAINT.resource_name,
+    );
     if (match && !demoConstraintId) setDemoConstraintId(match.bottleneck_id);
   }, [bottlenecks]);
 
@@ -84,88 +92,120 @@ export default function OperationsPage() {
     resource_name: "",
     resource_type: "Specialist" as BottleneckType,
     status: "",
-    priority: "high" as typeof PRIORITIES[number],
+    priority: "high" as (typeof PRIORITIES)[number],
     release_in_min: 60,
     release_label: "",
     notes: "",
   });
 
-  /**
-   * Validates the bottleneck form and sends the new constraint to the backend via WebSocket.
-   * Resets the text fields after a successful submission, keeping type/priority/time values.
-   * @returns void — fires addBottleneck over WebSocket and resets the form in place.
-   * Called from: the "Add Constraint" button's onClick handler in OperationsPage.
-   */
   const submit = () => {
     if (!form.resource_name.trim()) return;
     addBottleneck({ ...form });
-    setForm({ ...form, resource_name: "", status: "", notes: "", release_label: "" });
+    setForm({
+      ...form,
+      resource_name: "",
+      status: "",
+      notes: "",
+      release_label: "",
+    });
+    setLastSaved(new Date().toLocaleTimeString());
   };
 
   const groups: Record<string, Specialist[]> = {};
   for (const sp of specialists) {
     (groups[sp.specialty] ??= []).push(sp);
   }
-  const availableCount = specialists.filter((s) => s.available_in_min === 0).length;
+  const availableCount = specialists.filter(
+    (s) => s.available_in_min === 0,
+  ).length;
 
   return (
-    <div className="flex flex-col h-full p-6 gap-5 overflow-hidden">
-
+    <div className="flex flex-col h-full p-6 gap-6 overflow-hidden font-sans">
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
-            <Network className="w-6 h-6 text-blue-400" />
+          <h1 className="text-lg font-bold text-slate-900 tracking-wide flex items-center gap-2">
+            <Network className="w-6 h-6 text-slate-600" />
             Operations Hub
           </h1>
-          <p className="text-sm text-slate-500 font-mono mt-1">
-            Specialist availability · fixed operational constraints the optimizer must respect
+          <p className="text-sm text-slate-600 mt-1">
+            Specialist availability · fixed operational constraints the
+            optimizer must respect
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="px-4 py-2.5 rounded-xl bg-emerald-950/30 border border-emerald-800/40">
-            <span className="text-sm font-mono font-bold text-emerald-400">{availableCount}</span>
-            <span className="text-xs font-mono text-slate-500 ml-1.5">available now</span>
+        <div className="flex items-center gap-4">
+          <div className="px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50">
+            <span className="text-base font-mono font-bold text-emerald-700">
+              {availableCount}
+            </span>
+            <span className="text-xs text-slate-600 ml-2">available now</span>
           </div>
-          <div className="px-4 py-2.5 rounded-xl bg-amber-950/30 border border-amber-800/40">
-            <span className="text-sm font-mono font-bold text-amber-400">{bottlenecks.length}</span>
-            <span className="text-xs font-mono text-slate-500 ml-1.5">fixed constraints</span>
+          <div className="px-4 py-2 rounded-lg border border-amber-200 bg-amber-50">
+            <span className="text-base font-mono font-bold text-amber-700">
+              {bottlenecks.length}
+            </span>
+            <span className="text-xs text-slate-600 ml-2">
+              fixed constraints
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-1 gap-5 min-h-0 overflow-hidden">
-
-        <div className="flex-1 flex flex-col min-w-0 rounded-2xl p-5 overflow-hidden"
-          style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}>
+      <div className="flex flex-1 gap-6 min-h-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-w-0 rounded-lg p-6 overflow-hidden border border-clinical-border bg-clinical-surface">
           <div className="flex items-center gap-2 mb-4 flex-shrink-0">
-            <Stethoscope className="w-5 h-5 text-blue-400" />
-            <span className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Specialist Availability</span>
+            <Stethoscope className="w-5 h-5 text-slate-600" />
+            <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
+              Specialist Availability
+            </span>
           </div>
-          <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+          <div className="flex-1 overflow-y-auto pr-2 space-y-4">
             {Object.entries(groups).map(([specialty, list]) => (
               <div key={specialty}>
-                <div className="text-xs font-mono text-slate-500 uppercase tracking-wider mb-2">{specialty}</div>
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="text-xs font-medium text-slate-600 uppercase tracking-wider mb-2">
+                  {specialty}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
                   {list.map((sp) => {
                     const ss = statusStyle(sp.status);
                     return (
-                      <div key={sp.specialist_id} className="rounded-xl p-3"
-                        style={{ background: "rgba(255,255,255,0.025)", border: `1px solid ${ss.color}30` }}>
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div
+                        key={sp.specialist_id}
+                        className="rounded-lg p-4 border border-clinical-border bg-clinical-surface"
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-mono font-semibold text-slate-200 truncate">{sp.name}</div>
-                            <div className="text-[10px] font-mono text-slate-600 truncate">{sp.role}</div>
+                            <div className="text-sm font-mono font-semibold text-slate-900 truncate">
+                              {sp.name}
+                            </div>
+                            <div className="text-xs text-slate-600 truncate">
+                              {sp.role}
+                            </div>
                           </div>
-                          <span className="text-[8px] font-mono font-bold px-1.5 py-0.5 rounded flex-shrink-0"
-                            style={{ background: `${ss.color}20`, color: ss.color }}>
-                            {ss.label}
-                          </span>
+                          <StatusBadge
+                            status={ss.status}
+                            label={ss.label}
+                            className="flex-shrink-0"
+                          />
                         </div>
-                        <div className="text-[10px] font-mono text-slate-600 truncate mb-2">{sp.current_assignment}</div>
-                        <div className="flex items-center justify-between text-[10px] font-mono">
-                          <span className="text-slate-600">Load {sp.patient_load} · Q{sp.queue_length}</span>
-                          <span className="font-bold" style={{ color: sp.available_in_min === 0 ? "#10b981" : "#f59e0b" }}>
-                            {sp.available_in_min === 0 ? "free now" : `free in ${sp.available_in_min}m`}
+                        <div className="text-xs text-slate-600 truncate mb-2">
+                          {sp.current_assignment}
+                        </div>
+                        <div className="flex items-center justify-between text-xs font-mono">
+                          <span className="text-slate-600">
+                            Load {sp.patient_load} · Q{sp.queue_length}
+                          </span>
+                          <span
+                            className="font-bold"
+                            style={{
+                              color:
+                                sp.available_in_min === 0
+                                  ? "#059669"
+                                  : "#D97706",
+                            }}
+                          >
+                            {sp.available_in_min === 0
+                              ? "free now"
+                              : `free in ${sp.available_in_min}m`}
                           </span>
                         </div>
                       </div>
@@ -175,98 +215,199 @@ export default function OperationsPage() {
               </div>
             ))}
             {specialists.length === 0 && (
-              <div className="text-center py-10 text-slate-600 font-mono text-sm">Loading specialist roster...</div>
+              <div className="text-center py-8 text-slate-600 text-sm">
+                Loading specialist roster...
+              </div>
             )}
           </div>
         </div>
 
         <div className="w-[400px] flex-shrink-0 flex flex-col gap-4 overflow-hidden">
-
-          <div className="rounded-2xl p-5 flex-shrink-0"
-            style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,170,0,0.18)" }}>
+          <div className="rounded-lg p-6 flex-shrink-0 border border-clinical-border bg-clinical-surface">
             <div className="flex items-center gap-2 mb-4">
-              <Lock className="w-5 h-5 text-amber-400" />
-              <span className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Fixed Bottlenecks &amp; Constraints</span>
+              <Lock className="w-5 h-5 text-slate-600" />
+              <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
+                Fixed Bottlenecks &amp; Constraints
+              </span>
             </div>
 
-            <div className="space-y-2.5">
-              <input
-                value={form.resource_name}
-                onChange={(e) => setForm({ ...form, resource_name: e.target.value })}
-                placeholder="Resource name (e.g. Dr. Sarah Chen)"
-                className="w-full px-3 py-2 rounded-lg text-sm font-mono bg-slate-900/60 border border-slate-700/50 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-600/50"
-              />
-              <div className="grid grid-cols-2 gap-2.5">
-                <select
-                  value={form.resource_type}
-                  onChange={(e) => setForm({ ...form, resource_type: e.target.value as BottleneckType })}
-                  className="px-3 py-2 rounded-lg text-sm font-mono bg-slate-900/60 border border-slate-700/50 text-slate-300 focus:outline-none"
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="constraint-resource-name"
+                  className="block text-xs font-medium text-slate-600 mb-2"
                 >
-                  {RESOURCE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-                <select
-                  value={form.priority}
-                  onChange={(e) => setForm({ ...form, priority: e.target.value as typeof PRIORITIES[number] })}
-                  className="px-3 py-2 rounded-lg text-sm font-mono bg-slate-900/60 border border-slate-700/50 text-slate-300 focus:outline-none"
-                >
-                  {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-                </select>
-              </div>
-              <input
-                value={form.status}
-                onChange={(e) => setForm({ ...form, status: e.target.value })}
-                placeholder="Status (e.g. In CABG Surgery)"
-                className="w-full px-3 py-2 rounded-lg text-sm font-mono bg-slate-900/60 border border-slate-700/50 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-600/50"
-              />
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900/60 border border-slate-700/50">
-                  <Clock className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
-                  <input
-                    type="number"
-                    value={form.release_in_min}
-                    onChange={(e) => setForm({ ...form, release_in_min: Number(e.target.value) })}
-                    className="w-full bg-transparent text-sm font-mono text-slate-200 focus:outline-none"
-                  />
-                  <span className="text-[10px] font-mono text-slate-600 flex-shrink-0">min</span>
-                </div>
+                  Resource name
+                </label>
                 <input
-                  value={form.release_label}
-                  onChange={(e) => setForm({ ...form, release_label: e.target.value })}
-                  placeholder="until (2:45 PM)"
-                  className="px-3 py-2 rounded-lg text-sm font-mono bg-slate-900/60 border border-slate-700/50 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-600/50"
+                  id="constraint-resource-name"
+                  value={form.resource_name}
+                  onChange={(e) =>
+                    setForm({ ...form, resource_name: e.target.value })
+                  }
+                  autoComplete="off"
+                  className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
                 />
               </div>
-              <input
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Notes (optional)"
-                className="w-full px-3 py-2 rounded-lg text-sm font-mono bg-slate-900/60 border border-slate-700/50 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-600/50"
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="constraint-resource-type"
+                    className="block text-xs font-medium text-slate-600 mb-2"
+                  >
+                    Type
+                  </label>
+                  <select
+                    id="constraint-resource-type"
+                    value={form.resource_type}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        resource_type: e.target.value as BottleneckType,
+                      })
+                    }
+                    className="w-full px-4 py-2 rounded-lg text-sm bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                  >
+                    {RESOURCE_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="constraint-priority"
+                    className="block text-xs font-medium text-slate-600 mb-2"
+                  >
+                    Priority
+                  </label>
+                  <select
+                    id="constraint-priority"
+                    value={form.priority}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        priority: e.target.value as (typeof PRIORITIES)[number],
+                      })
+                    }
+                    className="w-full px-4 py-2 rounded-lg text-sm bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                  >
+                    {PRIORITIES.map((p) => (
+                      <option key={p} value={p}>
+                        {p}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="constraint-status"
+                  className="block text-xs font-medium text-slate-600 mb-2"
+                >
+                  Status
+                </label>
+                <input
+                  id="constraint-status"
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value })}
+                  autoComplete="off"
+                  className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="constraint-release-min"
+                    className="block text-xs font-medium text-slate-600 mb-2"
+                  >
+                    Release in (min)
+                  </label>
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-clinical-surface border border-clinical-border">
+                    <Clock className="w-4 h-4 text-slate-600 flex-shrink-0" />
+                    <input
+                      id="constraint-release-min"
+                      type="number"
+                      autoComplete="off"
+                      value={form.release_in_min}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          release_in_min: Number(e.target.value),
+                        })
+                      }
+                      className="w-full bg-transparent text-sm font-mono text-slate-900 focus:outline-none"
+                    />
+                    <span className="text-xs text-slate-600 flex-shrink-0">
+                      min
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <label
+                    htmlFor="constraint-release-label"
+                    className="block text-xs font-medium text-slate-600 mb-2"
+                  >
+                    Until (clock)
+                  </label>
+                  <input
+                    id="constraint-release-label"
+                    value={form.release_label}
+                    onChange={(e) =>
+                      setForm({ ...form, release_label: e.target.value })
+                    }
+                    autoComplete="off"
+                    className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                  />
+                </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="constraint-notes"
+                  className="block text-xs font-medium text-slate-600 mb-2"
+                >
+                  Notes (optional)
+                </label>
+                <input
+                  id="constraint-notes"
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  autoComplete="off"
+                  className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                />
+              </div>
               <button
                 onClick={submit}
                 disabled={!form.resource_name.trim()}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-mono font-bold transition-all disabled:opacity-40"
-                style={{ background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b" }}
+                className="w-full flex items-center justify-center gap-2 py-2 min-h-11 rounded-lg text-sm font-bold transition-colors disabled:opacity-40 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100"
               >
                 <Plus className="w-4 h-4" /> Add Constraint
               </button>
+              {lastSaved && (
+                <div className="text-xs text-slate-600">
+                  Saved at {lastSaved} by clinician
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="flex-1 rounded-2xl p-5 overflow-hidden flex flex-col"
-            style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}>
-            <div className="text-xs font-mono text-slate-500 uppercase tracking-wider mb-3 flex-shrink-0">
+          <div className="flex-1 rounded-lg p-6 overflow-hidden flex flex-col border border-clinical-border bg-clinical-surface">
+            <div className="text-xs font-medium text-slate-600 uppercase tracking-wider mb-4 flex-shrink-0">
               Active Constraints ({bottlenecks.length})
             </div>
-            <div className="flex-1 overflow-y-auto pr-1 space-y-2.5">
-              <AnimatePresence mode="popLayout">
-                {bottlenecks.map((bn) => (
-                  <BottleneckRow key={bn.bottleneck_id} bn={bn} onRemove={() => removeBottleneck(bn.bottleneck_id)} isDemo={bn.bottleneck_id === demoConstraintId || bn.resource_name === DEMO_CONSTRAINT.resource_name} />
-                ))}
-              </AnimatePresence>
+            <div className="flex-1 overflow-y-auto pr-2 space-y-2">
+              {bottlenecks.map((bn) => (
+                <BottleneckRow
+                  key={bn.bottleneck_id}
+                  bn={bn}
+                  onRemove={() => removeBottleneck(bn.bottleneck_id)}
+                />
+              ))}
               {bottlenecks.length === 0 && (
-                <div className="text-center py-8 text-slate-600 font-mono text-sm">
-                  No fixed constraints. The optimizer treats all resources as movable.
+                <div className="text-center py-8 text-slate-600 text-sm">
+                  No fixed constraints. The optimizer treats all resources as
+                  movable.
                 </div>
               )}
             </div>
@@ -277,58 +418,53 @@ export default function OperationsPage() {
   );
 }
 
-/**
- * Renders a single row in the active constraints list for one fixed bottleneck.
- * Displays the resource name, type badge, priority badge, status, notes, and time-until-free.
- * When isDemo is true, applies a highlighted glow effect to make it stand out.
- * @param bn - The FixedBottleneck data object to display.
- * @param onRemove - Callback function called when the user clicks the X button to remove this constraint.
- * @param isDemo - Optional flag; when true the row is visually highlighted as a demo-added constraint.
- * @returns An animated constraint row element.
- * Called from: OperationsPage for each bottleneck in the active constraints list.
- */
-function BottleneckRow({ bn, onRemove, isDemo }: { bn: FixedBottleneck; onRemove: () => void; isDemo?: boolean }) {
+function BottleneckRow({
+  bn,
+  onRemove,
+}: {
+  bn: FixedBottleneck;
+  onRemove: () => void;
+}) {
   const displayMin = bn.release_in_min ?? 0;
-  const color = PRIORITY_COLOR[bn.priority] ?? "#3b82f6";
+  const priorityStatus = PRIORITY_STATUS[bn.priority] ?? "flagged";
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, x: 12 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -12 }}
-      className="rounded-xl p-3"
-      style={{
-        background: isDemo ? `${color}08` : "rgba(255,255,255,0.025)",
-        border: `1px solid ${isDemo ? color + "55" : color + "30"}`,
-        boxShadow: isDemo ? `0 0 18px ${color}18` : "none",
-      }}
-    >
-      <div className="flex items-start justify-between gap-2 mb-1">
+    <div className="rounded-lg p-4 border border-clinical-border bg-clinical-surface">
+      <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <AlertOctagon className="w-3.5 h-3.5 flex-shrink-0" style={{ color }} />
-          <span className="text-sm font-mono font-semibold text-slate-200 truncate">{bn.resource_name}</span>
+          <AlertOctagon className="w-4 h-4 flex-shrink-0 text-slate-600" />
+          <span className="text-sm font-mono font-semibold text-slate-900 truncate">
+            {bn.resource_name}
+          </span>
         </div>
-        <button onClick={onRemove} className="text-slate-600 hover:text-red-400 transition-colors flex-shrink-0">
-          <X className="w-3.5 h-3.5" />
+        <button
+          onClick={onRemove}
+          aria-label={`Remove constraint for ${bn.resource_name}`}
+          className="flex items-center justify-center w-11 h-11 -m-2 rounded text-slate-600 hover:text-red-600 transition-colors flex-shrink-0"
+        >
+          <X className="w-4 h-4" />
         </button>
       </div>
-      <div className="flex items-center gap-2 mb-1.5">
-        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-800/60 text-slate-400">{bn.resource_type}</span>
-        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded font-bold" style={{ background: `${color}20`, color }}>
-          {bn.priority.toUpperCase()}
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600">
+          {bn.resource_type}
         </span>
+        <StatusBadge status={priorityStatus} label={bn.priority} />
       </div>
-      <div className="text-xs font-mono text-slate-400">{bn.status}</div>
-      {bn.notes && <div className="text-[10px] font-mono text-slate-600 mt-1">{bn.notes}</div>}
-      <div className="flex items-center justify-between mt-2 text-[10px] font-mono">
+      <div className="text-sm font-mono text-slate-600">{bn.status}</div>
+      {bn.notes && (
+        <div className="text-xs text-slate-600 mt-1">{bn.notes}</div>
+      )}
+      <div className="flex items-center justify-between mt-2 text-xs font-mono">
         <span className="text-slate-600">
           {bn.release_label ? `until ${bn.release_label}` : ""}
         </span>
         {bn.release_in_min !== null && (
-          <span className="font-bold" style={{ color }}>frees in {displayMin}m</span>
+          <span className="font-bold text-slate-900">
+            frees in {displayMin}m
+          </span>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }

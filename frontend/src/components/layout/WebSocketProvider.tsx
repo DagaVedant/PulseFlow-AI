@@ -1,4 +1,3 @@
-/* Client provider that opens the shared WebSocket connection for the whole app. */
 "use client";
 import { useEffect } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";

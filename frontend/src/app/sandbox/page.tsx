@@ -1,43 +1,57 @@
-/* Simulation Sandbox page: live configuration sliders and crisis-event toggles. */
 "use client";
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { motion } from "framer-motion";
 import {
-  FlaskConical, Zap, AlertTriangle, RefreshCw,
-  Minus, Plus, Activity, Users, Bed, Server
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+  useId,
+} from "react";
+import {
+  FlaskConical,
+  Zap,
+  AlertTriangle,
+  RefreshCw,
+  Minus,
+  Plus,
+  Activity,
+  Users,
+  Bed,
+  Server,
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useDemoStore } from "@/store/demoStore";
-import { formatTime, formatPercent, cn } from "@/lib/utils";
+import { formatTime, formatPercent } from "@/lib/utils";
 import type { EventType } from "@/types";
 
-/**
- * Converts the simplified sandbox configuration (doctors, nurses, beds) into the detailed
- * per-department config object that the backend simulation expects.
- * Distributes staff and beds proportionally across ER, ICU, and Ward.
- * @param s - A SimpleConfig object with high-level staffing and resource counts.
- * @returns A flat object mapping backend config keys (e.g. "er_doctors", "icu_nurses") to numbers.
- * Called from: SandboxPage's debounced useEffect whenever a slider value changes.
- */
 function expandConfig(s: SimpleConfig): Record<string, number> {
   const doc = s.doctors;
   const nur = s.nurses;
   const beds = s.beds;
   return {
-    arrival_rate:    s.arrival_rate,
-    er_doctors:      Math.max(1, Math.round(doc * 0.35)),
-    icu_doctors:     Math.max(1, Math.round(doc * 0.25)),
-    ward_doctors:    Math.max(1, doc - Math.round(doc * 0.35) - Math.round(doc * 0.25)),
-    er_nurses:       Math.max(2, Math.round(nur * 0.25)),
-    icu_nurses:      Math.max(4, Math.round(nur * 0.40)),
-    ward_nurses:     Math.max(4, nur - Math.round(nur * 0.25) - Math.round(nur * 0.40)),
+    arrival_rate: s.arrival_rate,
+    er_doctors: Math.max(1, Math.round(doc * 0.35)),
+    icu_doctors: Math.max(1, Math.round(doc * 0.25)),
+    ward_doctors: Math.max(
+      1,
+      doc - Math.round(doc * 0.35) - Math.round(doc * 0.25),
+    ),
+    er_nurses: Math.max(2, Math.round(nur * 0.25)),
+    icu_nurses: Math.max(4, Math.round(nur * 0.4)),
+    ward_nurses: Math.max(
+      4,
+      nur - Math.round(nur * 0.25) - Math.round(nur * 0.4),
+    ),
     lab_technicians: s.technicians,
-    er_beds:         Math.max(10, Math.round(beds * 0.28)),
-    icu_beds:        Math.max(5,  Math.round(beds * 0.14)),
-    ward_beds:       Math.max(20, beds - Math.round(beds * 0.28) - Math.round(beds * 0.14)),
-    imaging_ct:      s.ct_scanners,
-    imaging_mri:     s.mri_machines,
+    er_beds: Math.max(10, Math.round(beds * 0.28)),
+    icu_beds: Math.max(5, Math.round(beds * 0.14)),
+    ward_beds: Math.max(
+      20,
+      beds - Math.round(beds * 0.28) - Math.round(beds * 0.14),
+    ),
+    imaging_ct: s.ct_scanners,
+    imaging_mri: s.mri_machines,
   };
 }
 
@@ -68,70 +82,100 @@ interface SliderProps {
   max: number;
   step?: number;
   onChange: (v: number) => void;
-  color?: string;
   unit?: string;
 }
 
-/**
- * Renders a labeled range slider with increment and decrement buttons on either side.
- * The filled portion of the slider track is colored to match the provided color prop.
- * @param label - The text label shown above the slider on the left side.
- * @param value - The current numeric value of the slider.
- * @param min - The minimum numeric value the slider can be set to.
- * @param max - The maximum numeric value the slider can be set to.
- * @param step - How much the value changes per click of the +/- buttons or per tick (default 1).
- * @param onChange - Callback function called with the new number whenever the value changes.
- * @param color - A hex color string for the filled track and value display (default blue).
- * @param unit - An optional unit suffix shown after the value, like "/hr" or "".
- * @returns A slider control with label, value, minus button, range input, and plus button.
- * Called from: SandboxPage for every staffing and infrastructure parameter.
- */
-function Slider({ label, value, min, max, step = 1, onChange, color = "#3b82f6", unit = "" }: SliderProps) {
-  const pct = ((value - min) / (max - min)) * 100;
+function Slider({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  onChange,
+  unit = "",
+}: SliderProps) {
+  const inputId = useId();
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-baseline">
-        <span className="text-sm text-slate-400 font-medium">{label}</span>
-        <span className="text-base font-bold font-mono" style={{ color }}>
-          {value}{unit}
+        <label htmlFor={inputId} className="text-sm text-slate-600 font-medium">
+          {label}
+        </label>
+        <span className="text-base font-bold font-mono text-slate-900">
+          {value}
+          {unit}
         </span>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <button
+          type="button"
+          aria-label={`Decrease ${label}`}
           onClick={() => onChange(Math.max(min, value - step))}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0"
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+          className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-600 border border-clinical-border bg-clinical-surface hover:bg-slate-100 transition-colors flex-shrink-0"
         >
-          <Minus className="w-3.5 h-3.5" />
+          <Minus className="w-4 h-4" />
         </button>
         <input
-          type="range" min={min} max={max} step={step} value={value}
+          id={inputId}
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="flex-1 h-1.5 appearance-none rounded-full cursor-pointer"
-          style={{
-            background: `linear-gradient(to right, ${color} ${pct}%, rgba(30,41,59,0.9) ${pct}%)`,
-          }}
+          className="flex-1 h-2 appearance-none rounded-full cursor-pointer bg-slate-200 accent-emerald-600 min-h-11"
         />
         <button
+          type="button"
+          aria-label={`Increase ${label}`}
           onClick={() => onChange(Math.min(max, value + step))}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition-colors flex-shrink-0"
-          style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+          className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-600 border border-clinical-border bg-clinical-surface hover:bg-slate-100 transition-colors flex-shrink-0"
         >
-          <Plus className="w-3.5 h-3.5" />
+          <Plus className="w-4 h-4" />
         </button>
       </div>
     </div>
   );
 }
 
-const EVENTS: { key: EventType; label: string; desc: string; color: string; icon: any }[] = [
-  { key: "flu_outbreak",  label: "Flu Outbreak",   desc: "2.5× arrivals",        color: "#f59e0b", icon: AlertTriangle },
-  { key: "covid_surge",   label: "COVID Surge",    desc: "1.8× + isolation",     color: "#ef4444", icon: AlertTriangle },
-  { key: "heatwave",      label: "Heatwave",       desc: "1.4× arrivals",        color: "#f59e0b", icon: Zap },
-  { key: "mass_casualty", label: "Mass Casualty",  desc: "15 critical patients", color: "#ef4444", icon: AlertTriangle },
-  { key: "ct_failure",    label: "CT Failure",     desc: "Scanner offline",      color: "#8b5cf6", icon: Server },
-  { key: "mri_failure",   label: "MRI Failure",    desc: "Scanner offline",      color: "#8b5cf6", icon: Server },
-  { key: "lab_slowdown",  label: "Lab Slowdown",   desc: "2.5× processing time", color: "#06b6d4", icon: Activity },
+const EVENTS: { key: EventType; label: string; desc: string; icon: any }[] = [
+  {
+    key: "flu_outbreak",
+    label: "Flu Outbreak",
+    desc: "2.5× arrivals",
+    icon: AlertTriangle,
+  },
+  {
+    key: "covid_surge",
+    label: "COVID Surge",
+    desc: "1.8× + isolation",
+    icon: AlertTriangle,
+  },
+  { key: "heatwave", label: "Heatwave", desc: "1.4× arrivals", icon: Zap },
+  {
+    key: "mass_casualty",
+    label: "Mass Casualty",
+    desc: "15 critical patients",
+    icon: AlertTriangle,
+  },
+  {
+    key: "ct_failure",
+    label: "CT Failure",
+    desc: "Scanner offline",
+    icon: Server,
+  },
+  {
+    key: "mri_failure",
+    label: "MRI Failure",
+    desc: "Scanner offline",
+    icon: Server,
+  },
+  {
+    key: "lab_slowdown",
+    label: "Lab Slowdown",
+    desc: "2.5× processing time",
+    icon: Activity,
+  },
 ];
 
 /**
@@ -144,7 +188,6 @@ const EVENTS: { key: EventType; label: string; desc: string; color: string; icon
 export default function SandboxPage() {
   const { hospitalState } = useSimulationStore();
   const { triggerEvent, updateConfig } = useWebSocket();
-  const metrics = hospitalState?.metrics;
 
   const [cfg, setCfg] = useState<SimpleConfig>(DEFAULTS);
   const [activeEvents, setActiveEvents] = useState<Set<EventType>>(new Set());
@@ -180,19 +223,22 @@ export default function SandboxPage() {
    * @returns void — updates local activeEvents state and sends a WebSocket message.
    * Called from: each event button in SandboxPage.
    */
-  const toggleEvent = useCallback((event: EventType) => {
-    setActiveEvents((prev) => {
-      const next = new Set(prev);
-      if (next.has(event)) {
-        next.delete(event);
-        triggerEvent("clear_event");
-      } else {
-        next.add(event);
-        triggerEvent(event, event === "mass_casualty" ? { count: 15 } : {});
-      }
-      return next;
-    });
-  }, [triggerEvent]);
+  const toggleEvent = useCallback(
+    (event: EventType) => {
+      setActiveEvents((prev) => {
+        const next = new Set(prev);
+        if (next.has(event)) {
+          next.delete(event);
+          triggerEvent("clear_event");
+        } else {
+          next.add(event);
+          triggerEvent(event, event === "mass_casualty" ? { count: 15 } : {});
+        }
+        return next;
+      });
+    },
+    [triggerEvent],
+  );
 
   /**
    * Clears all currently active crisis events and sends a "clear_event" message to the backend.
@@ -211,10 +257,18 @@ export default function SandboxPage() {
 
     setActiveEvents(new Set(["flu_outbreak" as EventType]));
     triggerEvent("flu_outbreak", {});
-    setCfg((prev) => ({ ...prev, arrival_rate: parseFloat((DEFAULTS.arrival_rate * 2.5).toFixed(1)) }));
+    setCfg((prev) => ({
+      ...prev,
+      arrival_rate: parseFloat((DEFAULTS.arrival_rate * 2.5).toFixed(1)),
+    }));
 
     const t1 = setTimeout(() => {
-      setCfg({ ...DEFAULTS, doctors: 40, nurses: 100, arrival_rate: parseFloat((DEFAULTS.arrival_rate * 2.5).toFixed(1)) });
+      setCfg({
+        ...DEFAULTS,
+        doctors: 40,
+        nurses: 100,
+        arrival_rate: parseFloat((DEFAULTS.arrival_rate * 2.5).toFixed(1)),
+      });
     }, 6000);
 
     const t2 = setTimeout(() => {
@@ -223,69 +277,117 @@ export default function SandboxPage() {
       setCfg(DEFAULTS);
     }, 14000);
 
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [pendingAction]);
 
   const projected = useMemo(() => {
     const arr = cfg.arrival_rate / DEFAULTS.arrival_rate;
 
-    const erS  = Math.max(1, Math.round(cfg.doctors * 0.35) + Math.max(2, Math.round(cfg.nurses * 0.25)));
-    const erSD = Math.max(1, Math.round(DEFAULTS.doctors * 0.35) + Math.max(2, Math.round(DEFAULTS.nurses * 0.25)));
-    const erB  = Math.max(10, Math.round(cfg.beds * 0.28)) / 40;
+    const erS = Math.max(
+      1,
+      Math.round(cfg.doctors * 0.35) +
+        Math.max(2, Math.round(cfg.nurses * 0.25)),
+    );
+    const erSD = Math.max(
+      1,
+      Math.round(DEFAULTS.doctors * 0.35) +
+        Math.max(2, Math.round(DEFAULTS.nurses * 0.25)),
+    );
+    const erB = Math.max(10, Math.round(cfg.beds * 0.28)) / 40;
 
-    const icuS  = Math.max(1, Math.round(cfg.doctors * 0.25) + Math.max(4, Math.round(cfg.nurses * 0.40)));
-    const icuSD = Math.max(1, Math.round(DEFAULTS.doctors * 0.25) + Math.max(4, Math.round(DEFAULTS.nurses * 0.40)));
-    const icuB  = Math.max(5, Math.round(cfg.beds * 0.14)) / 20;
+    const icuS = Math.max(
+      1,
+      Math.round(cfg.doctors * 0.25) +
+        Math.max(4, Math.round(cfg.nurses * 0.4)),
+    );
+    const icuSD = Math.max(
+      1,
+      Math.round(DEFAULTS.doctors * 0.25) +
+        Math.max(4, Math.round(DEFAULTS.nurses * 0.4)),
+    );
+    const icuB = Math.max(5, Math.round(cfg.beds * 0.14)) / 20;
 
-    const wS  = Math.max(1, cfg.doctors - Math.round(cfg.doctors * 0.35) - Math.round(cfg.doctors * 0.25)
-                          + cfg.nurses  - Math.max(2, Math.round(cfg.nurses * 0.25)) - Math.max(4, Math.round(cfg.nurses * 0.40)));
-    const wSD = Math.max(1, DEFAULTS.doctors - Math.round(DEFAULTS.doctors * 0.35) - Math.round(DEFAULTS.doctors * 0.25)
-                          + DEFAULTS.nurses  - Math.max(2, Math.round(DEFAULTS.nurses * 0.25)) - Math.max(4, Math.round(DEFAULTS.nurses * 0.40)));
-    const wB  = Math.max(20, cfg.beds - Math.round(cfg.beds * 0.28) - Math.round(cfg.beds * 0.14)) / 80;
+    const wS = Math.max(
+      1,
+      cfg.doctors -
+        Math.round(cfg.doctors * 0.35) -
+        Math.round(cfg.doctors * 0.25) +
+        cfg.nurses -
+        Math.max(2, Math.round(cfg.nurses * 0.25)) -
+        Math.max(4, Math.round(cfg.nurses * 0.4)),
+    );
+    const wSD = Math.max(
+      1,
+      DEFAULTS.doctors -
+        Math.round(DEFAULTS.doctors * 0.35) -
+        Math.round(DEFAULTS.doctors * 0.25) +
+        DEFAULTS.nurses -
+        Math.max(2, Math.round(DEFAULTS.nurses * 0.25)) -
+        Math.max(4, Math.round(DEFAULTS.nurses * 0.4)),
+    );
+    const wB =
+      Math.max(
+        20,
+        cfg.beds - Math.round(cfg.beds * 0.28) - Math.round(cfg.beds * 0.14),
+      ) / 80;
 
-    const calc = (sNow: number, sDef: number, bRatio: number, baseQ: number, baseOcc: number) => {
+    const calc = (
+      sNow: number,
+      sDef: number,
+      bRatio: number,
+      baseQ: number,
+      baseOcc: number,
+    ) => {
       const sr = sNow / sDef;
       return {
-        queue:    Math.max(0, Math.round(arr * baseQ / sr)),
-        occupancy: Math.min(0.99, Math.max(0.02, arr * baseOcc * Math.min(1.5, sr) / bRatio)),
+        queue: Math.max(0, Math.round((arr * baseQ) / sr)),
+        occupancy: Math.min(
+          0.99,
+          Math.max(0.02, (arr * baseOcc * Math.min(1.5, sr)) / bRatio),
+        ),
       };
     };
 
     return {
-      er:   calc(erS,  erSD,  erB,  18, 0.52),
-      icu:  calc(icuS, icuSD, icuB,  3, 0.62),
-      ward: calc(wS,   wSD,   wB,    2, 0.40),
+      er: calc(erS, erSD, erB, 18, 0.52),
+      icu: calc(icuS, icuSD, icuB, 3, 0.62),
+      ward: calc(wS, wSD, wB, 2, 0.4),
     };
   }, [cfg]);
 
   return (
-    <div className="flex flex-col h-full p-5 gap-5 overflow-hidden">
-
-      {}
+    <div className="flex flex-col h-full p-6 gap-6 overflow-hidden bg-clinical-canvas">
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-xl font-bold text-white tracking-wide flex items-center gap-2">
-            <FlaskConical className="w-6 h-6 text-blue-400" />
+          <h1 className="text-xl font-bold text-slate-900 tracking-wide flex items-center gap-2">
+            <FlaskConical className="w-6 h-6 text-slate-600" />
             Simulation Sandbox
           </h1>
-          <p className="text-sm text-slate-500 font-mono mt-0.5">
-            Changes apply automatically · Events &amp; constraints drive dynamic delays and resource competition
+          <p className="text-sm text-slate-600 mt-2">
+            Changes apply automatically · Events &amp; constraints drive dynamic
+            delays and resource competition
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex items-center gap-4 flex-shrink-0">
           {(hospitalState?.care?.bottlenecks?.length ?? 0) > 0 && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl"
-              style={{ background: "rgba(255,170,0,0.08)", border: "1px solid rgba(255,170,0,0.25)" }}>
-              <span className="text-xs font-mono text-amber-400 font-bold">
-                {hospitalState?.care?.bottlenecks.length} fixed constraint{(hospitalState?.care?.bottlenecks.length ?? 0) === 1 ? "" : "s"} active
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-200 bg-amber-50">
+              <span className="text-xs font-medium text-amber-700">
+                {hospitalState?.care?.bottlenecks.length} fixed constraint
+                {(hospitalState?.care?.bottlenecks.length ?? 0) === 1
+                  ? ""
+                  : "s"}{" "}
+                active
               </span>
             </div>
           )}
           {activeEvents.size > 0 && (
             <button
+              type="button"
               onClick={clearAll}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-mono text-slate-300 transition-all"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-slate-600 border border-clinical-border bg-clinical-surface hover:bg-slate-100 transition-colors min-h-11"
             >
               <RefreshCw className="w-4 h-4" /> Clear Events
             </button>
@@ -293,148 +395,215 @@ export default function SandboxPage() {
         </div>
       </div>
 
-      <div className="flex flex-1 gap-5 min-h-0 overflow-hidden">
-
-        {}
+      <div className="flex flex-1 gap-6 min-h-0 overflow-hidden">
         <div className="w-[340px] flex flex-col gap-4 overflow-y-auto flex-shrink-0">
-
-          {}
-          <div
-            className="rounded-2xl p-5 space-y-5"
-            style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}
-          >
+          <div className="border border-clinical-border bg-clinical-surface rounded-lg p-6 space-y-6">
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-blue-400" />
-              <span className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Staffing</span>
+              <Users className="w-5 h-5 text-slate-600" />
+              <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
+                Staffing
+              </span>
             </div>
-            <Slider label="Arrival Rate" value={cfg.arrival_rate} min={2} max={25} step={0.5}
-              onChange={set("arrival_rate")} color="#3b82f6" unit="/hr" />
-            <Slider label="Doctors" value={cfg.doctors} min={3} max={40}
-              onChange={set("doctors")} color="#60a5fa" />
-            <Slider label="Nurses" value={cfg.nurses} min={12} max={100}
-              onChange={set("nurses")} color="#60a5fa" />
-            <Slider label="Lab Technicians" value={cfg.technicians} min={2} max={20}
-              onChange={set("technicians")} color="#8b5cf6" />
-            <div className="pt-1 text-xs text-slate-700 font-mono border-t border-slate-800/50">
+            <Slider
+              label="Arrival Rate"
+              value={cfg.arrival_rate}
+              min={2}
+              max={25}
+              step={0.5}
+              onChange={set("arrival_rate")}
+              unit="/hr"
+            />
+            <Slider
+              label="Doctors"
+              value={cfg.doctors}
+              min={3}
+              max={40}
+              onChange={set("doctors")}
+            />
+            <Slider
+              label="Nurses"
+              value={cfg.nurses}
+              min={12}
+              max={100}
+              onChange={set("nurses")}
+            />
+            <Slider
+              label="Lab Technicians"
+              value={cfg.technicians}
+              min={2}
+              max={20}
+              onChange={set("technicians")}
+            />
+            <div className="pt-2 text-xs text-slate-600 border-t border-clinical-border">
               Doctors & nurses auto-distributed across ER / ICU / Ward
             </div>
           </div>
 
-          {}
-          <div
-            className="rounded-2xl p-5 space-y-5"
-            style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}
-          >
+          <div className="border border-clinical-border bg-clinical-surface rounded-lg p-6 space-y-6">
             <div className="flex items-center gap-2">
-              <Bed className="w-5 h-5 text-cyan-400" />
-              <span className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Infrastructure</span>
+              <Bed className="w-5 h-5 text-slate-600" />
+              <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
+                Infrastructure
+              </span>
             </div>
-            <Slider label="Hospital Beds" value={cfg.beds} min={60} max={300}
-              onChange={set("beds")} color="#06b6d4" />
-            <Slider label="CT Scanners" value={cfg.ct_scanners} min={0} max={5}
-              onChange={set("ct_scanners")} color="#06b6d4" />
-            <Slider label="MRI Machines" value={cfg.mri_machines} min={0} max={4}
-              onChange={set("mri_machines")} color="#06b6d4" />
-            <div className="pt-1 text-xs text-slate-700 font-mono border-t border-slate-800/50">
+            <Slider
+              label="Hospital Beds"
+              value={cfg.beds}
+              min={60}
+              max={300}
+              onChange={set("beds")}
+            />
+            <Slider
+              label="CT Scanners"
+              value={cfg.ct_scanners}
+              min={0}
+              max={5}
+              onChange={set("ct_scanners")}
+            />
+            <Slider
+              label="MRI Machines"
+              value={cfg.mri_machines}
+              min={0}
+              max={4}
+              onChange={set("mri_machines")}
+            />
+            <div className="pt-2 text-xs text-slate-600 border-t border-clinical-border">
               Beds split: ~28% ER · 14% ICU · 58% Ward
             </div>
           </div>
         </div>
 
-        {}
         <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-w-0">
-
-          {}
-          <div
-            className="rounded-2xl p-5 flex-shrink-0"
-            style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}
-          >
+          <div className="border border-clinical-border bg-clinical-surface rounded-lg p-6 flex-shrink-0">
             <div className="flex items-center gap-2 mb-4">
-              <AlertTriangle className="w-5 h-5 text-yellow-400" />
-              <span className="text-sm font-semibold text-slate-300 uppercase tracking-wider">
+              <AlertTriangle className="w-5 h-5 text-slate-600" />
+              <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
                 Emergency Events
               </span>
               {activeEvents.size > 0 && (
-                <span className="ml-2 text-xs font-mono font-bold text-yellow-400 px-2.5 py-1 rounded-lg bg-yellow-950/40">
+                <span className="ml-2 text-xs font-medium text-amber-700 px-2 py-1 rounded border border-amber-200 bg-amber-50">
                   {activeEvents.size} ACTIVE
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-4">
               {EVENTS.map((event) => {
                 const Icon = event.icon;
                 const isActive = activeEvents.has(event.key);
                 return (
-                  <motion.button
+                  <button
+                    type="button"
                     key={event.key}
                     onClick={() => toggleEvent(event.key)}
-                    whileTap={{ scale: 0.96 }}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl text-center transition-all"
-                    style={{
-                      background: isActive ? `${event.color}14` : "rgba(255,255,255,0.025)",
-                      border: `1.5px solid ${isActive ? `${event.color}50` : "rgba(255,255,255,0.07)"}`,
-                      boxShadow: isActive ? `0 0 16px ${event.color}20` : "none",
-                    }}
+                    aria-pressed={isActive}
+                    className={
+                      "flex flex-col items-center gap-2 p-4 rounded-lg text-center border transition-colors min-h-11 " +
+                      (isActive
+                        ? "border-amber-200 bg-amber-50"
+                        : "border-clinical-border bg-clinical-surface hover:bg-slate-100")
+                    }
                   >
-                    <Icon className="w-5 h-5" style={{ color: isActive ? event.color : "#475569" }} />
+                    <Icon
+                      className={
+                        "w-5 h-5 " +
+                        (isActive ? "text-amber-700" : "text-slate-600")
+                      }
+                    />
                     <div>
-                      <div className="text-xs font-semibold font-mono" style={{ color: isActive ? event.color : "#64748b" }}>
+                      <div
+                        className={
+                          "text-xs font-medium " +
+                          (isActive ? "text-amber-700" : "text-slate-900")
+                        }
+                      >
                         {event.label}
                       </div>
-                      <div className="text-[10px] text-slate-700 font-mono mt-0.5">{event.desc}</div>
+                      <div className="text-xs text-slate-600 mt-2">
+                        {event.desc}
+                      </div>
                     </div>
                     {isActive && (
-                      <div className="w-2 h-2 rounded-full" style={{ background: event.color, boxShadow: `0 0 6px ${event.color}` }} />
+                      <span className="text-xs font-medium text-amber-700">
+                        Active
+                      </span>
                     )}
-                  </motion.button>
+                  </button>
                 );
               })}
             </div>
           </div>
 
-          {}
           {hospitalState?.departments && (
-            <div
-              className="rounded-2xl p-5 flex-1 min-h-0 overflow-y-auto"
-              style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(59,130,246,0.12)" }}
-            >
-              <div className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">
+            <div className="border border-clinical-border bg-clinical-surface rounded-lg p-6 flex-1 min-h-0 overflow-y-auto">
+              <div className="text-sm font-medium text-slate-900 uppercase tracking-wider mb-4">
                 Department Status — Adjust Sliders to See Changes
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-4">
                 {(["er", "icu", "ward"] as const).map((dept) => {
                   const d = hospitalState.departments[dept];
                   if (!d) return null;
                   const p = projected[dept];
-                  const deptColor = dept === "er" ? "#60a5fa" : dept === "icu" ? "#f59e0b" : "#10b981";
                   return (
                     <div
                       key={dept}
-                      className="p-4 rounded-xl"
-                      style={{
-                        background: "rgba(255,255,255,0.025)",
-                        border: `1px solid ${deptColor}40`,
-                      }}
+                      className="p-4 rounded-lg border border-clinical-border bg-clinical-surface"
                     >
-                      <div className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3" style={{ color: deptColor }}>
-                        {dept === "er" ? "Emergency" : dept === "icu" ? "ICU" : "Ward"}
+                      <div className="text-xs font-medium text-slate-900 uppercase tracking-wider mb-2">
+                        {dept === "er"
+                          ? "Emergency"
+                          : dept === "icu"
+                            ? "ICU"
+                            : "Ward"}
                       </div>
                       <div className="space-y-2">
                         <div>
-                          <div className="text-[10px] text-slate-600 font-mono mb-0.5">Occupancy</div>
-                          <div className="text-xl font-bold font-mono" style={{ color: p.occupancy > 0.9 ? "#ef4444" : p.occupancy > 0.7 ? "#fbbf24" : deptColor }}>
+                          <div className="text-xs text-slate-600 mb-2">
+                            Occupancy
+                          </div>
+                          <div
+                            className={
+                              "text-lg font-bold font-mono " +
+                              (p.occupancy > 0.9
+                                ? "text-red-600"
+                                : p.occupancy > 0.7
+                                  ? "text-amber-600"
+                                  : "text-slate-900")
+                            }
+                          >
                             {formatPercent(p.occupancy)}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[10px] text-slate-600 font-mono mb-0.5">Queue</div>
-                          <div className="text-xl font-bold font-mono" style={{ color: p.queue > 8 ? "#ef4444" : p.queue > 4 ? "#f59e0b" : "#64748b" }}>
+                          <div className="text-xs text-slate-600 mb-2">
+                            Queue
+                          </div>
+                          <div
+                            className={
+                              "text-lg font-bold font-mono " +
+                              (p.queue > 8
+                                ? "text-red-600"
+                                : p.queue > 4
+                                  ? "text-amber-600"
+                                  : "text-slate-900")
+                            }
+                          >
                             {p.queue}
                           </div>
                         </div>
                         <div>
-                          <div className="text-[10px] text-slate-600 font-mono mb-0.5">Wait</div>
-                          <div className="text-lg font-bold font-mono" style={{ color: d.avg_wait_time > 120 ? "#ef4444" : d.avg_wait_time > 80 ? "#f59e0b" : "#64748b" }}>
+                          <div className="text-xs text-slate-600 mb-2">
+                            Wait
+                          </div>
+                          <div
+                            className={
+                              "text-lg font-bold font-mono " +
+                              (d.avg_wait_time > 120
+                                ? "text-red-600"
+                                : d.avg_wait_time > 80
+                                  ? "text-amber-600"
+                                  : "text-slate-900")
+                            }
+                          >
                             {formatTime(d.avg_wait_time)}
                           </div>
                         </div>
@@ -443,8 +612,9 @@ export default function SandboxPage() {
                   );
                 })}
               </div>
-              <div className="mt-4 pt-3 border-t border-slate-700/50 text-xs text-slate-600 font-mono">
-                💡 Try: Reduce Doctors to see queues grow | Reduce Beds to see occupancy spike | Increase Arrival Rate for cascading effects
+              <div className="mt-4 pt-2 border-t border-clinical-border text-xs text-slate-600">
+                Try: Reduce Doctors to see queues grow | Reduce Beds to see
+                occupancy spike | Increase Arrival Rate for cascading effects
               </div>
             </div>
           )}

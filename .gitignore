@@ -58,6 +58,9 @@ Desktop.ini
 *.log
 logs/
 
+.claude/
+/.ruff_cache
 CLAUDE.md
-DEMO_SCRIPT.md
+DESIGN.md
+
 

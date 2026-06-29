@@ -36,7 +36,8 @@ export function formatSimTime(minutes: number): string {
   const days = Math.floor(totalHours / 24);
   const hours = totalHours % 24;
   const mins = Math.floor(minutes % 60);
-  if (days > 0) return `Day ${days + 1} ${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+  if (days > 0)
+    return `Day ${days + 1} ${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
   return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
 }
 
@@ -58,11 +59,13 @@ export function formatPercent(value: number, decimals = 0): string {
  * Called from: HospitalFloorPlan, DepartmentNode, shift-report, and anywhere a status dot or line is colored.
  */
 export function statusColor(status: DepartmentStatus): string {
-  return {
-    healthy: "#10b981",
-    warning: "#f59e0b",
-    critical: "#ef4444",
-  }[status] ?? "#3b82f6";
+  return (
+    {
+      healthy: "#059669",
+      warning: "#D97706",
+      critical: "#DC2626",
+    }[status] ?? "#475569"
+  );
 }
 
 /**
@@ -72,11 +75,13 @@ export function statusColor(status: DepartmentStatus): string {
  * Called from: components that need a tinted background matching the status level.
  */
 export function statusBg(status: DepartmentStatus): string {
-  return {
-    healthy: "rgba(16,185,129,0.08)",
-    warning: "rgba(245,158,11,0.08)",
-    critical: "rgba(239,68,68,0.10)",
-  }[status] ?? "rgba(59,130,246,0.08)";
+  return (
+    {
+      healthy: "#ECFDF5",
+      warning: "#FFFBEB",
+      critical: "#FEF2F2",
+    }[status] ?? "#F1F5F9"
+  );
 }
 
 /**
@@ -86,11 +91,13 @@ export function statusBg(status: DepartmentStatus): string {
  * Called from: components that need a tinted border matching the status level.
  */
 export function statusBorder(status: DepartmentStatus): string {
-  return {
-    healthy: "rgba(16,185,129,0.3)",
-    warning: "rgba(245,158,11,0.3)",
-    critical: "rgba(239,68,68,0.35)",
-  }[status] ?? "rgba(59,130,246,0.3)";
+  return (
+    {
+      healthy: "#A7F3D0",
+      warning: "#FDE68A",
+      critical: "#FECACA",
+    }[status] ?? "#CBD5E1"
+  );
 }
 
 /**
@@ -100,12 +107,14 @@ export function statusBorder(status: DepartmentStatus): string {
  * Called from: patient dot rendering on the floor plan and patient list components.
  */
 export function severityColor(severity: Severity): string {
-  return {
-    low: "#34d399",
-    medium: "#fbbf24",
-    high: "#f59e0b",
-    critical: "#ef4444",
-  }[severity] ?? "#6b7280";
+  return (
+    {
+      low: "#059669",
+      medium: "#D97706",
+      high: "#EA580C",
+      critical: "#DC2626",
+    }[severity] ?? "#475569"
+  );
 }
 
 /**
@@ -115,12 +124,14 @@ export function severityColor(severity: Severity): string {
  * Called from: patient badge UI elements throughout the app.
  */
 export function severityBadgeClass(severity: Severity): string {
-  return {
-    low: "bg-green-900/40 text-green-400 border border-green-800/50",
-    medium: "bg-yellow-900/40 text-yellow-300 border border-yellow-700/50",
-    high: "bg-amber-900/40 text-amber-400 border border-amber-700/50",
-    critical: "bg-red-950/60 text-red-400 border border-red-700/60",
-  }[severity] ?? "bg-gray-900/40 text-gray-400";
+  return (
+    {
+      low: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+      medium: "bg-amber-50 text-amber-700 border border-amber-200",
+      high: "bg-orange-50 text-orange-700 border border-orange-200",
+      critical: "bg-red-50 text-red-700 border border-red-200",
+    }[severity] ?? "bg-slate-100 text-slate-700 border border-slate-200"
+  );
 }
 
 /**
@@ -143,7 +154,7 @@ export function occupancyToStatus(occupancy: number): DepartmentStatus {
  */
 export function riskLabel(score: number): string {
   if (score >= 0.75) return "CRITICAL";
-  if (score >= 0.50) return "HIGH";
+  if (score >= 0.5) return "HIGH";
   if (score >= 0.25) return "MODERATE";
   return "LOW";
 }
@@ -155,10 +166,10 @@ export function riskLabel(score: number): string {
  * Called from: shift-report page and patient intelligence page.
  */
 export function riskColor(score: number): string {
-  if (score >= 0.75) return "#ef4444";
-  if (score >= 0.50) return "#f59e0b";
-  if (score >= 0.25) return "#fbbf24";
-  return "#34d399";
+  if (score >= 0.75) return "#DC2626";
+  if (score >= 0.5) return "#D97706";
+  if (score >= 0.25) return "#CA8A04";
+  return "#059669";
 }
 
 /**

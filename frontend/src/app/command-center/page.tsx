@@ -1,70 +1,114 @@
-/* Command Center page: hospital floor plan, live metrics, active alerts, and hospital score. */
 "use client";
-import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, useMemo } from "react";
 import {
-  Activity, AlertTriangle, Bed, Clock, TrendingUp,
-  Users, Zap, Radio, Siren, DollarSign, ShieldCheck, Anchor, Award, Truck, MapPin, Timer
+  Activity,
+  AlertTriangle,
+  Bed,
+  Clock,
+  TrendingUp,
+  Users,
+  Zap,
+  Radio,
+  Siren,
+  DollarSign,
+  ShieldCheck,
+  Anchor,
+  Award,
+  Truck,
+  MapPin,
+  Timer,
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useDemoStore } from "@/store/demoStore";
 import {
-  formatTime, formatPercent, statusColor, occupancyToStatus, cn
+  formatTime,
+  formatPercent,
+  statusColor,
+  statusBg,
+  statusBorder,
+  occupancyToStatus,
+  cn,
 } from "@/lib/utils";
-import type { Patient, DepartmentKey, DepartmentState, DepartmentStatus } from "@/types";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { PrivacyMask } from "@/components/ui/PrivacyMask";
+import type {
+  Patient,
+  DepartmentKey,
+  DepartmentState,
+  DepartmentStatus,
+} from "@/types";
 import type { LucideIcon } from "lucide-react";
 
-// ─── MetricCard (inlined from components/metrics/MetricCard.tsx) ──────────────
-
 const STATUS_STYLES = {
-  healthy: { border: "rgba(12,200,212,0.22)",  bg: "rgba(12,200,212,0.06)", color: "#0CC8D4", glow: "none" },
-  warning: { border: "rgba(245,158,11,0.22)",  bg: "rgba(245,158,11,0.05)", color: "#f0a030", glow: "none" },
-  critical:{ border: "rgba(224,24,122,0.25)",  bg: "rgba(224,24,122,0.06)", color: "#E0187A", glow: "none" },
-  neutral: { border: "rgba(124,58,237,0.2)",   bg: "rgba(124,58,237,0.05)", color: "#9d6fe8", glow: "none" },
+  healthy: {
+    className: "bg-emerald-50 border-emerald-200",
+    color: "text-emerald-700",
+  },
+  warning: {
+    className: "bg-amber-50 border-amber-200",
+    color: "text-amber-700",
+  },
+  critical: { className: "bg-red-50 border-red-200", color: "text-red-700" },
+  neutral: {
+    className: "bg-clinical-surface border-clinical-border",
+    color: "text-slate-900",
+  },
 };
 
-/**
- * Renders a single KPI metric card with an icon, label, large value, optional unit, trend badge, and subtitle.
- * The card's border, background, and text color all change based on the status prop.
- * @param icon - A Lucide icon component displayed in the top-left corner of the card.
- * @param label - A short uppercase label identifying what the metric measures (e.g. "Avg Wait").
- * @param value - The current metric value to display prominently (string or number).
- * @param unit - An optional unit suffix shown after the value in smaller text (e.g. "/hr").
- * @param status - Visual severity level controlling card color: "healthy", "warning", "critical", or "neutral" (default).
- * @param trend - An optional percent change number; positive is shown in red (worse), negative in green (better).
- * @param subtitle - An optional small note displayed below the value.
- * @param className - Additional Tailwind classes to merge onto the outer div.
- * @returns A styled metric card element.
- * Called from: CommandCenterPage for each of the six KPI metrics in the top row.
- */
-function MetricCard({ icon: Icon, label, value, unit, status = "neutral", trend, subtitle, className }: {
-  icon: LucideIcon; label: string; value: string | number; unit?: string;
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  unit,
+  status = "neutral",
+  trend,
+  subtitle,
+  className,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string | number;
+  unit?: string;
   status?: "healthy" | "warning" | "critical" | "neutral";
-  trend?: number; subtitle?: string; className?: string;
+  trend?: number;
+  subtitle?: string;
+  className?: string;
 }) {
   const styles = STATUS_STYLES[status];
   return (
-    <div className={cn("rounded-xl p-4 transition-all duration-300", className)}
-      style={{ background: styles.bg, border: `1px solid ${styles.border}`, boxShadow: styles.glow }}>
-      <div className="flex items-start justify-between mb-3">
-        <div className="p-2 rounded-lg" style={{ background: `${styles.color}18` }}>
-          <Icon className="w-4 h-4" style={{ color: styles.color }} />
+    <div className={cn("border rounded-lg p-4", styles.className, className)}>
+      <div className="flex items-start justify-between mb-4">
+        <div className={cn("p-2 rounded-lg bg-clinical-canvas", styles.color)}>
+          <Icon className="w-4 h-4" />
         </div>
         {trend !== undefined && (
-          <div className={cn("text-[10px] font-mono px-1.5 py-0.5 rounded",
-            trend > 0 ? "text-red-400 bg-red-950/40" : "text-emerald-400 bg-emerald-950/40")}>
+          <div
+            className={cn(
+              "text-xs font-mono font-medium px-2 py-1 rounded",
+              trend > 0
+                ? "text-red-700 bg-red-50"
+                : "text-emerald-700 bg-emerald-50",
+            )}
+          >
             {trend > 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(1)}%
           </div>
         )}
       </div>
-      <div className="space-y-0.5">
-        <div className="text-xs text-slate-500 font-mono uppercase tracking-wide">{label}</div>
-        <motion.div key={String(value)} initial={{ opacity: 0.7 }} animate={{ opacity: 1 }}
-          transition={{ duration: 1.5 }} className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold font-mono" style={{ color: styles.color }}>{value}</span>
-          {unit && <span className="text-sm text-slate-500 font-mono">{unit}</span>}
-        </motion.div>
-        {subtitle && <div className="text-[10px] text-slate-600 font-mono">{subtitle}</div>}
+      <div className="space-y-2">
+        <div className="text-xs text-slate-600 font-medium uppercase tracking-wide">
+          {label}
+        </div>
+        <div className="flex items-baseline gap-2">
+          <span className={cn("text-3xl font-bold font-mono", styles.color)}>
+            {value}
+          </span>
+          {unit && (
+            <span className="text-sm text-slate-600 font-mono">{unit}</span>
+          )}
+        </div>
+        {subtitle && (
+          <div className="text-xs text-slate-600 font-mono">{subtitle}</div>
+        )}
       </div>
     </div>
   );
@@ -72,160 +116,204 @@ function MetricCard({ icon: Icon, label, value, unit, status = "neutral", trend,
 
 const DEPT_KEYS = ["er", "labs", "imaging", "icu", "ward"] as const;
 
-/**
- * Renders a horizontal status banner showing the hospital's current ambulance diversion risk level.
- * Displays risk percentage (with an animated bar), estimated minutes to diversion, delay cost per hour,
- * SLA compliance, number of boarding patients, number of deteriorating patients, and sepsis risk count.
- * @param metrics - The HospitalMetrics object from the latest simulation state.
- * @returns A compact banner element shown below the KPI row on the Command Center page.
- * Called from: CommandCenterPage when metrics data is available.
- */
 function DiversionBanner({ metrics }: { metrics: any }) {
   const risk = metrics.diversion_risk ?? 0;
   const mins = metrics.minutes_to_diversion ?? 0;
   const cost = metrics.delay_cost_per_hour ?? 0;
-  const sla  = metrics.sla_compliance ?? 1;
+  const sla = metrics.sla_compliance ?? 1;
   const boarding = metrics.boarding_count ?? 0;
   const deteriorating = metrics.deteriorating_count ?? 0;
   const sepsis = metrics.sepsis_count ?? 0;
 
-  const color = risk > 0.80 ? "#ef4444" : risk > 0.60 ? "#f59e0b" : "#2a9c85";
-  const label = risk > 0.80 ? "HIGH RISK" : risk > 0.60 ? "ELEVATED" : "NORMAL";
+  const riskStatus: DepartmentStatus =
+    risk > 0.8 ? "critical" : risk > 0.6 ? "warning" : "healthy";
+  const riskColor = statusColor(riskStatus);
+  const label = risk > 0.8 ? "HIGH RISK" : risk > 0.6 ? "ELEVATED" : "NORMAL";
+  const riskTextClass =
+    riskStatus === "critical"
+      ? "text-red-700"
+      : riskStatus === "warning"
+        ? "text-amber-700"
+        : "text-emerald-700";
+  const slaClass = sla < 0.7 ? "text-red-700" : "text-emerald-700";
 
   return (
-    <div className="flex items-center gap-3 flex-shrink-0 rounded-xl px-4 py-2.5 flex-wrap"
-      style={{ background: "rgba(10,14,26,0.8)", border: `1px solid ${color}30` }}>
-
+    <div className="flex items-center gap-4 flex-shrink-0 border border-clinical-border bg-clinical-surface rounded-lg px-4 py-2 flex-wrap">
       <div className="flex items-center gap-2 flex-shrink-0">
-        <Siren className="w-3.5 h-3.5" style={{ color }} />
-        <span className="text-[10px] font-mono font-bold uppercase" style={{ color }}>Diversion {label}</span>
-        <div className="w-28 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-          <motion.div className="h-full rounded-full" style={{ background: color }}
-            animate={{ width: `${Math.round(risk * 100)}%` }} transition={{ duration: 1.5 }} />
+        <Siren className={cn("w-4 h-4", riskTextClass)} />
+        <span
+          className={cn("text-xs font-mono font-bold uppercase", riskTextClass)}
+        >
+          Diversion {label}
+        </span>
+        <div className="w-28 h-2 bg-clinical-canvas border border-clinical-border rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${Math.round(risk * 100)}%`,
+              background: riskColor,
+            }}
+          />
         </div>
-        <span className="text-[10px] font-mono" style={{ color }}>{Math.round(risk * 100)}%</span>
-        {risk > 0.60 && mins > 0 && (
-          <span className="text-[10px] font-mono text-slate-500">~{mins}m</span>
+        <span className={cn("text-xs font-mono", riskTextClass)}>
+          {Math.round(risk * 100)}%
+        </span>
+        {risk > 0.6 && mins > 0 && (
+          <span className="text-xs font-mono text-slate-600">~{mins}m</span>
         )}
       </div>
 
-      <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
+      <div className="w-px h-4 bg-clinical-border flex-shrink-0" />
 
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <DollarSign className="w-3 h-3 text-yellow-500" />
-        <span className="text-[10px] font-mono text-yellow-400">${cost.toLocaleString()}/hr delay cost</span>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <DollarSign className="w-4 h-4 text-amber-600" />
+        <span className="text-xs font-mono text-amber-700">
+          ${cost.toLocaleString()}/hr delay cost
+        </span>
       </div>
 
-      <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
+      <div className="w-px h-4 bg-clinical-border flex-shrink-0" />
 
-      <div className="flex items-center gap-1.5 flex-shrink-0">
-        <ShieldCheck className="w-3 h-3" style={{ color: sla < 0.70 ? "#ef4444" : "#2a9c85" }} />
-        <span className="text-[10px] font-mono" style={{ color: sla < 0.70 ? "#ef4444" : "#2a9c85" }}>
+      <div className="flex items-center gap-2 flex-shrink-0">
+        <ShieldCheck className={cn("w-4 h-4", slaClass)} />
+        <span className={cn("text-xs font-mono", slaClass)}>
           {Math.round(sla * 100)}% SLA
         </span>
       </div>
 
       {boarding > 0 && (
         <>
-          <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <Anchor className="w-3 h-3 text-orange-400" />
-            <span className="text-[10px] font-mono text-orange-400">{boarding} boarding</span>
+          <div className="w-px h-4 bg-clinical-border flex-shrink-0" />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Anchor className="w-4 h-4 text-amber-600" />
+            <span className="text-xs font-mono text-amber-700">
+              {boarding} boarding
+            </span>
           </div>
         </>
       )}
 
       {deteriorating > 0 && (
         <>
-          <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
-          <motion.div animate={{ opacity: [1, 0.5, 1] }} transition={{ duration: 1.2, repeat: Infinity }}
-            className="flex items-center gap-1.5 flex-shrink-0">
-            <AlertTriangle className="w-3 h-3 text-red-400" />
-            <span className="text-[10px] font-mono text-red-400">{deteriorating} deteriorating</span>
-          </motion.div>
+          <div className="w-px h-4 bg-clinical-border flex-shrink-0" />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <AlertTriangle className="w-4 h-4 text-red-600" />
+            <span className="text-xs font-mono text-red-700">
+              {deteriorating} deteriorating
+            </span>
+          </div>
         </>
       )}
 
       {sepsis > 0 && (
         <>
-          <div className="w-px h-4 bg-slate-700 flex-shrink-0" />
-          <motion.div animate={{ opacity: [1, 0.4, 1] }} transition={{ duration: 1, repeat: Infinity }}
-            className="flex items-center gap-1.5 flex-shrink-0">
-            <Zap className="w-3 h-3 text-red-500" />
-            <span className="text-[10px] font-mono text-red-400">{sepsis} sepsis risk</span>
-          </motion.div>
+          <div className="w-px h-4 bg-clinical-border flex-shrink-0" />
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Zap className="w-4 h-4 text-red-600" />
+            <span className="text-xs font-mono text-red-700">
+              {sepsis} sepsis risk
+            </span>
+          </div>
         </>
       )}
     </div>
   );
 }
 
-/**
- * Calculates a composite 0–100 hospital efficiency score from five weighted metrics.
- * Weights: SLA compliance (25%), average wait time (25%), diversion risk (20%),
- * throughput (15%), and bed utilization (15%).
- * @param metrics - The HospitalMetrics object from the latest simulation state, or null/undefined.
- * @returns An integer score from 0 (worst) to 100 (best).
- * Called from: HospitalScore to derive the displayed score number.
- */
 function computeHospitalScore(metrics: any): number {
   if (!metrics) return 0;
-  const sla    = (metrics.sla_compliance ?? 1) * 100;
+  const sla = (metrics.sla_compliance ?? 1) * 100;
   const bedUtil = metrics.bed_utilization ?? 0;
-  const waitPenalty = Math.max(0, Math.min(100, 100 - (metrics.avg_wait_time ?? 0) / 2));
-  const divPenalty  = (1 - (metrics.diversion_risk ?? 0)) * 100;
-  const throughput  = Math.min(100, (metrics.throughput_per_hour ?? 0) * 8);
-  const bedScore    = bedUtil < 0.95 ? 100 - Math.abs(bedUtil - 0.80) * 100 : 20;
-  return Math.round((sla * 0.25 + waitPenalty * 0.25 + divPenalty * 0.20 + throughput * 0.15 + bedScore * 0.15));
+  const waitPenalty = Math.max(
+    0,
+    Math.min(100, 100 - (metrics.avg_wait_time ?? 0) / 2),
+  );
+  const divPenalty = (1 - (metrics.diversion_risk ?? 0)) * 100;
+  const throughput = Math.min(100, (metrics.throughput_per_hour ?? 0) * 8);
+  const bedScore = bedUtil < 0.95 ? 100 - Math.abs(bedUtil - 0.8) * 100 : 20;
+  return Math.round(
+    sla * 0.25 +
+      waitPenalty * 0.25 +
+      divPenalty * 0.2 +
+      throughput * 0.15 +
+      bedScore * 0.15,
+  );
 }
 
-/**
- * Renders an animated circular progress indicator showing the composite hospital efficiency score.
- * The arc color is green for >= 80, amber for >= 60, and red below 60.
- * @param metrics - The HospitalMetrics object passed to computeHospitalScore.
- * @returns A compact widget with an SVG ring and a label, shown next to the DiversionBanner.
- * Called from: CommandCenterPage when metrics data is available.
- */
 function HospitalScore({ metrics }: { metrics: any }) {
   const score = computeHospitalScore(metrics);
-  const color = score >= 80 ? "#2a9c85" : score >= 60 ? "#f59e0b" : "#ef4444";
+  const scoreStatus: DepartmentStatus =
+    score >= 80 ? "healthy" : score >= 60 ? "warning" : "critical";
+  const color = statusColor(scoreStatus);
   const label = score >= 80 ? "GOOD" : score >= 60 ? "FAIR" : "CRITICAL";
+  const scoreTextClass =
+    scoreStatus === "critical"
+      ? "text-red-700"
+      : scoreStatus === "warning"
+        ? "text-amber-700"
+        : "text-emerald-700";
   const circumference = 2 * Math.PI * 20;
   const dashOffset = circumference * (1 - score / 100);
 
   return (
-    <div className="flex items-center gap-3 flex-shrink-0 rounded-xl px-4 py-2.5"
-      style={{ background: "rgba(10,14,26,0.8)", border: `1px solid ${color}30` }}>
+    <div className="flex items-center gap-4 flex-shrink-0 border border-clinical-border bg-clinical-surface rounded-lg px-4 py-2">
       <div className="relative w-12 h-12 flex-shrink-0">
         <svg viewBox="0 0 50 50" className="w-full h-full -rotate-90">
-          <circle cx="25" cy="25" r="20" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="4" />
-          <motion.circle
-            cx="25" cy="25" r="20" fill="none" stroke={color} strokeWidth="4"
+          <circle
+            cx="25"
+            cy="25"
+            r="20"
+            fill="none"
+            stroke="#E2E8F0"
+            strokeWidth="4"
+          />
+          <circle
+            cx="25"
+            cy="25"
+            r="20"
+            fill="none"
+            stroke={color}
+            strokeWidth="4"
             strokeLinecap="round"
             strokeDasharray={circumference}
-            animate={{ strokeDashoffset: dashOffset }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-            style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+            strokeDashoffset={dashOffset}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[11px] font-mono font-bold" style={{ color }}>{score}</span>
+          <span className={cn("text-xs font-mono font-bold", scoreTextClass)}>
+            {score}
+          </span>
         </div>
       </div>
       <div>
-        <div className="flex items-center gap-1.5 mb-0.5">
-          <Award className="w-3 h-3" style={{ color }} />
-          <span className="text-[10px] font-mono font-bold uppercase" style={{ color }}>Hospital Score</span>
+        <div className="flex items-center gap-2 mb-1">
+          <Award className={cn("w-4 h-4", scoreTextClass)} />
+          <span
+            className={cn(
+              "text-xs font-mono font-bold uppercase",
+              scoreTextClass,
+            )}
+          >
+            Hospital Score
+          </span>
         </div>
-        <span className="text-[9px] font-mono text-slate-500">{label} — composite efficiency index</span>
+        <span className="text-xs font-mono text-slate-600">
+          {label} — composite efficiency index
+        </span>
       </div>
     </div>
   );
 }
 
 const AMBULANCE_ORIGINS = [
-  "Cedar Rd & 5th Ave", "Lakeside Park", "Downtown Plaza", "Highway 12 Exit 7",
-  "Riverside Community", "Northgate Mall", "Airport Terminal B", "Industrial District",
+  "Cedar Rd & 5th Ave",
+  "Lakeside Park",
+  "Downtown Plaza",
+  "Highway 12 Exit 7",
+  "Riverside Community",
+  "Northgate Mall",
+  "Airport Terminal B",
+  "Industrial District",
 ];
 
 interface AmbulanceUnit {
@@ -255,20 +343,26 @@ function useAmbulanceSimulation(simTime: number, patients: Patient[]) {
 
   useEffect(() => {
     const critHigh = patients.filter(
-      (p) => (p.severity === "critical" || p.severity === "high") && p.state === "arriving"
+      (p) =>
+        (p.severity === "critical" || p.severity === "high") &&
+        p.state === "arriving",
     );
     critHigh.forEach((p) => {
       if (seenRef.current.has(p.patient_id)) return;
       seenRef.current.add(p.patient_id);
       const rng = (s: string) => {
         let h = 0;
-        for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
+        for (let i = 0; i < s.length; i++)
+          h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
         return Math.abs(h) / 2147483647;
       };
       const unit: AmbulanceUnit = {
         id: p.patient_id,
         unit: `AMB-${String(counterRef.current++).padStart(3, "0")}`,
-        origin: AMBULANCE_ORIGINS[Math.floor(rng(p.patient_id + "o") * AMBULANCE_ORIGINS.length)],
+        origin:
+          AMBULANCE_ORIGINS[
+            Math.floor(rng(p.patient_id + "o") * AMBULANCE_ORIGINS.length)
+          ],
         eta_min: Math.floor(rng(p.patient_id + "e") * 8) + 2,
         severity: p.severity,
         complaint: p.chief_complaint || "Trauma",
@@ -283,7 +377,7 @@ function useAmbulanceSimulation(simTime: number, patients: Patient[]) {
       setUnits((prev) =>
         prev
           .map((u) => ({ ...u, eta_min: Math.max(0, u.eta_min - 1) }))
-          .filter((u) => u.eta_min > 0 || simTime - u.dispatched_at < 10)
+          .filter((u) => u.eta_min > 0 || simTime - u.dispatched_at < 10),
       );
     }, 60000 / 60);
     return () => clearInterval(interval);
@@ -293,15 +387,21 @@ function useAmbulanceSimulation(simTime: number, patients: Patient[]) {
 }
 
 /**
- * Renders the ambulance tracker sub-panel with summary counters and an animated list of units en route.
+ * Renders the ambulance tracker sub-panel with summary counters and a list of units en route.
  * Shows total en-route count, critical count, and the peak dispatch hour.
  * Each ambulance row displays unit ID, severity badge, ETA, origin address, and chief complaint.
  * @param patients - The full patient array from the hospital state, passed to useAmbulanceSimulation.
  * @param simTime - The current simulation time in minutes, passed to useAmbulanceSimulation.
- * @returns A scrollable panel of animated ambulance rows.
+ * @returns A scrollable panel of ambulance rows.
  * Called from: AlertsAmbulancePanel when the "Ambulances" tab is selected.
  */
-function AmbulancePanel({ patients, simTime }: { patients: Patient[]; simTime: number }) {
+function AmbulancePanel({
+  patients,
+  simTime,
+}: {
+  patients: Patient[];
+  simTime: number;
+}) {
   const units = useAmbulanceSimulation(simTime, patients);
 
   const hourBuckets: Record<number, number> = {};
@@ -312,65 +412,90 @@ function AmbulancePanel({ patients, simTime }: { patients: Patient[]; simTime: n
   const peakHour = Object.entries(hourBuckets).sort((a, b) => b[1] - a[1])[0];
 
   return (
-    <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
-      <div className="flex gap-2 mb-3">
-        <div className="flex-1 rounded-lg px-3 py-2 text-center"
-          style={{ background: "rgba(255,170,0,0.08)", border: "1px solid rgba(255,170,0,0.2)" }}>
-          <div className="text-lg font-mono font-bold text-amber-400">{units.length}</div>
-          <div className="text-[9px] font-mono text-slate-500 uppercase">En Route</div>
+    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex gap-2 mb-4">
+        <div className="flex-1 border border-amber-200 bg-amber-50 rounded-lg p-2 text-center">
+          <div className="text-lg font-mono font-bold text-amber-700">
+            {units.length}
+          </div>
+          <div className="text-xs font-medium text-slate-600 uppercase">
+            En Route
+          </div>
         </div>
-        <div className="flex-1 rounded-lg px-3 py-2 text-center"
-          style={{ background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)" }}>
-          <div className="text-lg font-mono font-bold text-red-400">
+        <div className="flex-1 border border-red-200 bg-red-50 rounded-lg p-2 text-center">
+          <div className="text-lg font-mono font-bold text-red-700">
             {units.filter((u) => u.severity === "critical").length}
           </div>
-          <div className="text-[9px] font-mono text-slate-500 uppercase">Critical</div>
-        </div>
-        <div className="flex-1 rounded-lg px-3 py-2 text-center"
-          style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="text-lg font-mono font-bold text-blue-400">
-            {peakHour ? `${String(Number(peakHour[0])).padStart(2, "0")}:00` : "--"}
+          <div className="text-xs font-medium text-slate-600 uppercase">
+            Critical
           </div>
-          <div className="text-[9px] font-mono text-slate-500 uppercase">Peak Hr</div>
+        </div>
+        <div className="flex-1 border border-clinical-border bg-clinical-canvas rounded-lg p-2 text-center">
+          <div className="text-lg font-mono font-bold text-slate-900">
+            {peakHour
+              ? `${String(Number(peakHour[0])).padStart(2, "0")}:00`
+              : "--"}
+          </div>
+          <div className="text-xs font-medium text-slate-600 uppercase">
+            Peak Hr
+          </div>
         </div>
       </div>
 
       {units.length === 0 ? (
-        <div className="text-xs text-slate-600 font-mono text-center py-6">
+        <div className="text-sm text-slate-600 font-mono text-center py-6">
           No ambulances currently dispatched
         </div>
       ) : (
-        <AnimatePresence mode="popLayout">
-          {units.map((u) => {
-            const color = u.severity === "critical" ? "#ef4444" : u.severity === "high" ? "#f59e0b" : "#6b7fa3";
-            return (
-              <motion.div key={u.id}
-                initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -6 }}
-                className="rounded-lg p-2.5 border"
-                style={{ background: `${color}08`, borderColor: `${color}30` }}>
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-1.5">
-                    <Truck className="w-3 h-3 flex-shrink-0" style={{ color }} />
-                    <span className="text-xs font-mono font-bold" style={{ color }}>{u.unit}</span>
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-bold"
-                      style={{ background: `${color}20`, color }}>{u.severity}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Timer className="w-3 h-3 text-slate-500" />
-                    <span className="text-[10px] font-mono font-bold" style={{ color }}>
-                      {u.eta_min === 0 ? "ARRIVING" : `${u.eta_min}m`}
-                    </span>
-                  </div>
+        units.map((u) => {
+          const sevStatus =
+            u.severity === "critical"
+              ? "critical"
+              : u.severity === "high"
+                ? "flagged"
+                : "safe";
+          const sevText =
+            sevStatus === "critical"
+              ? "text-red-700"
+              : sevStatus === "flagged"
+                ? "text-amber-700"
+                : "text-slate-600";
+          const sevBorder =
+            sevStatus === "critical"
+              ? "border-red-200 bg-red-50"
+              : sevStatus === "flagged"
+                ? "border-amber-200 bg-amber-50"
+                : "border-clinical-border bg-clinical-canvas";
+          return (
+            <div key={u.id} className={cn("rounded-lg p-2 border", sevBorder)}>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Truck className={cn("w-4 h-4 flex-shrink-0", sevText)} />
+                  <span className={cn("text-sm font-mono font-bold", sevText)}>
+                    {u.unit}
+                  </span>
+                  <StatusBadge
+                    status={sevStatus}
+                    label={u.severity.toUpperCase()}
+                  />
                 </div>
-                <div className="flex items-center gap-1 text-[10px] font-mono text-slate-500">
-                  <MapPin className="w-2.5 h-2.5 flex-shrink-0" />
-                  <span className="truncate">{u.origin}</span>
+                <div className="flex items-center gap-2">
+                  <Timer className="w-4 h-4 text-slate-600" />
+                  <span className={cn("text-xs font-mono font-bold", sevText)}>
+                    {u.eta_min === 0 ? "ARRIVING" : `${u.eta_min}m`}
+                  </span>
                 </div>
-                <div className="text-[10px] font-mono text-slate-400 mt-0.5 truncate">{u.complaint}</div>
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-mono text-slate-600">
+                <MapPin className="w-4 h-4 flex-shrink-0" />
+                <span className="truncate">{u.origin}</span>
+              </div>
+              <div className="text-xs font-mono text-slate-600 mt-2 truncate">
+                {u.complaint}
+              </div>
+            </div>
+          );
+        })
       )}
     </div>
   );
@@ -387,7 +512,15 @@ function AmbulancePanel({ patients, simTime }: { patients: Patient[]; simTime: n
  * @returns A tabbed card component in the right sidebar of the Command Center.
  * Called from: CommandCenterPage.
  */
-function AlertsAmbulancePanel({ alerts, patients, simTime }: { alerts: any[]; patients: Patient[]; simTime: number }) {
+function AlertsAmbulancePanel({
+  alerts,
+  patients,
+  simTime,
+}: {
+  alerts: any[];
+  patients: Patient[];
+  simTime: number;
+}) {
   const [tab, setTab] = useState<"alerts" | "ambulances">("alerts");
   const { pendingAction, clearAction } = useDemoStore();
 
@@ -399,52 +532,88 @@ function AlertsAmbulancePanel({ alerts, patients, simTime }: { alerts: any[]; pa
   }, [pendingAction]);
 
   return (
-    <div className="rounded-xl flex flex-col min-h-[180px] overflow-hidden"
-      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,255,255,0.04)", flex: "1 1 180px" }}>
-      <div className="flex items-center border-b border-slate-800/60 flex-shrink-0">
+    <div
+      className="border border-clinical-border bg-clinical-surface rounded-lg flex flex-col min-h-[180px] overflow-hidden"
+      style={{ flex: "1 1 180px" }}
+    >
+      <div className="flex items-center border-b border-clinical-border flex-shrink-0">
         <button
           onClick={() => setTab("alerts")}
-          className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-mono uppercase tracking-wide transition-colors"
-          style={{ color: tab === "alerts" ? "#f87171" : "#475569", borderBottom: tab === "alerts" ? "2px solid #f87171" : "2px solid transparent" }}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wide border-b-2",
+            tab === "alerts"
+              ? "text-red-700 border-red-600"
+              : "text-slate-600 border-transparent",
+          )}
         >
-          <AlertTriangle className="w-3.5 h-3.5" />
+          <AlertTriangle className="w-4 h-4" />
           Alerts
           {alerts.length > 0 && (
-            <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ml-0.5"
-              style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}>{alerts.length}</span>
+            <span className="text-xs font-mono font-bold px-2 py-1 rounded bg-red-50 text-red-700">
+              {alerts.length}
+            </span>
           )}
         </button>
         <button
           onClick={() => setTab("ambulances")}
-          className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-mono uppercase tracking-wide transition-colors"
-          style={{ color: tab === "ambulances" ? "#fb923c" : "#475569", borderBottom: tab === "ambulances" ? "2px solid #fb923c" : "2px solid transparent" }}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wide border-b-2",
+            tab === "ambulances"
+              ? "text-amber-700 border-amber-600"
+              : "text-slate-600 border-transparent",
+          )}
         >
-          <Truck className="w-3.5 h-3.5" />
+          <Truck className="w-4 h-4" />
           Ambulances
         </button>
       </div>
 
       {tab === "alerts" ? (
-        <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {alerts.length === 0 ? (
-            <div className="text-xs text-slate-600 font-mono text-center py-6">No active alerts</div>
+            <div className="text-sm text-slate-600 font-mono text-center py-6">
+              No active alerts
+            </div>
           ) : (
-            [...alerts].reverse().map((alert) => (
-              <motion.div key={alert.alert_id} initial={{ opacity: 0, x: 6 }} animate={{ opacity: 1, x: 0 }}
-                className="flex gap-2.5 py-2 border-b border-slate-800/40 last:border-0">
-                <span className="flex-shrink-0 text-sm mt-0.5"
-                  style={{ color: alert.severity === "critical" ? "#ef4444" : alert.severity === "warning" ? "#f59e0b" : "#6b7fa3" }}>
-                  {alert.severity === "critical" ? "●" : alert.severity === "warning" ? "◆" : "○"}
-                </span>
-                <div className="min-w-0">
-                  <div className="text-xs font-mono font-semibold capitalize mb-0.5"
-                    style={{ color: alert.severity === "critical" ? "#ef4444" : alert.severity === "warning" ? "#f59e0b" : "#7d95b8" }}>
-                    {alert.department.toUpperCase()} — {alert.severity}
+            [...alerts].reverse().map((alert) => {
+              const sevStatus =
+                alert.severity === "critical"
+                  ? "critical"
+                  : alert.severity === "warning"
+                    ? "flagged"
+                    : "safe";
+              const sevText =
+                sevStatus === "critical"
+                  ? "text-red-700"
+                  : sevStatus === "flagged"
+                    ? "text-amber-700"
+                    : "text-slate-600";
+              return (
+                <div
+                  key={alert.alert_id}
+                  className="flex gap-2 py-2 border-b border-clinical-border last:border-0"
+                >
+                  <StatusBadge
+                    status={sevStatus}
+                    label={alert.severity.toUpperCase()}
+                    className="flex-shrink-0 self-start"
+                  />
+                  <div className="min-w-0">
+                    <div
+                      className={cn(
+                        "text-xs font-mono font-semibold capitalize mb-2",
+                        sevText,
+                      )}
+                    >
+                      {alert.department.toUpperCase()} — {alert.severity}
+                    </div>
+                    <div className="text-xs text-slate-600 leading-snug">
+                      {alert.message}
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-400 leading-snug">{alert.message}</div>
                 </div>
-              </motion.div>
-            ))
+              );
+            })
           )}
         </div>
       ) : (
@@ -468,17 +637,35 @@ function simClock(simTime: number): string {
 }
 
 /**
- * Renders a live scrolling event feed that appends a new entry whenever a patient is admitted or an alert fires.
+ * Renders a live event feed that appends a new entry whenever a patient is admitted or an alert fires.
  * Shows up to four of the most recent events, each timestamped with the simulation clock.
- * Critical and high-severity events are colored red/amber; normal events use blue.
+ * Critical and high-severity events are colored red/amber; normal events use muted text.
  * @param patients - The full patient array; changes in length trigger new patient-admission entries.
  * @param alerts - The active alerts array; changes in length trigger new alert entries.
  * @param simTime - The current simulation time in minutes, used to timestamp events.
- * @returns A compact feed panel with a "Live Event Feed" header and an animated list of entries.
+ * @returns A compact feed panel with a "Live Event Feed" header and a list of entries.
  * Called from: CommandCenterPage in the right sidebar above the alerts panel.
  */
-function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; alerts: any[]; simTime: number }) {
-  const [events, setEvents] = useState<{ id: string; text: string; color: string; clock: string }[]>([]);
+function LiveEventLog({
+  patients,
+  alerts,
+  simTime,
+}: {
+  patients: Patient[];
+  alerts: any[];
+  simTime: number;
+}) {
+  const [events, setEvents] = useState<
+    {
+      id: string;
+      text: string;
+      name?: string;
+      prefix?: string;
+      suffix?: string;
+      colorClass: string;
+      clock: string;
+    }[]
+  >([]);
   const prevCountRef = useRef(0);
   const simRef = useRef(simTime);
   simRef.current = simTime;
@@ -487,11 +674,36 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
     const count = patients.length;
     if (count !== prevCountRef.current && count > 0) {
       const p = patients[patients.length - 1];
-      const color = p?.severity === "critical" ? "#ef4444" : p?.severity === "high" ? "#f59e0b" : "#6b7fa3";
-      const text = p?.severity === "critical" || p?.severity === "high"
-        ? `${p.severity.toUpperCase()} — ${p.name || "Patient"} admitted · ${p.chief_complaint || ""}`
-        : `Patient admitted to ${p?.current_department?.toUpperCase() || "ER"}`;
-      setEvents((prev) => [{ id: `${Date.now()}`, text, color, clock: simClock(simRef.current) }, ...prev.slice(0, 11)]);
+      const colorClass =
+        p?.severity === "critical"
+          ? "text-red-700"
+          : p?.severity === "high"
+            ? "text-amber-700"
+            : "text-slate-600";
+      if (p?.severity === "critical" || p?.severity === "high") {
+        setEvents((prev) => [
+          {
+            id: `${Date.now()}`,
+            text: "",
+            prefix: `${p.severity.toUpperCase()} — `,
+            name: p.name || "Patient",
+            suffix: ` admitted · ${p.chief_complaint || ""}`,
+            colorClass,
+            clock: simClock(simRef.current),
+          },
+          ...prev.slice(0, 11),
+        ]);
+      } else {
+        setEvents((prev) => [
+          {
+            id: `${Date.now()}`,
+            text: `Patient admitted to ${p?.current_department?.toUpperCase() || "ER"}`,
+            colorClass,
+            clock: simClock(simRef.current),
+          },
+          ...prev.slice(0, 11),
+        ]);
+      }
       prevCountRef.current = count;
     }
   }, [patients.length]);
@@ -499,45 +711,65 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
   useEffect(() => {
     if (alerts.length === 0) return;
     const latest = alerts[alerts.length - 1];
-    const color = latest.severity === "critical" ? "#ef4444" : latest.severity === "warning" ? "#f59e0b" : "#6b7fa3";
+    const colorClass =
+      latest.severity === "critical"
+        ? "text-red-700"
+        : latest.severity === "warning"
+          ? "text-amber-700"
+          : "text-slate-600";
     setEvents((prev) => {
-      const newEvent = { id: `alert-${latest.alert_id}-${Date.now()}`, text: `⚠ ${latest.message}`, color, clock: simClock(simRef.current) };
+      const newEvent = {
+        id: `alert-${latest.alert_id}-${Date.now()}`,
+        text: `⚠ ${latest.message}`,
+        colorClass,
+        clock: simClock(simRef.current),
+      };
       return [newEvent, ...prev.slice(0, 11)];
     });
   }, [alerts.length]);
 
   return (
-    <div
-      className="rounded-xl p-3 flex-shrink-0"
-      style={{ background: "rgba(10,14,26,0.8)", border: "1px solid rgba(255,255,255,0.04)" }}
-    >
+    <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4 flex-shrink-0">
       <div className="flex items-center gap-2 mb-2">
-        <Radio className="w-3 h-3 text-blue-400" />
-        <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wide">Live Event Feed</span>
-        <motion.div
-          animate={{ opacity: [1, 0.3, 1] }}
-          transition={{ duration: 1.2, repeat: Infinity }}
-          className="w-1.5 h-1.5 rounded-full bg-emerald-400 ml-auto"
-        />
+        <Radio className="w-4 h-4 text-slate-600" />
+        <span className="text-xs text-slate-600 font-medium uppercase tracking-wide">
+          Live Event Feed
+        </span>
       </div>
-      <div className="space-y-1 max-h-[88px] overflow-hidden">
+      <div className="space-y-2 max-h-[88px] overflow-hidden">
         {events.length === 0 ? (
-          <div className="text-[10px] text-slate-700 font-mono py-1">Monitoring...</div>
+          <div className="text-xs text-slate-600 font-mono py-2">
+            Monitoring...
+          </div>
         ) : (
-          <AnimatePresence mode="popLayout">
-            {events.slice(0, 4).map((e) => (
-              <motion.div
-                key={e.id}
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, height: 0 }}
-                className="text-[10px] font-mono truncate flex items-center gap-2"
-              >
-                <span className="text-slate-600 flex-shrink-0 tabular-nums">{e.clock}</span>
-                <span className="truncate" style={{ color: e.color }}>{e.text}</span>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          events.slice(0, 4).map((e) => (
+            <div
+              key={e.id}
+              className="text-xs font-mono truncate flex items-center gap-2"
+            >
+              <span className="text-slate-600 flex-shrink-0 tabular-nums">
+                {e.clock}
+              </span>
+              {e.name ? (
+                <span
+                  className={cn(
+                    "truncate inline-flex items-center",
+                    e.colorClass,
+                  )}
+                >
+                  {e.prefix}
+                  <PrivacyMask
+                    value={e.name}
+                    label="Patient name"
+                    fieldId={`evt-${e.id}`}
+                  />
+                  {e.suffix}
+                </span>
+              ) : (
+                <span className={cn("truncate", e.colorClass)}>{e.text}</span>
+              )}
+            </div>
+          ))
         )}
       </div>
     </div>
@@ -547,52 +779,172 @@ function LiveEventLog({ patients, alerts, simTime }: { patients: Patient[]; aler
 // ─── HospitalFloorPlan (inlined from components/hospital/HospitalFloorPlan.tsx) ─
 
 const FLOOR = { width: 1100, height: 570 };
-type RoomType = "er_bay"|"critical_bay"|"triage"|"nurse_stn"|"corridor"|"icu_bed"|"ward_bed"|"ct"|"mri"|"xray"|"lab";
-interface RoomDef { x:number; y:number; w:number; h:number; label?:string; type?:RoomType; }
-interface DeptZone { key:DepartmentKey; label:string; x:number; y:number; w:number; h:number; color:string; rooms?:RoomDef[]; }
+type RoomType =
+  | "er_bay"
+  | "critical_bay"
+  | "triage"
+  | "nurse_stn"
+  | "corridor"
+  | "icu_bed"
+  | "ward_bed"
+  | "ct"
+  | "mri"
+  | "xray"
+  | "lab";
+interface RoomDef {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  label?: string;
+  type?: RoomType;
+}
+interface DeptZone {
+  key: DepartmentKey;
+  label: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+  rooms?: RoomDef[];
+}
 
 const DEPT_ZONES: DeptZone[] = [
-  { key:"er", label:"EMERGENCY DEPARTMENT", x:10, y:10, w:720, h:240, color:"#ef4444",
-    rooms:[
-      {x:15,y:15,w:145,h:105,label:"Triage",type:"triage"},{x:170,y:15,w:105,h:105,label:"Bay 1",type:"er_bay"},
-      {x:285,y:15,w:105,h:105,label:"Bay 2",type:"er_bay"},{x:400,y:15,w:105,h:105,label:"Bay 3",type:"er_bay"},
-      {x:515,y:15,w:105,h:105,label:"Bay 4",type:"er_bay"},{x:620,y:15,w:105,h:105,label:"Bay 5",type:"er_bay"},
-      {x:15,y:130,w:145,h:105,label:"Critical",type:"critical_bay"},{x:170,y:130,w:105,h:105,label:"Bay 6",type:"er_bay"},
-      {x:285,y:130,w:105,h:105,label:"Bay 7",type:"er_bay"},{x:400,y:130,w:105,h:105,label:"Bay 8",type:"er_bay"},
-      {x:515,y:130,w:105,h:105,label:"Bay 9",type:"er_bay"},{x:620,y:130,w:105,h:105,label:"Bay 10",type:"er_bay"},
-      {x:10,y:243,w:375,h:6,type:"corridor"},{x:395,y:238,w:335,h:11,label:"Nurse Stn",type:"nurse_stn"},
-    ]},
-  { key:"labs", label:"LABORATORY", x:740, y:10, w:350, h:240, color:"#8b5cf6",
-    rooms:[{x:745,y:15,w:168,h:110,label:"Lab A",type:"lab"},{x:920,y:15,w:165,h:110,label:"Lab B",type:"lab"},
-           {x:745,y:135,w:168,h:110,label:"Lab C",type:"lab"},{x:920,y:135,w:165,h:110,label:"Lab D",type:"lab"}]},
-  { key:"imaging", label:"IMAGING", x:10, y:264, w:320, h:296, color:"#06b6d4",
-    rooms:[{x:15,y:269,w:150,h:135,label:"CT-1",type:"ct"},{x:175,y:269,w:150,h:135,label:"CT-2",type:"ct"},
-           {x:15,y:414,w:150,h:141,label:"MRI",type:"mri"},{x:175,y:414,w:150,h:141,label:"X-Ray",type:"xray"}]},
-  { key:"icu", label:"INTENSIVE CARE UNIT", x:340, y:264, w:370, h:296, color:"#f59e0b",
-    rooms:[{x:345,y:269,w:88,h:135,label:"ICU-1",type:"icu_bed"},{x:438,y:269,w:88,h:135,label:"ICU-2",type:"icu_bed"},
-           {x:531,y:269,w:88,h:135,label:"ICU-3",type:"icu_bed"},{x:619,y:269,w:87,h:135,label:"ICU-4",type:"icu_bed"},
-           {x:345,y:414,w:88,h:141,label:"ICU-5",type:"icu_bed"},{x:438,y:414,w:88,h:141,label:"ICU-6",type:"icu_bed"},
-           {x:531,y:414,w:88,h:141,label:"ICU-7",type:"icu_bed"},{x:619,y:414,w:87,h:141,label:"ICU-8",type:"icu_bed"}]},
-  { key:"ward", label:"GENERAL WARD", x:720, y:264, w:370, h:296, color:"#2a9c85",
-    rooms:[{x:725,y:269,w:88,h:135,label:"W-A",type:"ward_bed"},{x:818,y:269,w:88,h:135,label:"W-B",type:"ward_bed"},
-           {x:911,y:269,w:88,h:135,label:"W-C",type:"ward_bed"},{x:1000,y:269,w:85,h:135,label:"W-D",type:"ward_bed"},
-           {x:725,y:414,w:88,h:141,label:"W-E",type:"ward_bed"},{x:818,y:414,w:88,h:141,label:"W-F",type:"ward_bed"},
-           {x:911,y:414,w:88,h:141,label:"W-G",type:"ward_bed"},{x:1000,y:414,w:85,h:141,label:"W-H",type:"ward_bed"}]},
+  {
+    key: "er",
+    label: "EMERGENCY DEPARTMENT",
+    x: 10,
+    y: 10,
+    w: 720,
+    h: 240,
+    color: "#475569",
+    rooms: [
+      { x: 15, y: 15, w: 145, h: 105, label: "Triage", type: "triage" },
+      { x: 170, y: 15, w: 105, h: 105, label: "Bay 1", type: "er_bay" },
+      { x: 285, y: 15, w: 105, h: 105, label: "Bay 2", type: "er_bay" },
+      { x: 400, y: 15, w: 105, h: 105, label: "Bay 3", type: "er_bay" },
+      { x: 515, y: 15, w: 105, h: 105, label: "Bay 4", type: "er_bay" },
+      { x: 620, y: 15, w: 105, h: 105, label: "Bay 5", type: "er_bay" },
+      {
+        x: 15,
+        y: 130,
+        w: 145,
+        h: 105,
+        label: "Critical",
+        type: "critical_bay",
+      },
+      { x: 170, y: 130, w: 105, h: 105, label: "Bay 6", type: "er_bay" },
+      { x: 285, y: 130, w: 105, h: 105, label: "Bay 7", type: "er_bay" },
+      { x: 400, y: 130, w: 105, h: 105, label: "Bay 8", type: "er_bay" },
+      { x: 515, y: 130, w: 105, h: 105, label: "Bay 9", type: "er_bay" },
+      { x: 620, y: 130, w: 105, h: 105, label: "Bay 10", type: "er_bay" },
+      { x: 10, y: 243, w: 375, h: 6, type: "corridor" },
+      { x: 395, y: 238, w: 335, h: 11, label: "Nurse Stn", type: "nurse_stn" },
+    ],
+  },
+  {
+    key: "labs",
+    label: "LABORATORY",
+    x: 740,
+    y: 10,
+    w: 350,
+    h: 240,
+    color: "#475569",
+    rooms: [
+      { x: 745, y: 15, w: 168, h: 110, label: "Lab A", type: "lab" },
+      { x: 920, y: 15, w: 165, h: 110, label: "Lab B", type: "lab" },
+      { x: 745, y: 135, w: 168, h: 110, label: "Lab C", type: "lab" },
+      { x: 920, y: 135, w: 165, h: 110, label: "Lab D", type: "lab" },
+    ],
+  },
+  {
+    key: "imaging",
+    label: "IMAGING",
+    x: 10,
+    y: 264,
+    w: 320,
+    h: 296,
+    color: "#475569",
+    rooms: [
+      { x: 15, y: 269, w: 150, h: 135, label: "CT-1", type: "ct" },
+      { x: 175, y: 269, w: 150, h: 135, label: "CT-2", type: "ct" },
+      { x: 15, y: 414, w: 150, h: 141, label: "MRI", type: "mri" },
+      { x: 175, y: 414, w: 150, h: 141, label: "X-Ray", type: "xray" },
+    ],
+  },
+  {
+    key: "icu",
+    label: "INTENSIVE CARE UNIT",
+    x: 340,
+    y: 264,
+    w: 370,
+    h: 296,
+    color: "#475569",
+    rooms: [
+      { x: 345, y: 269, w: 88, h: 135, label: "ICU-1", type: "icu_bed" },
+      { x: 438, y: 269, w: 88, h: 135, label: "ICU-2", type: "icu_bed" },
+      { x: 531, y: 269, w: 88, h: 135, label: "ICU-3", type: "icu_bed" },
+      { x: 619, y: 269, w: 87, h: 135, label: "ICU-4", type: "icu_bed" },
+      { x: 345, y: 414, w: 88, h: 141, label: "ICU-5", type: "icu_bed" },
+      { x: 438, y: 414, w: 88, h: 141, label: "ICU-6", type: "icu_bed" },
+      { x: 531, y: 414, w: 88, h: 141, label: "ICU-7", type: "icu_bed" },
+      { x: 619, y: 414, w: 87, h: 141, label: "ICU-8", type: "icu_bed" },
+    ],
+  },
+  {
+    key: "ward",
+    label: "GENERAL WARD",
+    x: 720,
+    y: 264,
+    w: 370,
+    h: 296,
+    color: "#475569",
+    rooms: [
+      { x: 725, y: 269, w: 88, h: 135, label: "W-A", type: "ward_bed" },
+      { x: 818, y: 269, w: 88, h: 135, label: "W-B", type: "ward_bed" },
+      { x: 911, y: 269, w: 88, h: 135, label: "W-C", type: "ward_bed" },
+      { x: 1000, y: 269, w: 85, h: 135, label: "W-D", type: "ward_bed" },
+      { x: 725, y: 414, w: 88, h: 141, label: "W-E", type: "ward_bed" },
+      { x: 818, y: 414, w: 88, h: 141, label: "W-F", type: "ward_bed" },
+      { x: 911, y: 414, w: 88, h: 141, label: "W-G", type: "ward_bed" },
+      { x: 1000, y: 414, w: 85, h: 141, label: "W-H", type: "ward_bed" },
+    ],
+  },
 ];
 
-const DEPT_PATIENT_AREA: Record<string,{x:number;y:number;w:number;h:number}> = {
-  er:{x:175,y:20,w:545,h:220}, triage:{x:20,y:20,w:140,h:105}, labs:{x:750,y:20,w:330,h:225},
-  imaging:{x:20,y:274,w:300,h:281}, icu:{x:350,y:274,w:355,h:281}, ward:{x:730,y:274,w:355,h:281},
-  registration:{x:350,y:274,w:355,h:281}, discharge:{x:20,y:274,w:300,h:281},
+const DEPT_PATIENT_AREA: Record<
+  string,
+  { x: number; y: number; w: number; h: number }
+> = {
+  er: { x: 175, y: 20, w: 545, h: 220 },
+  triage: { x: 20, y: 20, w: 140, h: 105 },
+  labs: { x: 750, y: 20, w: 330, h: 225 },
+  imaging: { x: 20, y: 274, w: 300, h: 281 },
+  icu: { x: 350, y: 274, w: 355, h: 281 },
+  ward: { x: 730, y: 274, w: 355, h: 281 },
+  registration: { x: 350, y: 274, w: 355, h: 281 },
+  discharge: { x: 20, y: 274, w: 300, h: 281 },
 };
 
 /**
  * Returns a hex color for a patient dot on the floor plan based on severity.
  * @param sev - The severity string from the patient object: "low", "medium", "high", or "critical".
- * @returns A hex color — green, yellow, amber, or red; grey if severity is unrecognized.
- * Called from: HospitalFloorPlan when rendering animated patient dots on the SVG.
+ * @returns A hex color — green, amber, orange, or red; slate if severity is unrecognized.
+ * Called from: HospitalFloorPlan when rendering patient dots on the SVG.
  */
-function _fpColor(sev:string):string { return ({low:"#34d399",medium:"#fbbf24",high:"#f59e0b",critical:"#ef4444"} as any)[sev]??"#64748b"; }
+function _fpColor(sev: string): string {
+  return (
+    (
+      {
+        low: "#059669",
+        medium: "#D97706",
+        high: "#EA580C",
+        critical: "#DC2626",
+      } as any
+    )[sev] ?? "#475569"
+  );
+}
 /**
  * Computes the x/y pixel coordinates for each patient dot on the floor plan SVG.
  * Groups patients by current department, then distributes them randomly but consistently
@@ -603,36 +955,69 @@ function _fpColor(sev:string):string { return ({low:"#34d399",medium:"#fbbf24",h
  */
 // Halton low-discrepancy sequence — produces evenly spread positions that never form diagonal lines
 function _halton(index: number, base: number): number {
-  let f = 1, r = 0, i = index + 1;
-  while (i > 0) { f /= base; r += f * (i % base); i = Math.floor(i / base); }
+  let f = 1,
+    r = 0,
+    i = index + 1;
+  while (i > 0) {
+    f /= base;
+    r += f * (i % base);
+    i = Math.floor(i / base);
+  }
   return r;
 }
 
-const SEV_ORDER: Record<string,number> = { critical:0, high:1, medium:2, low:3 };
+const SEV_ORDER: Record<string, number> = {
+  critical: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+};
 const MAX_DOTS_PER_DEPT = 14;
 
-function _fpDots(patients:Patient[]) {
-  const groups: Record<string,Patient[]> = {};
-  for (const p of patients) { (groups[p.current_department]??=[]).push(p); }
+function _fpDots(patients: Patient[]) {
+  const groups: Record<string, Patient[]> = {};
+  for (const p of patients) {
+    (groups[p.current_department] ??= []).push(p);
+  }
 
   // Small hash used only for per-dot jitter (not for base position)
-  const jitter=(s:string,salt:string)=>{let h=0;const t=s+salt;for(let i=0;i<t.length;i++)h=(Math.imul(31,h)+t.charCodeAt(i))|0;return(Math.abs(h)/2147483647-0.5)*14;};
+  const jitter = (s: string, salt: string) => {
+    let h = 0;
+    const t = s + salt;
+    for (let i = 0; i < t.length; i++)
+      h = (Math.imul(31, h) + t.charCodeAt(i)) | 0;
+    return (Math.abs(h) / 2147483647 - 0.5) * 14;
+  };
 
-  const dots: {id:string;x:number;y:number;severity:string;state:string}[] = [];
+  const dots: {
+    id: string;
+    x: number;
+    y: number;
+    severity: string;
+    state: string;
+  }[] = [];
   for (const [dk, dps] of Object.entries(groups)) {
-    const a = DEPT_PATIENT_AREA[dk]; if (!a) continue;
+    const a = DEPT_PATIENT_AREA[dk];
+    if (!a) continue;
     // Show most severe patients first, cap to MAX_DOTS_PER_DEPT
-    const visible = [...dps].sort((a,b)=>(SEV_ORDER[a.severity]??3)-(SEV_ORDER[b.severity]??3)).slice(0,MAX_DOTS_PER_DEPT);
+    const visible = [...dps]
+      .sort(
+        (a, b) => (SEV_ORDER[a.severity] ?? 3) - (SEV_ORDER[b.severity] ?? 3),
+      )
+      .slice(0, MAX_DOTS_PER_DEPT);
     visible.forEach((p, i) => {
       // Halton base positions guarantee scatter — no diagonal lines possible
       const bx = _halton(i, 2);
       const by = _halton(i, 3);
       const x = a.x + 12 + bx * (a.w - 24) + jitter(p.patient_id, "x");
       const y = a.y + 12 + by * (a.h - 24) + jitter(p.patient_id, "y");
-      dots.push({id:p.patient_id,
-        x:Math.max(a.x+6, Math.min(a.x+a.w-6, x)),
-        y:Math.max(a.y+6, Math.min(a.y+a.h-6, y)),
-        severity:p.severity, state:p.state});
+      dots.push({
+        id: p.patient_id,
+        x: Math.max(a.x + 6, Math.min(a.x + a.w - 6, x)),
+        y: Math.max(a.y + 6, Math.min(a.y + a.h - 6, y)),
+        severity: p.severity,
+        state: p.state,
+      });
     });
   }
   return dots;
@@ -645,26 +1030,141 @@ function _fpDots(patients:Patient[]) {
  * @param y - Top edge y coordinate of the room rectangle.
  * @param w - Width of the room rectangle in SVG units.
  * @param h - Height of the room rectangle in SVG units.
- * @param color - The department accent color used for bed rails and monitor glow.
+ * @param color - The department accent color used for bed rails and monitor outlines.
  * @param monitor - When true, adds a heart-monitor screen and IV pole above the bed (default false).
  * @returns An SVG group element containing the bed illustration.
  * Called from: _FpEquipment for "er_bay", "critical_bay", "icu_bed", and "ward_bed" room types.
  */
-function _FpBed({x,y,w,h,color,monitor=false}:{x:number;y:number;w:number;h:number;color:string;monitor?:boolean}) {
-  const bw=Math.min(w-18,70),bh=Math.min(h-36,38),bx=x+w/2-bw/2,by=y+h/2-bh/2+(monitor?8:5);
-  return (<g opacity={0.75}>
-    <rect x={bx} y={by} width={bw} height={bh} rx="3" fill="rgba(10,14,26,0.5)" stroke={color} strokeWidth="0.9" opacity={0.5}/>
-    <rect x={bx} y={by} width={5} height={bh} rx="2" fill={color} opacity={0.45}/>
-    <rect x={bx+bw-5} y={by} width={5} height={bh} rx="2" fill={color} opacity={0.3}/>
-    <rect x={bx+7} y={by+3} width={bw*0.28} height={bh*0.65} rx="2" fill={color} opacity={0.28}/>
-    <rect x={bx+7+bw*0.28+2} y={by+3} width={bw*0.58} height={bh*0.75} rx="1" fill={color} opacity={0.1}/>
-    <rect x={bx+5} y={by+bh+1} width={6} height={3} rx="1.5" fill={color} opacity={0.28}/>
-    <rect x={bx+bw-11} y={by+bh+1} width={6} height={3} rx="1.5" fill={color} opacity={0.28}/>
-    {monitor&&<><rect x={bx+bw/2-16} y={by-24} width={32} height={19} rx="2" fill="rgba(10,14,26,0.8)" stroke={color} strokeWidth="0.6" opacity={0.65}/>
-      <polyline points={`${bx+bw/2-12},${by-14} ${bx+bw/2-6},${by-14} ${bx+bw/2-4},${by-20} ${bx+bw/2-2},${by-9} ${bx+bw/2},${by-14} ${bx+bw/2+10},${by-14}`} fill="none" stroke={color} strokeWidth="1.2" opacity={0.65}/>
-      <line x1={bx+bw+5} y1={by-18} x2={bx+bw+5} y2={by+bh+2} stroke={color} strokeWidth="1" opacity={0.35}/></>}
-    {!monitor&&<line x1={bx+bw+4} y1={by-5} x2={bx+bw+4} y2={by+bh+2} stroke={color} strokeWidth="0.8" opacity={0.25}/>}
-  </g>);
+function _FpBed({
+  x,
+  y,
+  w,
+  h,
+  color,
+  monitor = false,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+  monitor?: boolean;
+}) {
+  const bw = Math.min(w - 18, 70),
+    bh = Math.min(h - 36, 38),
+    bx = x + w / 2 - bw / 2,
+    by = y + h / 2 - bh / 2 + (monitor ? 8 : 5);
+  return (
+    <g opacity={0.6}>
+      <rect
+        x={bx}
+        y={by}
+        width={bw}
+        height={bh}
+        rx="3"
+        fill="#F8FAFC"
+        stroke={color}
+        strokeWidth="0.9"
+        opacity={0.6}
+      />
+      <rect
+        x={bx}
+        y={by}
+        width={5}
+        height={bh}
+        rx="2"
+        fill={color}
+        opacity={0.45}
+      />
+      <rect
+        x={bx + bw - 5}
+        y={by}
+        width={5}
+        height={bh}
+        rx="2"
+        fill={color}
+        opacity={0.3}
+      />
+      <rect
+        x={bx + 7}
+        y={by + 3}
+        width={bw * 0.28}
+        height={bh * 0.65}
+        rx="2"
+        fill={color}
+        opacity={0.28}
+      />
+      <rect
+        x={bx + 7 + bw * 0.28 + 2}
+        y={by + 3}
+        width={bw * 0.58}
+        height={bh * 0.75}
+        rx="1"
+        fill={color}
+        opacity={0.1}
+      />
+      <rect
+        x={bx + 5}
+        y={by + bh + 1}
+        width={6}
+        height={3}
+        rx="1.5"
+        fill={color}
+        opacity={0.28}
+      />
+      <rect
+        x={bx + bw - 11}
+        y={by + bh + 1}
+        width={6}
+        height={3}
+        rx="1.5"
+        fill={color}
+        opacity={0.28}
+      />
+      {monitor && (
+        <>
+          <rect
+            x={bx + bw / 2 - 16}
+            y={by - 24}
+            width={32}
+            height={19}
+            rx="2"
+            fill="#FFFFFF"
+            stroke={color}
+            strokeWidth="0.6"
+            opacity={0.65}
+          />
+          <polyline
+            points={`${bx + bw / 2 - 12},${by - 14} ${bx + bw / 2 - 6},${by - 14} ${bx + bw / 2 - 4},${by - 20} ${bx + bw / 2 - 2},${by - 9} ${bx + bw / 2},${by - 14} ${bx + bw / 2 + 10},${by - 14}`}
+            fill="none"
+            stroke={color}
+            strokeWidth="1.2"
+            opacity={0.65}
+          />
+          <line
+            x1={bx + bw + 5}
+            y1={by - 18}
+            x2={bx + bw + 5}
+            y2={by + bh + 2}
+            stroke={color}
+            strokeWidth="1"
+            opacity={0.35}
+          />
+        </>
+      )}
+      {!monitor && (
+        <line
+          x1={bx + bw + 4}
+          y1={by - 5}
+          x2={bx + bw + 4}
+          y2={by + bh + 2}
+          stroke={color}
+          strokeWidth="0.8"
+          opacity={0.25}
+        />
+      )}
+    </g>
+  );
 }
 /**
  * Renders an SVG illustration of a CT scanner for use in an imaging room floor plan cell.
@@ -676,15 +1176,86 @@ function _FpBed({x,y,w,h,color,monitor=false}:{x:number;y:number;w:number;h:numb
  * @returns An SVG group element showing a stylized CT scanner.
  * Called from: _FpEquipment for "ct" room types.
  */
-function _FpCT({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
-  const cx=x+w/2-10,cy=y+h/2-5;
-  return (<g opacity={0.72}><circle cx={cx} cy={cy} r={30} fill="none" stroke={color} strokeWidth="11" opacity={0.32}/>
-    <circle cx={cx} cy={cy} r={17} fill="rgba(6,182,212,0.05)" stroke={color} strokeWidth="1" opacity={0.45}/>
-    <rect x={cx+2} y={cy-5} width={52} height={10} rx="3" fill={color} opacity={0.22} stroke={color} strokeWidth="0.6"/>
-    <rect x={cx+46} y={cy+5} width={10} height={22} rx="2" fill={color} opacity={0.18}/>
-    <rect x={cx-48} y={cy-18} width={12} height={26} rx="2" fill={color} opacity={0.14} stroke={color} strokeWidth="0.5"/>
-    {[-13,-7,-1].map(dy=><rect key={dy} x={cx-46} y={cy+dy} width={8} height={3} rx="0.8" fill={color} opacity={0.4}/>)}
-  </g>);
+function _FpCT({
+  x,
+  y,
+  w,
+  h,
+  color,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+}) {
+  const cx = x + w / 2 - 10,
+    cy = y + h / 2 - 5;
+  return (
+    <g opacity={0.6}>
+      <circle
+        cx={cx}
+        cy={cy}
+        r={30}
+        fill="none"
+        stroke={color}
+        strokeWidth="11"
+        opacity={0.32}
+      />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={17}
+        fill="#F8FAFC"
+        stroke={color}
+        strokeWidth="1"
+        opacity={0.45}
+      />
+      <rect
+        x={cx + 2}
+        y={cy - 5}
+        width={52}
+        height={10}
+        rx="3"
+        fill={color}
+        opacity={0.22}
+        stroke={color}
+        strokeWidth="0.6"
+      />
+      <rect
+        x={cx + 46}
+        y={cy + 5}
+        width={10}
+        height={22}
+        rx="2"
+        fill={color}
+        opacity={0.18}
+      />
+      <rect
+        x={cx - 48}
+        y={cy - 18}
+        width={12}
+        height={26}
+        rx="2"
+        fill={color}
+        opacity={0.14}
+        stroke={color}
+        strokeWidth="0.5"
+      />
+      {[-13, -7, -1].map((dy) => (
+        <rect
+          key={dy}
+          x={cx - 46}
+          y={cy + dy}
+          width={8}
+          height={3}
+          rx="0.8"
+          fill={color}
+          opacity={0.4}
+        />
+      ))}
+    </g>
+  );
 }
 /**
  * Renders an SVG illustration of an MRI machine for use in an imaging room floor plan cell.
@@ -696,13 +1267,67 @@ function _FpCT({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string
  * @returns An SVG group element showing a stylized MRI machine.
  * Called from: _FpEquipment for "mri" room types.
  */
-function _FpMRI({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
-  const cx=x+w/2-5,cy=y+h/2-5;
-  return (<g opacity={0.72}><rect x={cx-42} y={cy-27} width={84} height={55} rx="27" fill="none" stroke={color} strokeWidth="11" opacity={0.32}/>
-    <rect x={cx-26} y={cy-17} width={52} height={35} rx="17" fill="rgba(6,182,212,0.04)" stroke={color} strokeWidth="1" opacity={0.4}/>
-    <rect x={cx-8} y={cy-5} width={65} height={10} rx="3" fill={color} opacity={0.22} stroke={color} strokeWidth="0.6"/>
-    <rect x={cx-40} y={cy+28} width={80} height={8} rx="2" fill={color} opacity={0.18}/>
-  </g>);
+function _FpMRI({
+  x,
+  y,
+  w,
+  h,
+  color,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+}) {
+  const cx = x + w / 2 - 5,
+    cy = y + h / 2 - 5;
+  return (
+    <g opacity={0.6}>
+      <rect
+        x={cx - 42}
+        y={cy - 27}
+        width={84}
+        height={55}
+        rx="27"
+        fill="none"
+        stroke={color}
+        strokeWidth="11"
+        opacity={0.32}
+      />
+      <rect
+        x={cx - 26}
+        y={cy - 17}
+        width={52}
+        height={35}
+        rx="17"
+        fill="#F8FAFC"
+        stroke={color}
+        strokeWidth="1"
+        opacity={0.4}
+      />
+      <rect
+        x={cx - 8}
+        y={cy - 5}
+        width={65}
+        height={10}
+        rx="3"
+        fill={color}
+        opacity={0.22}
+        stroke={color}
+        strokeWidth="0.6"
+      />
+      <rect
+        x={cx - 40}
+        y={cy + 28}
+        width={80}
+        height={8}
+        rx="2"
+        fill={color}
+        opacity={0.18}
+      />
+    </g>
+  );
 }
 /**
  * Renders an SVG illustration of an X-ray machine for use in an imaging room floor plan cell.
@@ -714,16 +1339,92 @@ function _FpMRI({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:strin
  * @returns An SVG group element showing a stylized X-ray unit.
  * Called from: _FpEquipment for "xray" room types.
  */
-function _FpXRay({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
-  const cx=x+w/2,cy=y+h/2;
-  return (<g opacity={0.72}><rect x={cx-3} y={cy-48} width={6} height={68} rx="2.5" fill={color} opacity={0.32}/>
-    <rect x={cx-38} y={cy-48} width={76} height={5} rx="2" fill={color} opacity={0.28}/>
-    <rect x={cx-24} y={cy-65} width={48} height={20} rx="3" fill="rgba(10,14,26,0.6)" stroke={color} strokeWidth="0.8" opacity={0.55}/>
-    <line x1={cx-18} y1={cy-58} x2={cx+18} y2={cy-58} stroke={color} strokeWidth="0.7" opacity={0.35}/>
-    <line x1={cx-18} y1={cy-52} x2={cx+18} y2={cy-52} stroke={color} strokeWidth="0.7" opacity={0.35}/>
-    <rect x={cx-38} y={cy+22} width={76} height={11} rx="3" fill={color} opacity={0.2} stroke={color} strokeWidth="0.6}"/>
-    <rect x={cx-6} y={cy+33} width={12} height={18} rx="2" fill={color} opacity={0.18}/>
-  </g>);
+function _FpXRay({
+  x,
+  y,
+  w,
+  h,
+  color,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+}) {
+  const cx = x + w / 2,
+    cy = y + h / 2;
+  return (
+    <g opacity={0.6}>
+      <rect
+        x={cx - 3}
+        y={cy - 48}
+        width={6}
+        height={68}
+        rx="2.5"
+        fill={color}
+        opacity={0.32}
+      />
+      <rect
+        x={cx - 38}
+        y={cy - 48}
+        width={76}
+        height={5}
+        rx="2"
+        fill={color}
+        opacity={0.28}
+      />
+      <rect
+        x={cx - 24}
+        y={cy - 65}
+        width={48}
+        height={20}
+        rx="3"
+        fill="#F8FAFC"
+        stroke={color}
+        strokeWidth="0.8"
+        opacity={0.55}
+      />
+      <line
+        x1={cx - 18}
+        y1={cy - 58}
+        x2={cx + 18}
+        y2={cy - 58}
+        stroke={color}
+        strokeWidth="0.7"
+        opacity={0.35}
+      />
+      <line
+        x1={cx - 18}
+        y1={cy - 52}
+        x2={cx + 18}
+        y2={cy - 52}
+        stroke={color}
+        strokeWidth="0.7"
+        opacity={0.35}
+      />
+      <rect
+        x={cx - 38}
+        y={cy + 22}
+        width={76}
+        height={11}
+        rx="3"
+        fill={color}
+        opacity={0.2}
+        stroke={color}
+        strokeWidth="0.6"
+      />
+      <rect
+        x={cx - 6}
+        y={cy + 33}
+        width={12}
+        height={18}
+        rx="2"
+        fill={color}
+        opacity={0.18}
+      />
+    </g>
+  );
 }
 /**
  * Renders an SVG illustration of laboratory equipment (flasks, test tubes, an analyzer) for a lab room cell.
@@ -735,17 +1436,99 @@ function _FpXRay({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:stri
  * @returns An SVG group element showing lab benchtop equipment.
  * Called from: _FpEquipment for "lab" room types.
  */
-function _FpLab({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
-  const lx=x+w/2-42,ly=y+h/2-18;
-  return (<g opacity={0.72}><rect x={lx} y={ly+30} width={28} height={7} rx="2.5" fill={color} opacity={0.38}/>
-    <rect x={lx+10} y={ly-2} width={5} height={33} rx="1.5" fill={color} opacity={0.32}/>
-    <rect x={lx+2} y={ly-2} width={21} height={5} rx="1.5" fill={color} opacity={0.3}/>
-    <rect x={lx+1} y={ly-10} width={11} height={10} rx="2" fill="rgba(10,14,26,0.5)" stroke={color} strokeWidth="0.7" opacity={0.55}/>
-    <rect x={lx+5} y={ly+13} width={23} height={5} rx="1" fill={color} opacity={0.3}/>
-    <circle cx={lx+12} cy={ly+22} r="3.5" fill="none" stroke={color} strokeWidth="1.2" opacity={0.4}/>
-    <path d={`M${lx+36} ${ly+32} L${lx+34} ${ly+14} L${lx+38} ${ly+8} L${lx+48} ${ly+8} L${lx+52} ${ly+14} L${lx+50} ${ly+32} Z`} fill={color} opacity={0.14} stroke={color} strokeWidth="0.9}"/>
-    <rect x={lx+56} y={ly-2} width={9} height={34} rx="4.5" fill={color} opacity={0.14} stroke={color} strokeWidth="0.9}"/>
-  </g>);
+function _FpLab({
+  x,
+  y,
+  w,
+  h,
+  color,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+}) {
+  const lx = x + w / 2 - 42,
+    ly = y + h / 2 - 18;
+  return (
+    <g opacity={0.6}>
+      <rect
+        x={lx}
+        y={ly + 30}
+        width={28}
+        height={7}
+        rx="2.5"
+        fill={color}
+        opacity={0.38}
+      />
+      <rect
+        x={lx + 10}
+        y={ly - 2}
+        width={5}
+        height={33}
+        rx="1.5"
+        fill={color}
+        opacity={0.32}
+      />
+      <rect
+        x={lx + 2}
+        y={ly - 2}
+        width={21}
+        height={5}
+        rx="1.5"
+        fill={color}
+        opacity={0.3}
+      />
+      <rect
+        x={lx + 1}
+        y={ly - 10}
+        width={11}
+        height={10}
+        rx="2"
+        fill="#F8FAFC"
+        stroke={color}
+        strokeWidth="0.7"
+        opacity={0.55}
+      />
+      <rect
+        x={lx + 5}
+        y={ly + 13}
+        width={23}
+        height={5}
+        rx="1"
+        fill={color}
+        opacity={0.3}
+      />
+      <circle
+        cx={lx + 12}
+        cy={ly + 22}
+        r="3.5"
+        fill="none"
+        stroke={color}
+        strokeWidth="1.2"
+        opacity={0.4}
+      />
+      <path
+        d={`M${lx + 36} ${ly + 32} L${lx + 34} ${ly + 14} L${lx + 38} ${ly + 8} L${lx + 48} ${ly + 8} L${lx + 52} ${ly + 14} L${lx + 50} ${ly + 32} Z`}
+        fill={color}
+        opacity={0.14}
+        stroke={color}
+        strokeWidth="0.9"
+      />
+      <rect
+        x={lx + 56}
+        y={ly - 2}
+        width={9}
+        height={34}
+        rx="4.5"
+        fill={color}
+        opacity={0.14}
+        stroke={color}
+        strokeWidth="0.9"
+      />
+    </g>
+  );
 }
 /**
  * Renders an SVG illustration of a triage desk/station for use in the ER triage room cell.
@@ -757,15 +1540,88 @@ function _FpLab({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:strin
  * @returns An SVG group element showing a stylized triage station.
  * Called from: _FpEquipment for "triage" room types.
  */
-function _FpTriage({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:string}) {
-  const cx=x+w/2,cy=y+h/2;
-  return (<g opacity={0.65}><rect x={cx-35} y={cy-5} width={70} height={28} rx="3" fill="rgba(10,14,26,0.4)" stroke={color} strokeWidth="0.8" opacity={0.45}/>
-    <rect x={cx-30} y={cy-22} width={28} height={18} rx="2" fill="rgba(10,14,26,0.7)" stroke={color} strokeWidth="0.6" opacity={0.55}/>
-    {[-18,-14,-10].map(dy=><rect key={dy} x={cx-26} y={cy+dy} width={dy===-10?14:20} height={2} rx="0.5" fill={color} opacity={0.3}/>)}
-    <rect x={cx+10} y={cy-18} width={18} height={14} rx="2" fill={color} opacity={0.12} stroke={color} strokeWidth="0.5}"/>
-    <rect x={cx-48} y={cy+5} width={14} height={18} rx="2" fill={color} opacity={0.18}/>
-    <rect x={cx+34} y={cy+5} width={14} height={18} rx="2" fill={color} opacity={0.18}/>
-  </g>);
+function _FpTriage({
+  x,
+  y,
+  w,
+  h,
+  color,
+}: {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: string;
+}) {
+  const cx = x + w / 2,
+    cy = y + h / 2;
+  return (
+    <g opacity={0.55}>
+      <rect
+        x={cx - 35}
+        y={cy - 5}
+        width={70}
+        height={28}
+        rx="3"
+        fill="#F8FAFC"
+        stroke={color}
+        strokeWidth="0.8"
+        opacity={0.45}
+      />
+      <rect
+        x={cx - 30}
+        y={cy - 22}
+        width={28}
+        height={18}
+        rx="2"
+        fill="#FFFFFF"
+        stroke={color}
+        strokeWidth="0.6"
+        opacity={0.55}
+      />
+      {[-18, -14, -10].map((dy) => (
+        <rect
+          key={dy}
+          x={cx - 26}
+          y={cy + dy}
+          width={dy === -10 ? 14 : 20}
+          height={2}
+          rx="0.5"
+          fill={color}
+          opacity={0.3}
+        />
+      ))}
+      <rect
+        x={cx + 10}
+        y={cy - 18}
+        width={18}
+        height={14}
+        rx="2"
+        fill={color}
+        opacity={0.12}
+        stroke={color}
+        strokeWidth="0.5"
+      />
+      <rect
+        x={cx - 48}
+        y={cy + 5}
+        width={14}
+        height={18}
+        rx="2"
+        fill={color}
+        opacity={0.18}
+      />
+      <rect
+        x={cx + 34}
+        y={cy + 5}
+        width={14}
+        height={18}
+        rx="2"
+        fill={color}
+        opacity={0.18}
+      />
+    </g>
+  );
 }
 /**
  * Routes a floor plan room to the correct SVG equipment illustration based on its room type.
@@ -775,96 +1631,318 @@ function _FpTriage({x,y,w,h,color}:{x:number;y:number;w:number;h:number;color:st
  * @returns The matching SVG equipment element, or null for unrecognized room types.
  * Called from: HospitalFloorPlan when rendering each room inside a department zone.
  */
-function _FpEquipment({room,color}:{room:RoomDef;color:string}) {
-  const {x,y,w,h,type}=room;
-  if(type==="er_bay")       return <_FpBed x={x} y={y} w={w} h={h} color={color}/>;
-  if(type==="critical_bay") return <_FpBed x={x} y={y} w={w} h={h} color={color} monitor/>;
-  if(type==="icu_bed")      return <_FpBed x={x} y={y} w={w} h={h} color={color} monitor/>;
-  if(type==="ward_bed")     return <_FpBed x={x} y={y} w={w} h={h} color={color}/>;
-  if(type==="triage")       return <_FpTriage x={x} y={y} w={w} h={h} color={color}/>;
-  if(type==="ct")           return <_FpCT x={x} y={y} w={w} h={h} color={color}/>;
-  if(type==="mri")          return <_FpMRI x={x} y={y} w={w} h={h} color={color}/>;
-  if(type==="xray")         return <_FpXRay x={x} y={y} w={w} h={h} color={color}/>;
-  if(type==="lab")          return <_FpLab x={x} y={y} w={w} h={h} color={color}/>;
-  if(type==="nurse_stn") return (<g opacity={0.4}><rect x={x+4} y={y+1} width={w-8} height={h-2} rx="1" fill={color} opacity={0.12}/><text x={x+w/2} y={y+h/2+3} textAnchor="middle" fontSize="6" fill={color} opacity={0.5} fontFamily="monospace">NURSE STN</text></g>);
+function _FpEquipment({ room, color }: { room: RoomDef; color: string }) {
+  const { x, y, w, h, type } = room;
+  if (type === "er_bay")
+    return <_FpBed x={x} y={y} w={w} h={h} color={color} />;
+  if (type === "critical_bay")
+    return <_FpBed x={x} y={y} w={w} h={h} color={color} monitor />;
+  if (type === "icu_bed")
+    return <_FpBed x={x} y={y} w={w} h={h} color={color} monitor />;
+  if (type === "ward_bed")
+    return <_FpBed x={x} y={y} w={w} h={h} color={color} />;
+  if (type === "triage")
+    return <_FpTriage x={x} y={y} w={w} h={h} color={color} />;
+  if (type === "ct") return <_FpCT x={x} y={y} w={w} h={h} color={color} />;
+  if (type === "mri") return <_FpMRI x={x} y={y} w={w} h={h} color={color} />;
+  if (type === "xray") return <_FpXRay x={x} y={y} w={w} h={h} color={color} />;
+  if (type === "lab") return <_FpLab x={x} y={y} w={w} h={h} color={color} />;
+  if (type === "nurse_stn")
+    return (
+      <g opacity={0.4}>
+        <rect
+          x={x + 4}
+          y={y + 1}
+          width={w - 8}
+          height={h - 2}
+          rx="1"
+          fill={color}
+          opacity={0.12}
+        />
+        <text
+          x={x + w / 2}
+          y={y + h / 2 + 3}
+          textAnchor="middle"
+          fontSize="12"
+          fill={color}
+          opacity={0.6}
+          fontFamily="monospace"
+        >
+          NURSE STN
+        </text>
+      </g>
+    );
   return null;
 }
+
+const FP_TINT: Record<DepartmentStatus, string> = {
+  healthy: "#ECFDF5",
+  warning: "#FFFBEB",
+  critical: "#FEF2F2",
+};
 
 /**
  * Renders the full hospital floor plan as a responsive SVG.
  * Draws all five department zones with occupancy bars, individual room cells with equipment illustrations,
- * animated patient dots colored by severity, a main corridor divider, and a hover tooltip per department.
+ * patient dots colored by severity, a main corridor divider, and a hover tooltip per department.
  * @returns A container div wrapping the full SVG floor plan, sized to fill its parent.
  * Called from: CommandCenterPage inside the main floor plan card.
  */
 function HospitalFloorPlan() {
   const { hospitalState } = useSimulationStore();
-  const [tooltip, setTooltip] = useState<{dept:DepartmentKey;x:number;y:number}|null>(null);
+  const [tooltip, setTooltip] = useState<{
+    dept: DepartmentKey;
+    x: number;
+    y: number;
+  } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const depts  = (hospitalState?.departments ?? {}) as Record<DepartmentKey, DepartmentState>;
-  const patientDots = useMemo(() => _fpDots(hospitalState?.patients ?? []), [hospitalState?.patients]);
-  const getDeptStatus = (key:DepartmentKey): DepartmentStatus => (depts[key]?.status as DepartmentStatus) ?? "healthy";
-  const getDeptOcc    = (key:DepartmentKey): number => depts[key]?.occupancy ?? 0;
+  const depts = (hospitalState?.departments ?? {}) as Record<
+    DepartmentKey,
+    DepartmentState
+  >;
+  const patientDots = useMemo(
+    () => _fpDots(hospitalState?.patients ?? []),
+    [hospitalState?.patients],
+  );
+  const getDeptStatus = (key: DepartmentKey): DepartmentStatus =>
+    (depts[key]?.status as DepartmentStatus) ?? "healthy";
+  const getDeptOcc = (key: DepartmentKey): number => depts[key]?.occupancy ?? 0;
 
   return (
     <div className="relative w-full h-full select-none">
-      <svg ref={svgRef} viewBox={`0 0 ${FLOOR.width} ${FLOOR.height}`} className="w-full h-full" style={{background:"transparent"}}>
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${FLOOR.width} ${FLOOR.height}`}
+        className="w-full h-full"
+        style={{ background: "transparent" }}
+      >
         <defs>
-          <pattern id="fp-grid" width="24" height="24" patternUnits="userSpaceOnUse">
-            <path d="M 24 0 L 0 0 0 24" fill="none" stroke="rgba(255,255,255,0.02)" strokeWidth="0.5"/>
+          <pattern
+            id="fp-grid"
+            width="24"
+            height="24"
+            patternUnits="userSpaceOnUse"
+          >
+            <path
+              d="M 24 0 L 0 0 0 24"
+              fill="none"
+              stroke="#E2E8F0"
+              strokeWidth="0.5"
+              strokeOpacity="0.5"
+            />
           </pattern>
-          {["healthy","warning","critical"].map(s=>(
-            <radialGradient key={s} id={`fp-grad-${s}`} cx="50%" cy="50%" r="60%">
-              <stop offset="0%" stopColor={s==="healthy"?"rgba(0,255,136,0.1)":s==="warning"?"rgba(255,170,0,0.1)":"rgba(255,59,59,0.13)"}/>
-              <stop offset="100%" stopColor="transparent"/>
-            </radialGradient>
-          ))}
         </defs>
-        <rect width={FLOOR.width} height={FLOOR.height} fill="url(#fp-grid)"/>
-        <rect x={5} y={5} width={FLOOR.width-10} height={FLOOR.height-10} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="1" rx="4"/>
-        {DEPT_ZONES.map(zone=>{
-          const status=getDeptStatus(zone.key),occupancy=getDeptOcc(zone.key),sColor=statusColor(status);
+        <rect width={FLOOR.width} height={FLOOR.height} fill="url(#fp-grid)" />
+        <rect
+          x={5}
+          y={5}
+          width={FLOOR.width - 10}
+          height={FLOOR.height - 10}
+          fill="none"
+          stroke="#E2E8F0"
+          strokeWidth="1"
+          rx="4"
+        />
+        {DEPT_ZONES.map((zone) => {
+          const status = getDeptStatus(zone.key),
+            occupancy = getDeptOcc(zone.key),
+            sColor = statusColor(status);
           return (
-            <g key={zone.key} onMouseEnter={()=>setTooltip({dept:zone.key,x:zone.x+zone.w/2,y:zone.y})} onMouseLeave={()=>setTooltip(null)}>
-              <rect x={zone.x} y={zone.y} width={zone.w} height={zone.h} fill={`url(#fp-grad-${status})`} stroke={sColor} strokeWidth="1.2" strokeOpacity="0.4" rx="4"/>
-              {zone.rooms?.map((room,ri)=>(
+            <g
+              key={zone.key}
+              onMouseEnter={() =>
+                setTooltip({
+                  dept: zone.key,
+                  x: zone.x + zone.w / 2,
+                  y: zone.y,
+                })
+              }
+              onMouseLeave={() => setTooltip(null)}
+            >
+              <rect
+                x={zone.x}
+                y={zone.y}
+                width={zone.w}
+                height={zone.h}
+                fill={FP_TINT[status]}
+                stroke={sColor}
+                strokeWidth="1.2"
+                rx="4"
+              />
+              {zone.rooms?.map((room, ri) => (
                 <g key={ri}>
-                  {room.type!=="corridor"&&room.type!=="nurse_stn"&&<rect x={room.x+2} y={room.y+2} width={room.w-4} height={room.h-4} fill="rgba(0,0,0,0.18)" stroke="rgba(255,255,255,0.06)" strokeWidth="0.6" rx="2"/>}
-                  <_FpEquipment room={room} color={zone.color}/>
-                  {room.label&&room.type!=="corridor"&&<text x={room.x+room.w/2} y={room.y+room.h-7} textAnchor="middle" fontSize="8" fill="rgba(255,255,255,0.35)" fontFamily="JetBrains Mono, monospace" fontWeight="600">{room.label}</text>}
+                  {room.type !== "corridor" && room.type !== "nurse_stn" && (
+                    <rect
+                      x={room.x + 2}
+                      y={room.y + 2}
+                      width={room.w - 4}
+                      height={room.h - 4}
+                      fill="#FFFFFF"
+                      stroke="#E2E8F0"
+                      strokeWidth="0.6"
+                      rx="2"
+                    />
+                  )}
+                  <_FpEquipment room={room} color={zone.color} />
+                  {room.label && room.type !== "corridor" && (
+                    <text
+                      x={room.x + room.w / 2}
+                      y={room.y + room.h - 7}
+                      textAnchor="middle"
+                      fontSize="12"
+                      fill="#475569"
+                      fontFamily="JetBrains Mono, monospace"
+                      fontWeight="600"
+                    >
+                      {room.label}
+                    </text>
+                  )}
                 </g>
               ))}
-              <text x={zone.x+8} y={zone.y+14} fontSize="9" fontWeight="700" fill={sColor} fillOpacity="0.9" fontFamily="JetBrains Mono, monospace" letterSpacing="0.8">{zone.label}</text>
-              <circle cx={zone.x+zone.w-12} cy={zone.y+12} r="5" fill={sColor} style={{animation:status==="critical"?"pulse-critical 2s infinite":undefined}}/>
-              <text x={zone.x+zone.w-24} y={zone.y+15} textAnchor="end" fontSize="8" fill={sColor} fillOpacity="0.85" fontFamily="monospace">{Math.round(occupancy*100)}%</text>
-              <rect x={zone.x+2} y={zone.y+zone.h-4} width={Math.max(0,(zone.w-4)*occupancy)} height="3" fill={sColor} fillOpacity="0.55" rx="1.5"/>
+              <text
+                x={zone.x + 8}
+                y={zone.y + 16}
+                fontSize="12"
+                fontWeight="700"
+                fill={sColor}
+                fontFamily="JetBrains Mono, monospace"
+                letterSpacing="0.8"
+              >
+                {zone.label}
+              </text>
+              <circle
+                cx={zone.x + zone.w - 12}
+                cy={zone.y + 12}
+                r="5"
+                fill={sColor}
+              />
+              <text
+                x={zone.x + zone.w - 24}
+                y={zone.y + 16}
+                textAnchor="end"
+                fontSize="12"
+                fill={sColor}
+                fontFamily="monospace"
+                fontWeight="600"
+              >
+                {Math.round(occupancy * 100)}%
+              </text>
+              <rect
+                x={zone.x + 2}
+                y={zone.y + zone.h - 4}
+                width={Math.max(0, (zone.w - 4) * occupancy)}
+                height="3"
+                fill={sColor}
+                rx="1.5"
+              />
             </g>
           );
         })}
-        <rect x={10} y={254} width={1080} height={8} fill="rgba(255,255,255,0.015)" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5"/>
-        <text x={550} y={260} textAnchor="middle" fontSize="6" fill="rgba(59,130,246,0.28)" fontFamily="monospace">— MAIN CORRIDOR —</text>
-        <AnimatePresence mode="popLayout">
-          {patientDots.map(dot=>(
-            <motion.circle key={dot.id} cx={dot.x} cy={dot.y}
-              r={dot.severity==="critical"?5:dot.severity==="high"?4.5:4}
-              fill={_fpColor(dot.severity)} fillOpacity={0.88}
-              initial={{scale:0,opacity:0}} animate={{cx:dot.x,cy:dot.y,scale:1,opacity:0.85}} exit={{scale:0,opacity:0}}
-              transition={{type:"spring",stiffness:28,damping:24,duration:4.0}}
-            />
-          ))}
-        </AnimatePresence>
-        {tooltip&&depts[tooltip.dept]&&(()=>{
-          const d=depts[tooltip.dept],s=d.status as DepartmentStatus,sc=statusColor(s);
-          const tx=Math.min(tooltip.x,850),ty=Math.max(tooltip.y-105,8);
-          return (<g>
-            <rect x={tx-88} y={ty} width={176} height={98} fill="rgba(10,14,26,0.97)" stroke={sc} strokeWidth="1" strokeOpacity="0.5" rx="5"/>
-            <text x={tx} y={ty+15} textAnchor="middle" fontSize="10" fontWeight="700" fill={sc} fontFamily="monospace">{d.display_name?.toUpperCase()}</text>
-            <line x1={tx-82} y1={ty+20} x2={tx+82} y2={ty+20} stroke={sc} strokeWidth="0.5" strokeOpacity="0.3"/>
-            {[["Occupancy",formatPercent(d.occupancy)],["Queue",`${d.queue_length} patients`],["Avg Wait",formatTime(d.avg_wait_time)],["Beds Avail",`${d.beds_available}`]].map(([label,val],i)=>(
-              <g key={label}><text x={tx-80} y={ty+34+i*15} fontSize="8.5" fill="rgba(148,163,184,0.85)" fontFamily="monospace">{label}</text><text x={tx+80} y={ty+34+i*15} textAnchor="end" fontSize="8.5" fill="rgba(226,232,240,0.95)" fontFamily="monospace" fontWeight="600">{val}</text></g>
-            ))}
-          </g>);
-        })()}
+        <rect
+          x={10}
+          y={254}
+          width={1080}
+          height={8}
+          fill="#F1F5F9"
+          stroke="#E2E8F0"
+          strokeWidth="0.5"
+        />
+        <text
+          x={550}
+          y={260}
+          textAnchor="middle"
+          fontSize="12"
+          fill="#475569"
+          fontFamily="monospace"
+        >
+          — MAIN CORRIDOR —
+        </text>
+        {patientDots.map((dot) => (
+          <circle
+            key={dot.id}
+            cx={dot.x}
+            cy={dot.y}
+            r={
+              dot.severity === "critical"
+                ? 5
+                : dot.severity === "high"
+                  ? 4.5
+                  : 4
+            }
+            fill={_fpColor(dot.severity)}
+          />
+        ))}
+        {tooltip &&
+          depts[tooltip.dept] &&
+          (() => {
+            const d = depts[tooltip.dept],
+              s = d.status as DepartmentStatus,
+              sc = statusColor(s);
+            const tx = Math.min(tooltip.x, 850),
+              ty = Math.max(tooltip.y - 105, 8);
+            return (
+              <g>
+                <rect
+                  x={tx - 88}
+                  y={ty}
+                  width={176}
+                  height={98}
+                  fill="#FFFFFF"
+                  stroke={sc}
+                  strokeWidth="1"
+                  rx="5"
+                />
+                <text
+                  x={tx}
+                  y={ty + 16}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fontWeight="700"
+                  fill={sc}
+                  fontFamily="monospace"
+                >
+                  {d.display_name?.toUpperCase()}
+                </text>
+                <line
+                  x1={tx - 82}
+                  y1={ty + 22}
+                  x2={tx + 82}
+                  y2={ty + 22}
+                  stroke="#E2E8F0"
+                  strokeWidth="0.5"
+                />
+                {[
+                  ["Occupancy", formatPercent(d.occupancy)],
+                  ["Queue", `${d.queue_length} patients`],
+                  ["Avg Wait", formatTime(d.avg_wait_time)],
+                  ["Beds Avail", `${d.beds_available}`],
+                ].map(([label, val], i) => (
+                  <g key={label}>
+                    <text
+                      x={tx - 80}
+                      y={ty + 36 + i * 15}
+                      fontSize="12"
+                      fill="#475569"
+                      fontFamily="monospace"
+                    >
+                      {label}
+                    </text>
+                    <text
+                      x={tx + 80}
+                      y={ty + 36 + i * 15}
+                      textAnchor="end"
+                      fontSize="12"
+                      fill="#0F172A"
+                      fontFamily="monospace"
+                      fontWeight="600"
+                    >
+                      {val}
+                    </text>
+                  </g>
+                ))}
+              </g>
+            );
+          })()}
       </svg>
     </div>
   );
@@ -873,25 +1951,30 @@ function HospitalFloorPlan() {
 /**
  * The Hospital Command Center page — the primary dashboard of the PulseFlow AI application.
  * Renders six KPI metric cards, the DiversionBanner, the HospitalScore widget,
- * the full hospital floor plan with live patient dots, the department status sidebar,
+ * the full hospital floor plan with patient dots, the department status sidebar,
  * the LiveEventLog, and the AlertsAmbulancePanel.
- * Shows a "Connecting..." spinner when the WebSocket is not yet connected.
  * @returns The full Command Center page layout.
  * Called from: Next.js router at the /command-center route (and as the default redirect from /).
  */
 export default function CommandCenterPage() {
   const { hospitalState } = useSimulationStore();
   const metrics = hospitalState?.metrics;
-  const departments = (hospitalState?.departments ?? {}) as Record<DepartmentKey, DepartmentState>;
+  const departments = (hospitalState?.departments ?? {}) as Record<
+    DepartmentKey,
+    DepartmentState
+  >;
   const kpis = [
     {
       icon: Clock,
       label: "Avg Wait",
       value: metrics ? formatTime(metrics.avg_wait_time) : "--",
-      status: !metrics ? "neutral"
-        : metrics.avg_wait_time > 120 ? "critical"
-        : metrics.avg_wait_time > 80 ? "warning"
-        : "healthy",
+      status: !metrics
+        ? "neutral"
+        : metrics.avg_wait_time > 120
+          ? "critical"
+          : metrics.avg_wait_time > 80
+            ? "warning"
+            : "healthy",
     },
     {
       icon: Users,
@@ -903,19 +1986,25 @@ export default function CommandCenterPage() {
       icon: Bed,
       label: "Bed Util",
       value: metrics ? formatPercent(metrics.bed_utilization) : "--",
-      status: !metrics ? "neutral"
-        : metrics.bed_utilization > 0.92 ? "critical"
-        : metrics.bed_utilization > 0.82 ? "warning"
-        : "healthy",
+      status: !metrics
+        ? "neutral"
+        : metrics.bed_utilization > 0.92
+          ? "critical"
+          : metrics.bed_utilization > 0.82
+            ? "warning"
+            : "healthy",
     },
     {
       icon: Activity,
       label: "ICU Util",
       value: metrics ? formatPercent(metrics.icu_utilization) : "--",
-      status: !metrics ? "neutral"
-        : metrics.icu_utilization > 0.90 ? "critical"
-        : metrics.icu_utilization > 0.78 ? "warning"
-        : "healthy",
+      status: !metrics
+        ? "neutral"
+        : metrics.icu_utilization > 0.9
+          ? "critical"
+          : metrics.icu_utilization > 0.78
+            ? "warning"
+            : "healthy",
     },
     {
       icon: TrendingUp,
@@ -927,22 +2016,25 @@ export default function CommandCenterPage() {
       icon: Zap,
       label: "Critical",
       value: metrics?.critical_patients ?? "--",
-      status: !metrics ? "neutral"
-        : (metrics.critical_patients ?? 0) > 8 ? "critical"
-        : (metrics.critical_patients ?? 0) > 4 ? "warning"
-        : "healthy",
+      status: !metrics
+        ? "neutral"
+        : (metrics.critical_patients ?? 0) > 8
+          ? "critical"
+          : (metrics.critical_patients ?? 0) > 4
+            ? "warning"
+            : "healthy",
     },
   ] as const;
 
   return (
-    <div className="flex flex-col h-full p-4 gap-4 overflow-hidden">
+    <div className="flex flex-col h-full p-4 gap-4 overflow-hidden bg-clinical-canvas">
       {}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-lg font-bold text-white tracking-wide">
+          <h1 className="text-lg font-bold text-slate-900 tracking-wide">
             Hospital Command Center
           </h1>
-          <p className="text-xs text-slate-500 font-mono mt-0.5">
+          <p className="text-xs text-slate-600 font-mono mt-2">
             Real-time digital twin visualization • Patient flow simulation
           </p>
         </div>
@@ -950,7 +2042,7 @@ export default function CommandCenterPage() {
       </div>
 
       {}
-      <div className="grid grid-cols-6 gap-3 flex-shrink-0">
+      <div className="grid grid-cols-6 gap-4 flex-shrink-0">
         {kpis.map((kpi) => (
           <MetricCard
             key={kpi.label}
@@ -963,7 +2055,7 @@ export default function CommandCenterPage() {
       </div>
 
       {}
-      <div className="flex items-center gap-3 flex-shrink-0">
+      <div className="flex items-center gap-4 flex-shrink-0">
         {metrics && <DiversionBanner metrics={metrics} />}
         {metrics && <HospitalScore metrics={metrics} />}
       </div>
@@ -971,115 +2063,115 @@ export default function CommandCenterPage() {
       {}
       <div className="flex flex-1 gap-4 overflow-hidden min-h-0">
         {}
-        <div
-          className="flex-1 rounded-xl overflow-hidden relative"
-          style={{
-            background: "rgba(6,10,20,0.95)",
-            border: "1px solid rgba(255,255,255,0.05)",
-            boxShadow: "inset 0 0 60px rgba(255,255,255,0.015)",
-          }}
-        >
-          <div className="absolute top-3 left-3 z-10">
-            <div
-              className="text-[9px] font-mono px-2 py-1 rounded"
-              style={{
-                background: "rgba(10,14,26,0.8)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                color: "#475569",
-              }}
-            >
+        <div className="flex-1 border border-clinical-border bg-clinical-surface rounded-lg overflow-hidden relative">
+          <div className="absolute top-4 left-4 z-10">
+            <div className="text-xs font-mono px-2 py-1 rounded border border-clinical-border bg-clinical-surface text-slate-600">
               FLOOR PLAN — ACTIVE PATIENTS SHOWN
             </div>
           </div>
 
           {}
-          <div className="absolute top-3 right-3 z-10 flex items-center gap-3 px-3 py-1.5 rounded"
-            style={{ background: "rgba(10,14,26,0.85)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div className="absolute top-4 right-4 z-10 flex items-center gap-4 px-2 py-1 rounded border border-clinical-border bg-clinical-surface">
             {[
-              { label: "Low", color: "#34d399" },
-              { label: "Medium", color: "#fbbf24" },
-              { label: "High", color: "#f59e0b" },
-              { label: "Critical", color: "#ef4444" },
+              { label: "Low", color: "#059669" },
+              { label: "Medium", color: "#D97706" },
+              { label: "High", color: "#EA580C" },
+              { label: "Critical", color: "#DC2626" },
             ].map((s) => (
-              <div key={s.label} className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full" style={{ background: s.color, boxShadow: `0 0 4px ${s.color}` }} />
-                <span className="text-[9px] text-slate-500 font-mono">{s.label}</span>
+              <div key={s.label} className="flex items-center gap-2">
+                <div
+                  className="w-2 h-2 rounded-full"
+                  style={{ background: s.color }}
+                />
+                <span className="text-xs text-slate-600 font-mono">
+                  {s.label}
+                </span>
               </div>
             ))}
           </div>
 
-          <div className="absolute inset-0 p-3 pt-10">
+          <div className="absolute inset-0 p-4 pt-10">
             <HospitalFloorPlan />
           </div>
 
           {}
-          <div className="absolute bottom-3 left-3 z-10">
-            <div
-              className="text-[9px] font-mono px-2 py-1 rounded"
-              style={{
-                background: "rgba(10,14,26,0.8)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                color: "#475569",
-              }}
-            >
-              {(hospitalState?.patients?.length ?? 0)} PATIENTS ACTIVE
+          <div className="absolute bottom-4 left-4 z-10">
+            <div className="text-xs font-mono px-2 py-1 rounded border border-clinical-border bg-clinical-surface text-slate-600">
+              {hospitalState?.patients?.length ?? 0} PATIENTS ACTIVE
             </div>
           </div>
         </div>
 
         {}
-        <div className="w-[320px] flex flex-col gap-3 overflow-y-auto flex-shrink-0 min-h-0">
+        <div className="w-[320px] flex flex-col gap-4 overflow-y-auto flex-shrink-0 min-h-0">
           {}
-          <div
-            className="rounded-xl p-3 flex-shrink-0"
-            style={{
-              background: "rgba(10,14,26,0.8)",
-              border: "1px solid rgba(255,255,255,0.04)",
-            }}
-          >
-            <div className="text-[10px] text-slate-500 font-mono uppercase mb-2 tracking-wide">
+          <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4 flex-shrink-0">
+            <div className="text-xs text-slate-600 font-medium uppercase mb-4 tracking-wide">
               Department Status
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-4">
               {DEPT_KEYS.map((key) => {
                 const dept = departments[key];
                 if (!dept) return null;
                 const status = occupancyToStatus(dept.occupancy);
                 const sColor = statusColor(status);
+                const sText =
+                  status === "critical"
+                    ? "text-red-700"
+                    : status === "warning"
+                      ? "text-amber-700"
+                      : "text-emerald-700";
+                const badgeStatus =
+                  status === "critical"
+                    ? "critical"
+                    : status === "warning"
+                      ? "flagged"
+                      : "safe";
 
                 return (
-                  <div key={key} className="flex items-center gap-2">
-                    <div
-                      className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                      style={{
-                        background: sColor,
-                        boxShadow: `0 0 4px ${sColor}`,
-                        animation: status === "critical" ? "pulse-critical 1.5s infinite" : undefined,
-                      }}
+                  <div key={key} className="flex items-start gap-2">
+                    <StatusBadge
+                      status={badgeStatus}
+                      label={
+                        status === "critical"
+                          ? "CRIT"
+                          : status === "warning"
+                            ? "WARN"
+                            : "OK"
+                      }
+                      className="flex-shrink-0 mt-2"
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-300 font-medium truncate">
+                        <span className="text-sm text-slate-900 font-medium truncate">
                           {dept.display_name}
                         </span>
-                        <span className="text-xs font-mono ml-2 flex-shrink-0" style={{ color: sColor }}>
+                        <span
+                          className={cn(
+                            "text-sm font-mono ml-2 flex-shrink-0",
+                            sText,
+                          )}
+                        >
                           {formatPercent(dept.occupancy)}
                         </span>
                       </div>
-                      <div className="mt-1 h-1.5 rounded-full bg-slate-800/80 overflow-hidden">
-                        <motion.div
+                      <div className="mt-2 h-2 rounded-full bg-clinical-canvas border border-clinical-border overflow-hidden">
+                        <div
                           className="h-full rounded-full"
-                          style={{ background: sColor, opacity: 0.7 }}
-                          animate={{ width: `${Math.round(dept.occupancy * 100)}%` }}
-                          transition={{ duration: 2.5, ease: "easeOut" }}
+                          style={{
+                            background: sColor,
+                            width: `${Math.round(dept.occupancy * 100)}%`,
+                          }}
                         />
                       </div>
-                      <div className="flex justify-between mt-0.5">
-                        <span className="text-[11px] text-slate-600 font-mono">
+                      <div className="flex justify-between mt-2">
+                        <span className="text-xs text-slate-600 font-mono">
                           {dept.current_patients}/{dept.capacity} beds
                         </span>
                         {dept.queue_length > 0 && (
-                          <span className="text-[11px] font-mono font-bold" style={{ color: sColor }}>
+                          <span
+                            className={cn("text-xs font-mono font-bold", sText)}
+                          >
                             Q:{dept.queue_length}
                           </span>
                         )}
@@ -1092,7 +2184,11 @@ export default function CommandCenterPage() {
           </div>
 
           {}
-          <LiveEventLog patients={hospitalState?.patients ?? []} alerts={hospitalState?.alerts ?? []} simTime={hospitalState?.sim_time ?? 0} />
+          <LiveEventLog
+            patients={hospitalState?.patients ?? []}
+            alerts={hospitalState?.alerts ?? []}
+            simTime={hospitalState?.sim_time ?? 0}
+          />
 
           {}
           <AlertsAmbulancePanel

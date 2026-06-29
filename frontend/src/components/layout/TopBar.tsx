@@ -1,7 +1,7 @@
-/* Top bar showing the simulated clock. */
 "use client";
 import { useSimulationStore } from "@/store/simulationStore";
 import { formatSimTime } from "@/lib/utils";
+import { AutoLogoutTimer } from "@/components/layout/AutoLogoutTimer";
 
 export function TopBar() {
   const { hospitalState } = useSimulationStore();
@@ -9,26 +9,16 @@ export function TopBar() {
   const displayTime = Math.floor(simTime / 30) * 30;
 
   return (
-    <div
-      className="h-14 flex items-center px-5 flex-shrink-0"
-      style={{
-        background: "rgba(8,12,24,0.95)",
-        borderBottom: "1px solid rgba(12,200,212,0.08)",
-        backdropFilter: "blur(12px)",
-      }}
-    >
-      <div
-        className="text-sm font-mono px-3 py-1.5 rounded"
-        style={{
-          background: "rgba(12,200,212,0.05)",
-          border: "1px solid rgba(12,200,212,0.15)",
-          color: "#0CC8D4",
-          letterSpacing: "0.08em",
-        }}
-      >
-        <span className="mr-2 text-xs uppercase" style={{ color: "#475569" }}>Sim Time</span>
-        {formatSimTime(displayTime)}
+    <div className="h-14 flex items-center justify-between gap-4 px-4 flex-shrink-0 bg-clinical-surface border-b border-clinical-border">
+      <div className="flex items-center gap-2 border rounded px-3 py-1.5 border-clinical-border bg-clinical-canvas">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-600">
+          Sim Time
+        </span>
+        <span className="text-sm font-mono tabular-nums font-semibold text-slate-900">
+          {formatSimTime(displayTime)}
+        </span>
       </div>
+      <AutoLogoutTimer />
     </div>
   );
 }
