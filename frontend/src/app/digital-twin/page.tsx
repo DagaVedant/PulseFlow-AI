@@ -23,14 +23,6 @@ interface DeptNodeData {
   key: string;
 }
 
-/**
- * A memoized React Flow custom node that renders a clean department status card.
- * Shows occupancy and resource bars, queue/wait/availability stats, and optional warning badges.
- * Uses a left-accent border to indicate status instead of full glows.
- * @param data - A DeptNodeData object containing the DepartmentState and the department key string.
- * @returns A styled node card with React Flow connection handles on all four sides.
- * Called from: React Flow's nodeTypes map in HospitalGraph.
- */
 const DepartmentNode = memo(({ data }: NodeProps<DeptNodeData>) => {
   const { dept } = data;
   if (!dept) return null;
@@ -39,14 +31,14 @@ const DepartmentNode = memo(({ data }: NodeProps<DeptNodeData>) => {
 
   const bar = (value: number, label: string) => (
     <div className="flex items-center gap-2">
-      <div className="text-xs text-slate-600 w-14 flex-shrink-0">{label}</div>
-      <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
+      <div className="text-xs text-muted w-14 flex-shrink-0">{label}</div>
+      <div className="flex-1 h-1 bg-elevated rounded-full overflow-hidden">
         <div
           className="h-full rounded-full"
           style={{ background: sColor, width: `${Math.round(value * 100)}%` }}
         />
       </div>
-      <div className="text-xs font-mono w-8 text-right text-slate-600">
+      <div className="text-xs font-mono w-8 text-right text-muted">
         {Math.round(value * 100)}%
       </div>
     </div>
@@ -60,13 +52,12 @@ const DepartmentNode = memo(({ data }: NodeProps<DeptNodeData>) => {
         className="select-none overflow-hidden rounded-lg border border-clinical-border bg-clinical-surface"
         style={{ width: 200, borderLeft: `4px solid ${sColor}` }}
       >
-        {/* Header */}
         <div className="px-4 pt-4 pb-2 flex items-start justify-between border-b border-clinical-border">
           <div>
-            <div className="text-sm font-semibold text-slate-900 tracking-wide">
+            <div className="text-sm font-semibold text-ink tracking-wide">
               {dept.display_name}
             </div>
-            <div className="text-xs text-slate-600 mt-1">
+            <div className="text-xs text-muted mt-1">
               {dept.current_patients}/{dept.capacity} beds
             </div>
           </div>
@@ -80,13 +71,11 @@ const DepartmentNode = memo(({ data }: NodeProps<DeptNodeData>) => {
           </div>
         </div>
 
-        {/* Bars */}
         <div className="px-4 py-2 space-y-2">
           {bar(dept.occupancy, "Beds")}
           {bar(dept.resource_utilization, "Resources")}
         </div>
 
-        {/* Stats */}
         <div className="px-4 pb-2 border-t border-clinical-border pt-2 grid grid-cols-3 gap-2">
           {[
             ["Queue", String(dept.queue_length)],
@@ -94,25 +83,24 @@ const DepartmentNode = memo(({ data }: NodeProps<DeptNodeData>) => {
             ["Avail", String(dept.beds_available)],
           ].map(([label, val]) => (
             <div key={label}>
-              <div className="text-xs text-slate-600 mb-1">{label}</div>
-              <div className="text-base font-bold font-mono text-slate-900">
+              <div className="text-xs text-muted mb-1">{label}</div>
+              <div className="text-base font-bold font-mono text-ink">
                 {val}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Warning badges */}
         {((dept as any).burnout_risk ||
           ((dept as any).boarding_count ?? 0) > 0) && (
           <div className="px-4 pb-2 flex gap-2 flex-wrap border-t border-clinical-border pt-2">
             {(dept as any).burnout_risk && (
-              <span className="text-xs px-2 py-1 rounded font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="text-xs px-2 py-1 rounded font-medium bg-flag-soft text-flag-ink border border-flag-line">
                 Burnout Risk
               </span>
             )}
             {((dept as any).boarding_count ?? 0) > 0 && (
-              <span className="text-xs px-2 py-1 rounded font-medium bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="text-xs px-2 py-1 rounded font-medium bg-flag-soft text-flag-ink border border-flag-line">
                 {(dept as any).boarding_count} Boarding
               </span>
             )}
@@ -126,46 +114,23 @@ const DepartmentNode = memo(({ data }: NodeProps<DeptNodeData>) => {
 });
 DepartmentNode.displayName = "DepartmentNode";
 
-// ─── HospitalGraph ────────────────────────────────────────────────────────
-
 const NODE_TYPES = { department: DepartmentNode };
-// Grid: node width=200px, col gap=70px → col step=270px. Node height≈190px, row gap=50px → row step=240px.
-// Col positions: Left=50, Center=320, Right=590. Row positions: 0, 240, 480, 720.
 const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
-  er: { x: 320, y: 0 }, // center, row 0
-  labs: { x: 50, y: 240 }, // left,   row 1
-  imaging: { x: 590, y: 240 }, // right,  row 1
-  icu: { x: 320, y: 480 }, // center, row 2
-  ward: { x: 590, y: 480 }, // right,  row 2
-  discharge: { x: 320, y: 720 }, // center, row 3
+  er: { x: 320, y: 0 },
+  labs: { x: 50, y: 240 },
+  imaging: { x: 590, y: 240 },
+  icu: { x: 320, y: 480 },
+  ward: { x: 590, y: 480 },
+  discharge: { x: 320, y: 720 },
 };
 
-/**
- * Converts a patient flow count into a stroke width for a React Flow edge (between 1 and 5).
- * @param v - The number of patients currently in transit on this connection.
- * @returns A stroke width number — higher flow means a thicker line, capped at 5.
- * Called from: buildEdges when constructing edge style objects.
- */
 function flowWeight(v: number) {
   return Math.max(1, Math.min(5, 1 + v * 0.5));
 }
-/**
- * Returns a color for a React Flow edge based on how high the patient flow count is.
- * @param v - The number of patients in transit on this connection.
- * @returns Red for 5+ patients (high congestion), amber for 3–4, slate for 0–2 (normal flow).
- * Called from: buildEdges when constructing edge style objects.
- */
 function flowColor(v: number) {
   return v >= 5 ? "#DC2626" : v >= 3 ? "#D97706" : "#475569";
 }
 
-/**
- * Converts a PatientFlow object into a list of React Flow Edge objects for all department connections.
- * Each edge is styled with a color and stroke width that reflects the current flow count.
- * @param flow - The PatientFlow snapshot from the latest hospital state, containing counts for every route.
- * @returns An array of React Flow Edge objects, one per department-to-department connection.
- * Called from: HospitalGraph when building the edges to pass to ReactFlow.
- */
 function buildEdges(flow: PatientFlow): Edge[] {
   const edge = (
     id: string,
@@ -213,13 +178,6 @@ function buildEdges(flow: PatientFlow): Edge[] {
   ];
 }
 
-/**
- * Renders the interactive React Flow network graph showing all hospital departments as nodes
- * connected by edges that represent live patient flow between them.
- * Includes a background dot grid, pan/zoom controls, and a minimap.
- * @returns A full-size React Flow canvas with department nodes and flow edges.
- * Called from: DigitalTwinPage.
- */
 function HospitalGraph() {
   const { hospitalState } = useSimulationStore();
   const departments = hospitalState?.departments ?? {};
@@ -271,15 +229,6 @@ function HospitalGraph() {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────
-
-/**
- * The Digital Twin page, showing a live interactive network graph of hospital departments
- * and their real-time patient flow connections.
- * Displays a total active-flows counter in the header and a color-coded legend at the bottom.
- * @returns The full-page layout with the HospitalGraph component and surrounding UI chrome.
- * Called from: Next.js router at the /digital-twin route.
- */
 export default function DigitalTwinPage() {
   const { hospitalState } = useSimulationStore();
   const flow = hospitalState?.flow;
@@ -294,17 +243,17 @@ export default function DigitalTwinPage() {
     <div className="flex flex-col h-full p-4 gap-4 overflow-hidden font-sans">
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-lg font-bold text-slate-900 tracking-wide flex items-center gap-2">
-            <Network className="w-6 h-6 text-slate-600" />
+          <h1 className="text-lg font-bold text-ink tracking-wide flex items-center gap-2">
+            <Network className="w-6 h-6 text-muted" />
             Live Digital Twin
           </h1>
-          <p className="text-xs text-slate-600 mt-1">
+          <p className="text-xs text-muted mt-1">
             Hospital systems network • Real-time patient flow topology
           </p>
         </div>
         <div className="px-4 py-2 rounded-lg text-sm border border-clinical-border bg-clinical-surface">
-          <span className="text-slate-600">Active flows:</span>{" "}
-          <span className="text-slate-900 font-bold font-mono">
+          <span className="text-muted">Active flows:</span>{" "}
+          <span className="text-ink font-bold font-mono">
             {totalFlow}
           </span>
         </div>
@@ -323,10 +272,10 @@ export default function DigitalTwinPage() {
                 className="w-5 h-1 rounded-full"
                 style={{ background: item.color }}
               />
-              <span className="text-xs text-slate-600">{item.label}</span>
+              <span className="text-xs text-muted">{item.label}</span>
             </div>
           ))}
-          <div className="ml-2 pl-4 text-xs text-slate-600 border-l border-clinical-border">
+          <div className="ml-2 pl-4 text-xs text-muted border-l border-clinical-border">
             numbers = patients in transit
           </div>
         </div>

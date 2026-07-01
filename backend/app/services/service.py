@@ -20,9 +20,6 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# WEBSOCKET MANAGER
-# ─────────────────────────────────────────────────────────────────────────────
 
 class ConnectionManager:
     """Manages all active WebSocket connections and broadcasts state updates."""
@@ -142,9 +139,6 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# ─────────────────────────────────────────────────────────────────────────────
-# SIMULATION SERVICE
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _make_config() -> SimulationConfig:
     """

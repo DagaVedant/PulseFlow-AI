@@ -33,20 +33,20 @@ import { useDemoStore } from "@/store/demoStore";
 
 const URGENCY_CLASS: Record<string, { text: string; badge: string }> = {
   low: {
-    text: "text-slate-600",
-    badge: "bg-slate-100 text-slate-700 border border-clinical-border",
+    text: "text-muted",
+    badge: "bg-elevated text-ink border border-clinical-border",
   },
   medium: {
-    text: "text-amber-600",
-    badge: "bg-amber-50 text-amber-700 border border-amber-200",
+    text: "text-flag-ink",
+    badge: "bg-flag-soft text-flag-ink border border-flag-line",
   },
   high: {
-    text: "text-amber-600",
-    badge: "bg-amber-50 text-amber-700 border border-amber-200",
+    text: "text-flag-ink",
+    badge: "bg-flag-soft text-flag-ink border border-flag-line",
   },
   critical: {
-    text: "text-red-600",
-    badge: "bg-red-50 text-red-700 border border-red-200",
+    text: "text-crit-ink",
+    badge: "bg-crit-soft text-crit-ink border border-crit-line",
   },
 };
 
@@ -140,18 +140,18 @@ export default function CopilotPage() {
     <div className="flex flex-col h-full p-6 gap-6 overflow-hidden font-sans bg-clinical-canvas">
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Brain className="w-6 h-6 text-slate-600" aria-hidden="true" />
+          <h1 className="text-lg font-bold text-ink flex items-center gap-2">
+            <Brain className="w-6 h-6 text-muted" aria-hidden="true" />
             AI Operations Copilot
           </h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-sm text-muted mt-1">
             Bottleneck detection · OR-Tools optimization · AI planning
           </p>
         </div>
         <button
           onClick={runAnalysis}
           disabled={loading}
-          className="flex items-center gap-2 min-h-11 px-4 rounded-lg text-sm font-medium border border-clinical-border bg-clinical-surface text-slate-900 hover:bg-slate-50 transition-colors disabled:opacity-60"
+          className="flex items-center gap-2 min-h-11 px-4 rounded-lg text-sm font-medium border border-clinical-border bg-clinical-surface text-ink hover:bg-elevated transition-colors disabled:opacity-60"
         >
           {loading ? (
             <>
@@ -167,7 +167,7 @@ export default function CopilotPage() {
       </div>
 
       {error && (
-        <div className="flex-shrink-0 px-4 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+        <div className="flex-shrink-0 px-4 py-2 rounded-lg bg-crit-soft border border-crit-line text-crit-ink text-sm">
           {error}
         </div>
       )}
@@ -175,7 +175,7 @@ export default function CopilotPage() {
       <div className="flex flex-1 gap-6 min-h-0 overflow-hidden">
         <div className="flex flex-col gap-6 w-[300px] flex-shrink-0 overflow-y-auto">
           <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4">
-            <div className="text-xs text-slate-600 font-medium uppercase mb-4">
+            <div className="text-xs text-muted font-medium uppercase mb-4">
               System Health Radar
             </div>
             {radarData.length > 0 ? (
@@ -199,7 +199,7 @@ export default function CopilotPage() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="h-[256px] flex items-center justify-center text-sm text-slate-600">
+              <div className="h-[256px] flex items-center justify-center text-sm text-muted">
                 Waiting for data...
               </div>
             )}
@@ -207,7 +207,7 @@ export default function CopilotPage() {
 
           {metrics && (
             <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4 space-y-4">
-              <div className="text-xs text-slate-600 font-medium uppercase">
+              <div className="text-xs text-muted font-medium uppercase">
                 Current Metrics
               </div>
               {[
@@ -215,40 +215,40 @@ export default function CopilotPage() {
                   "Avg Wait",
                   formatTime(metrics.avg_wait_time),
                   metrics.avg_wait_time > 120
-                    ? "text-red-600"
+                    ? "text-crit-ink"
                     : metrics.avg_wait_time > 80
-                      ? "text-amber-600"
-                      : "text-emerald-600",
+                      ? "text-flag-ink"
+                      : "text-safe-ink",
                 ],
                 [
                   "Bed Util",
                   formatPercent(metrics.bed_utilization),
                   metrics.bed_utilization > 0.92
-                    ? "text-red-600"
-                    : "text-slate-900",
+                    ? "text-crit-ink"
+                    : "text-ink",
                 ],
                 [
                   "ICU Util",
                   formatPercent(metrics.icu_utilization),
                   metrics.icu_utilization > 0.9
-                    ? "text-red-600"
-                    : "text-slate-900",
+                    ? "text-crit-ink"
+                    : "text-ink",
                 ],
                 [
                   "Staff Util",
                   formatPercent(metrics.staff_utilization),
-                  "text-slate-900",
+                  "text-ink",
                 ],
                 [
                   "Critical",
                   String(metrics.critical_patients),
                   metrics.critical_patients > 5
-                    ? "text-red-600"
-                    : "text-slate-900",
+                    ? "text-crit-ink"
+                    : "text-ink",
                 ],
               ].map(([label, val, colorClass]) => (
                 <div key={label} className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">{label}</span>
+                  <span className="text-sm text-muted">{label}</span>
                   <span
                     className={
                       "text-base font-bold font-mono " + (colorClass as string)
@@ -266,14 +266,14 @@ export default function CopilotPage() {
           {loading && (
             <div className="border border-clinical-border bg-clinical-surface rounded-lg p-8 flex items-center justify-center gap-4">
               <RefreshCw
-                className="w-6 h-6 text-slate-600 animate-spin"
+                className="w-6 h-6 text-muted animate-spin"
                 aria-hidden="true"
               />
               <div>
-                <div className="text-base text-slate-900 mb-1">
+                <div className="text-base text-ink mb-1">
                   Running optimization engine...
                 </div>
-                <div className="text-sm text-slate-600">
+                <div className="text-sm text-muted">
                   OR-Tools LP · SimPy state analysis · AI narrative
                 </div>
               </div>
@@ -285,14 +285,14 @@ export default function CopilotPage() {
               {explanation && (
                 <div className="border border-clinical-border bg-clinical-surface rounded-lg p-6">
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="p-2 rounded-lg bg-slate-100">
+                    <div className="p-2 rounded-lg bg-elevated">
                       <Brain
-                        className="w-5 h-5 text-slate-600"
+                        className="w-5 h-5 text-muted"
                         aria-hidden="true"
                       />
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-bold text-slate-900">
+                      <span className="text-sm font-bold text-ink">
                         AI COPILOT ANALYSIS
                       </span>
                       {explanation.severity && (
@@ -300,10 +300,10 @@ export default function CopilotPage() {
                           className={cn(
                             "text-xs font-medium px-2 py-1 rounded border",
                             explanation.severity === "critical"
-                              ? "bg-red-50 text-red-700 border-red-200"
+                              ? "bg-crit-soft text-crit-ink border-crit-line"
                               : explanation.severity === "high"
-                                ? "bg-amber-50 text-amber-700 border-amber-200"
-                                : "bg-slate-100 text-slate-700 border-clinical-border",
+                                ? "bg-flag-soft text-flag-ink border-flag-line"
+                                : "bg-elevated text-ink border-clinical-border",
                           )}
                         >
                           {explanation.severity.toUpperCase()}
@@ -311,7 +311,7 @@ export default function CopilotPage() {
                       )}
                     </div>
                   </div>
-                  <p className="text-base text-slate-900 leading-relaxed">
+                  <p className="text-base text-ink leading-relaxed">
                     {explanation.explanation}
                   </p>
                 </div>
@@ -325,19 +325,19 @@ export default function CopilotPage() {
                         icon: Clock,
                         label: "Wait Reduction",
                         value: `${opt.predicted_wait_reduction.toFixed(0)}m`,
-                        color: "text-emerald-600",
+                        color: "text-safe-ink",
                       },
                       {
                         icon: TrendingUp,
                         label: "Throughput +",
                         value: `${opt.predicted_throughput_increase.toFixed(0)}%`,
-                        color: "text-slate-900",
+                        color: "text-ink",
                       },
                       {
                         icon: Activity,
                         label: "Util Improvement",
                         value: `${(opt.predicted_utilization_improvement * 100).toFixed(0)}%`,
-                        color: "text-slate-900",
+                        color: "text-ink",
                       },
                     ].map((kpi, idx) => {
                       const Icon = kpi.icon;
@@ -360,7 +360,7 @@ export default function CopilotPage() {
                           >
                             {kpi.value}
                           </div>
-                          <div className="text-xs text-slate-600 mt-1">
+                          <div className="text-xs text-muted mt-1">
                             {kpi.label}
                           </div>
                         </div>
@@ -370,17 +370,17 @@ export default function CopilotPage() {
 
                   <div className="p-6 space-y-6">
                     <div>
-                      <div className="text-xs text-slate-600 font-medium uppercase mb-4">
+                      <div className="text-xs text-muted font-medium uppercase mb-4">
                         Root Cause Analysis
                       </div>
                       <div className="space-y-2">
                         {opt.root_causes.map((cause, i) => (
                           <div key={i} className="flex items-start gap-2">
                             <AlertTriangle
-                              className="w-4 h-4 text-amber-600 flex-shrink-0 mt-1"
+                              className="w-4 h-4 text-flag-ink flex-shrink-0 mt-1"
                               aria-hidden="true"
                             />
-                            <span className="text-sm text-slate-600 leading-relaxed">
+                            <span className="text-sm text-muted leading-relaxed">
                               {cause}
                             </span>
                           </div>
@@ -389,16 +389,16 @@ export default function CopilotPage() {
                     </div>
 
                     <div>
-                      <div className="text-xs text-slate-600 font-medium uppercase mb-4">
+                      <div className="text-xs text-muted font-medium uppercase mb-4">
                         Intervention Plan
                       </div>
                       <div className="space-y-2">
                         {opt.intervention_plan.map((step, i) => (
                           <div key={i} className="flex items-start gap-2">
-                            <div className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5 bg-slate-100 text-slate-600 border border-clinical-border">
+                            <div className="w-6 h-6 rounded text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5 bg-elevated text-muted border border-clinical-border">
                               {i + 1}
                             </div>
-                            <span className="text-sm text-slate-900 leading-relaxed">
+                            <span className="text-sm text-ink leading-relaxed">
                               {step}
                             </span>
                           </div>
@@ -408,7 +408,7 @@ export default function CopilotPage() {
 
                     {opt.recommendations.length > 0 && (
                       <div>
-                        <div className="text-xs text-slate-600 font-medium uppercase mb-4">
+                        <div className="text-xs text-muted font-medium uppercase mb-4">
                           Staff Reallocation
                         </div>
                         <div className="space-y-2">
@@ -418,26 +418,26 @@ export default function CopilotPage() {
                               className="flex items-center justify-between px-4 py-2 rounded-lg border border-clinical-border bg-clinical-surface"
                             >
                               <div className="min-w-0 flex-1">
-                                <div className="text-sm text-slate-900">
+                                <div className="text-sm text-ink">
                                   {rec.department} — {rec.resource_type}
                                 </div>
-                                <div className="text-xs text-slate-600 mt-1 truncate">
+                                <div className="text-xs text-muted mt-1 truncate">
                                   {rec.reason}
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                                <span className="text-sm font-mono text-slate-600">
+                                <span className="text-sm font-mono text-muted">
                                   {rec.current}
                                 </span>
                                 <ChevronRight
-                                  className="w-4 h-4 text-slate-600"
+                                  className="w-4 h-4 text-muted"
                                   aria-hidden="true"
                                 />
                                 <span
                                   className={
                                     "text-sm font-bold font-mono " +
                                     (URGENCY_CLASS[rec.urgency]?.text ??
-                                      "text-slate-900")
+                                      "text-ink")
                                   }
                                 >
                                   {rec.recommended}
@@ -446,7 +446,7 @@ export default function CopilotPage() {
                                   className={
                                     "text-xs font-bold font-mono px-2 py-1 rounded " +
                                     (URGENCY_CLASS[rec.urgency]?.badge ??
-                                      "bg-slate-100 text-slate-700 border border-clinical-border")
+                                      "bg-elevated text-ink border border-clinical-border")
                                   }
                                 >
                                   {rec.delta > 0 ? "+" : ""}
@@ -461,18 +461,18 @@ export default function CopilotPage() {
 
                     {opt.ai_narrative?.narrative && (
                       <div className="p-4 rounded-lg border border-clinical-border bg-clinical-surface">
-                        <div className="text-xs text-slate-600 font-medium uppercase mb-2">
+                        <div className="text-xs text-muted font-medium uppercase mb-2">
                           AI Narrative
                         </div>
-                        <p className="text-sm text-slate-600 leading-relaxed">
+                        <p className="text-sm text-muted leading-relaxed">
                           {opt.ai_narrative.narrative}
                         </p>
                       </div>
                     )}
 
                     {snapshot && metrics && (
-                      <div className="p-4 rounded-lg border border-emerald-200 bg-emerald-50">
-                        <div className="text-xs text-emerald-700 font-medium uppercase mb-4">
+                      <div className="p-4 rounded-lg border border-safe-line bg-safe-soft">
+                        <div className="text-xs text-safe-ink font-medium uppercase mb-4">
                           Before → After Analysis
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-center">
@@ -505,16 +505,16 @@ export default function CopilotPage() {
                               key={label}
                               className="rounded bg-clinical-surface border border-clinical-border p-2"
                             >
-                              <div className="text-xs text-slate-600 uppercase mb-1">
+                              <div className="text-xs text-muted uppercase mb-1">
                                 {label}
                               </div>
-                              <div className="text-xs text-slate-600 font-mono line-through">
+                              <div className="text-xs text-muted font-mono line-through">
                                 {before}
                               </div>
                               <div
                                 className={
                                   "text-sm font-bold font-mono " +
-                                  (better ? "text-emerald-600" : "text-red-600")
+                                  (better ? "text-safe-ink" : "text-crit-ink")
                                 }
                               >
                                 {after}
@@ -532,8 +532,8 @@ export default function CopilotPage() {
                         className={
                           "w-full flex items-center justify-center gap-2 min-h-11 py-4 rounded-lg text-sm font-bold border transition-colors " +
                           (implemented
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                            : "bg-clinical-surface border-clinical-border text-slate-900 hover:bg-slate-50 disabled:opacity-60")
+                            ? "bg-safe-soft border-safe-line text-safe-ink"
+                            : "bg-clinical-surface border-clinical-border text-ink hover:bg-elevated disabled:opacity-60")
                         }
                       >
                         {implemented ? (
@@ -560,7 +560,7 @@ export default function CopilotPage() {
                         )}
                       </button>
                       {implemented && (
-                        <p className="text-center text-xs text-slate-600 mt-2">
+                        <p className="text-center text-xs text-muted mt-2">
                           Saved at {implementedAt} by clinician · Simulation is
                           updating — watch the floor plan for instant impact
                         </p>
@@ -576,14 +576,14 @@ export default function CopilotPage() {
         <div className="w-[240px] flex flex-col gap-4 overflow-y-auto flex-shrink-0">
           <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4">
             <div className="flex items-center gap-2 mb-4">
-              <Target className="w-4 h-4 text-slate-600" aria-hidden="true" />
-              <span className="text-xs text-slate-600 font-medium uppercase">
+              <Target className="w-4 h-4 text-muted" aria-hidden="true" />
+              <span className="text-xs text-muted font-medium uppercase">
                 Predicted Bottlenecks
               </span>
             </div>
 
             {predictions.length === 0 ? (
-              <div className="text-center py-6 text-sm text-slate-600">
+              <div className="text-center py-6 text-sm text-muted">
                 {analysis
                   ? "No bottlenecks predicted"
                   : "Run analysis to see predictions"}
@@ -593,10 +593,10 @@ export default function CopilotPage() {
                 {predictions.map((pred, i) => {
                   const tone =
                     pred.severity === "critical"
-                      ? { text: "text-red-600", bar: "bg-red-600" }
+                      ? { text: "text-crit-ink", bar: "bg-red-600" }
                       : pred.severity === "warning"
-                        ? { text: "text-amber-600", bar: "bg-amber-600" }
-                        : { text: "text-slate-900", bar: "bg-slate-600" };
+                        ? { text: "text-flag-ink", bar: "bg-amber-600" }
+                        : { text: "text-ink", bar: "bg-muted" };
                   return (
                     <div
                       key={i}
@@ -606,16 +606,16 @@ export default function CopilotPage() {
                         <span className={"text-sm font-bold " + tone.text}>
                           {pred.department}
                         </span>
-                        <span className="text-xs text-slate-600">
+                        <span className="text-xs text-muted">
                           ETA {pred.eta_minutes}m
                         </span>
                       </div>
-                      <div className="text-xs text-slate-600 mb-2">
+                      <div className="text-xs text-muted mb-2">
                         {pred.metric}{" "}
                         {pred.trend_direction === "increasing" ? "↑" : "→"}
                       </div>
                       <div className="flex justify-between text-xs font-mono mb-2">
-                        <span className="text-slate-600">
+                        <span className="text-muted">
                           Now {formatPercent(pred.current_value)}
                         </span>
                         <span className={tone.text}>
@@ -623,13 +623,13 @@ export default function CopilotPage() {
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="flex-1 h-2 bg-elevated rounded-full overflow-hidden">
                           <div
                             className={"h-full rounded-full " + tone.bar}
                             style={{ width: `${pred.confidence * 100}%` }}
                           />
                         </div>
-                        <span className="text-xs font-mono text-slate-600">
+                        <span className="text-xs font-mono text-muted">
                           {Math.round(pred.confidence * 100)}%
                         </span>
                       </div>

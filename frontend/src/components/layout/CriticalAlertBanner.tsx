@@ -11,17 +11,17 @@ export function CriticalAlertBanner() {
   return (
     <div
       role="alert"
-      className="flex items-center gap-3 flex-shrink-0 border-b border-red-200 bg-red-50 px-4 py-2"
+      className="flex items-center gap-3 flex-shrink-0 border-b border-crit-line bg-crit-soft px-4 py-2"
     >
       <OctagonAlert
-        className="w-5 h-5 text-red-600 flex-shrink-0"
+        className="w-5 h-5 text-crit-ink flex-shrink-0"
         aria-hidden="true"
       />
-      <span className="text-xs font-bold uppercase tracking-wide text-red-700">
+      <span className="text-xs font-bold uppercase tracking-wide text-crit-ink">
         {criticalAlerts.length} Critical{" "}
         {criticalAlerts.length === 1 ? "Alert" : "Alerts"}
       </span>
-      <span className="text-sm text-red-700 truncate">
+      <span className="text-sm text-crit-ink truncate">
         {latest.department.toUpperCase()} — {latest.message}
       </span>
     </div>

@@ -1,4 +1,3 @@
-/* Shift handoff report — auto-generated summary for outgoing charge nurse to hand to incoming shift. */
 "use client";
 import { useEffect } from "react";
 import { useSimulationStore } from "@/store/simulationStore";
@@ -17,11 +16,6 @@ import {
 import { StatusBadge, type ClinicalStatus } from "@/components/ui/StatusBadge";
 import { PrivacyMask } from "@/components/ui/PrivacyMask";
 
-/**
- * Returns the current real-world date and time formatted as a short human-readable string.
- * @returns A string like "Mon, Jun 3, 02:45 PM" using the en-US locale.
- * Called from: ShiftReportPage to display the report generation timestamp.
- */
 function now() {
   return new Date().toLocaleString("en-US", {
     weekday: "short",
@@ -32,38 +26,18 @@ function now() {
   });
 }
 
-/**
- * Maps a department status string to the dual-channel ClinicalStatus used by StatusBadge.
- * @param status - A department status: "healthy", "warning", or "critical".
- * @returns A ClinicalStatus: "safe", "flagged", or "critical".
- * Called from: ShiftReportPage department status rows.
- */
 function toClinicalStatus(status: string): ClinicalStatus {
   if (status === "critical") return "critical";
   if (status === "warning") return "flagged";
   return "safe";
 }
 
-/**
- * Maps a patient risk score to the dual-channel ClinicalStatus used by StatusBadge.
- * @param score - A decimal from 0 to 1 representing the patient's risk level.
- * @returns A ClinicalStatus: "critical" for high risk, "flagged" for moderate, "safe" otherwise.
- * Called from: ShiftReportPage top-risk patient rows.
- */
 function riskToClinicalStatus(score: number): ClinicalStatus {
   if (score >= 0.75) return "critical";
   if (score >= 0.5) return "flagged";
   return "safe";
 }
 
-/**
- * The Shift Handoff Report page, which auto-generates a summary for the outgoing charge nurse.
- * Shows patient census by severity, top-5 highest-risk patients, boarding patients,
- * department status, key metrics, and a prioritized action list for the incoming shift.
- * Includes a Print button and responds to the demo store "print_preview" action.
- * @returns A scrollable full-page report layout.
- * Called from: Next.js router at the /shift-report route.
- */
 export default function ShiftReportPage() {
   const { hospitalState } = useSimulationStore();
   const { pendingAction, clearAction } = useDemoStore();
@@ -127,12 +101,12 @@ export default function ShiftReportPage() {
     <div className="flex flex-col h-full overflow-auto p-6 gap-6 bg-clinical-canvas">
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">
-          <ClipboardList className="w-8 h-8 text-slate-600" />
+          <ClipboardList className="w-8 h-8 text-muted" />
           <div>
-            <h1 className="text-xl font-bold text-slate-900">
+            <h1 className="text-xl font-bold text-ink">
               Shift Handoff Report
             </h1>
-            <p className="text-sm text-slate-600 mt-2">
+            <p className="text-sm text-muted mt-2">
               Saved at {generatedAt} by {generatedBy} · Auto-generated
             </p>
           </div>
@@ -140,7 +114,7 @@ export default function ShiftReportPage() {
         <button
           type="button"
           onClick={() => window.print()}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-slate-600 border border-clinical-border bg-clinical-surface hover:bg-slate-100 transition-colors min-h-11"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-muted border border-clinical-border bg-clinical-surface hover:bg-elevated transition-colors min-h-11"
         >
           <Printer className="w-4 h-4" /> Print Report
         </button>
@@ -150,7 +124,7 @@ export default function ShiftReportPage() {
         <div className="flex flex-col gap-4 col-span-2">
           <Section
             title="Patient Census"
-            icon={<Users className="w-4 h-4 text-slate-600" />}
+            icon={<Users className="w-4 h-4 text-muted" />}
           >
             <div className="grid grid-cols-5 gap-4">
               <StatBox
@@ -197,7 +171,7 @@ export default function ShiftReportPage() {
 
           <Section
             title="Top 5 Highest-Risk Patients"
-            icon={<AlertTriangle className="w-4 h-4 text-slate-600" />}
+            icon={<AlertTriangle className="w-4 h-4 text-muted" />}
           >
             <div className="space-y-2">
               {topRisk.map((p) => (
@@ -211,34 +185,34 @@ export default function ShiftReportPage() {
                     className="flex-shrink-0"
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-900 flex items-center gap-2 flex-wrap">
+                    <div className="text-sm font-medium text-ink flex items-center gap-2 flex-wrap">
                       <PrivacyMask
                         value={p.name}
                         label="Patient name"
                         fieldId={`toprisk-name-${p.patient_id}`}
                       />
                       {p.deterioration_alert && (
-                        <span className="text-xs font-medium px-2 py-1 rounded border border-red-200 bg-red-50 text-red-700">
+                        <span className="text-xs font-medium px-2 py-1 rounded border border-crit-line bg-crit-soft text-crit-ink">
                           DETERIORATING
                         </span>
                       )}
                       {p.sepsis_risk && (
-                        <span className="text-xs font-medium px-2 py-1 rounded border border-red-200 bg-red-50 text-red-700">
+                        <span className="text-xs font-medium px-2 py-1 rounded border border-crit-line bg-crit-soft text-crit-ink">
                           SEPSIS RISK
                         </span>
                       )}
                       {p.boarding && (
-                        <span className="text-xs font-medium px-2 py-1 rounded border border-amber-200 bg-amber-50 text-amber-700">
+                        <span className="text-xs font-medium px-2 py-1 rounded border border-flag-line bg-flag-soft text-flag-ink">
                           BOARDING
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-slate-600 mt-2">
+                    <div className="text-xs text-muted mt-2">
                       Age {p.age} · {p.chief_complaint} ·{" "}
                       {p.state.replace(/_/g, " ")}
                     </div>
                   </div>
-                  <div className="text-xs text-slate-600 font-mono w-16 text-right">
+                  <div className="text-xs text-muted font-mono w-16 text-right">
                     Wait {formatTime(p.total_wait_time)}
                   </div>
                 </div>
@@ -249,16 +223,16 @@ export default function ShiftReportPage() {
           {boarding.length > 0 && (
             <Section
               title={`Boarding Patients (${boarding.length})`}
-              icon={<Anchor className="w-4 h-4 text-slate-600" />}
+              icon={<Anchor className="w-4 h-4 text-muted" />}
             >
               <div className="space-y-2">
                 {boarding.map((p) => (
                   <div
                     key={p.patient_id}
-                    className="flex items-center gap-4 p-4 rounded-lg border border-amber-200 bg-amber-50"
+                    className="flex items-center gap-4 p-4 rounded-lg border border-flag-line bg-flag-soft"
                   >
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-slate-900 flex items-center gap-2">
+                      <div className="text-sm font-medium text-ink flex items-center gap-2">
                         <PrivacyMask
                           value={p.name}
                           label="Patient name"
@@ -270,15 +244,15 @@ export default function ShiftReportPage() {
                           fieldId={`boarding-mrn-${p.patient_id}`}
                         />
                       </div>
-                      <div className="text-xs text-slate-600 mt-2">
+                      <div className="text-xs text-muted mt-2">
                         {p.severity.toUpperCase()} · {p.chief_complaint}
                       </div>
                     </div>
-                    <div className="text-xs font-medium text-amber-700">
+                    <div className="text-xs font-medium text-flag-ink">
                       Waiting {p.state.replace("waiting_", "").toUpperCase()}{" "}
                       bed
                     </div>
-                    <div className="text-sm font-bold font-mono text-amber-700">
+                    <div className="text-sm font-bold font-mono text-flag-ink">
                       {formatTime(p.total_wait_time)}
                     </div>
                   </div>
@@ -291,7 +265,7 @@ export default function ShiftReportPage() {
         <div className="flex flex-col gap-4">
           <Section
             title="Department Status"
-            icon={<Bed className="w-4 h-4 text-slate-600" />}
+            icon={<Bed className="w-4 h-4 text-muted" />}
           >
             {["er", "icu", "ward", "labs", "imaging"].map((key) => {
               const d = (depts as any)[key];
@@ -302,10 +276,10 @@ export default function ShiftReportPage() {
                   className="flex items-center gap-4 py-2 border-b border-clinical-border last:border-0"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-900">
+                    <div className="text-sm font-medium text-ink">
                       {d.display_name}
                     </div>
-                    <div className="text-xs text-slate-600 font-mono">
+                    <div className="text-xs text-muted font-mono">
                       {d.current_patients}/{d.capacity} beds · Q:
                       {d.queue_length}
                     </div>
@@ -315,7 +289,7 @@ export default function ShiftReportPage() {
                     label={formatPercent(d.occupancy)}
                   />
                   {d.burnout_risk && (
-                    <Flame className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                    <Flame className="w-4 h-4 text-flag-ink flex-shrink-0" />
                   )}
                 </div>
               );
@@ -324,7 +298,7 @@ export default function ShiftReportPage() {
 
           <Section
             title="Key Metrics"
-            icon={<Activity className="w-4 h-4 text-slate-600" />}
+            icon={<Activity className="w-4 h-4 text-muted" />}
           >
             {m &&
               [
@@ -359,13 +333,13 @@ export default function ShiftReportPage() {
                   key={label as string}
                   className="flex justify-between items-center py-2 border-b border-clinical-border last:border-0"
                 >
-                  <span className="text-xs text-slate-600 font-medium">
+                  <span className="text-xs text-muted font-medium">
                     {label as string}
                   </span>
                   <span
                     className={
                       "text-sm font-bold font-mono " +
-                      (alert ? "text-red-600" : "text-slate-900")
+                      (alert ? "text-crit-ink" : "text-ink")
                     }
                   >
                     {val as string}
@@ -376,15 +350,15 @@ export default function ShiftReportPage() {
 
           <Section
             title="Incoming Shift Priorities"
-            icon={<AlertTriangle className="w-4 h-4 text-slate-600" />}
+            icon={<AlertTriangle className="w-4 h-4 text-muted" />}
           >
             <div className="space-y-2">
               {priorities.map((p, i) => (
                 <div
                   key={i}
-                  className="flex items-start gap-2 text-xs text-slate-900"
+                  className="flex items-start gap-2 text-xs text-ink"
                 >
-                  <span className="text-slate-600 flex-shrink-0 mt-0.5 font-mono">
+                  <span className="text-muted flex-shrink-0 mt-0.5 font-mono">
                     {i + 1}.
                   </span>
                   <span className="leading-relaxed">{p}</span>
@@ -398,15 +372,6 @@ export default function ShiftReportPage() {
   );
 }
 
-/**
- * Renders a labeled card section with an icon, a title, and arbitrary child content.
- * Used throughout the shift report to visually group related information.
- * @param title - The heading text displayed next to the icon at the top of the section.
- * @param icon - A React node (typically a Lucide icon) displayed to the left of the title.
- * @param children - The content to render inside the section card.
- * @returns A styled rounded card wrapping the title row and children.
- * Called from: ShiftReportPage for every labeled section (Patient Census, Department Status, etc.).
- */
 function Section({
   title,
   icon,
@@ -420,7 +385,7 @@ function Section({
     <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4">
       <div className="flex items-center gap-2 mb-2">
         {icon}
-        <span className="text-xs font-medium text-slate-600 uppercase tracking-wider">
+        <span className="text-xs font-medium text-muted uppercase tracking-wider">
           {title}
         </span>
       </div>
@@ -431,14 +396,6 @@ function Section({
 
 type StatTone = "neutral" | "safe" | "flagged" | "critical";
 
-/**
- * Renders a compact centered stat box with a small uppercase label and a large bold value.
- * @param label - A short descriptive label shown above the value (e.g. "Critical", "Boarding").
- * @param value - The number or string to display prominently in the center of the box.
- * @param tone - A clinical tone controlling the value color and border tint.
- * @returns A styled stat tile for use in the Patient Census grid.
- * Called from: ShiftReportPage's Patient Census section.
- */
 function StatBox({
   label,
   value,
@@ -449,10 +406,10 @@ function StatBox({
   tone: StatTone;
 }) {
   const toneClass = {
-    neutral: "border-clinical-border text-slate-900",
-    safe: "border-emerald-200 text-emerald-700",
-    flagged: "border-amber-200 text-amber-700",
-    critical: "border-red-200 text-red-700",
+    neutral: "border-clinical-border text-ink",
+    safe: "border-safe-line text-safe-ink",
+    flagged: "border-flag-line text-flag-ink",
+    critical: "border-crit-line text-crit-ink",
   }[tone];
   return (
     <div
@@ -460,7 +417,7 @@ function StatBox({
         "rounded-lg p-4 text-center border bg-clinical-surface " + toneClass
       }
     >
-      <div className="text-xs text-slate-600 font-medium uppercase mb-2">
+      <div className="text-xs text-muted font-medium uppercase mb-2">
         {label}
       </div>
       <div className="text-lg font-bold font-mono">{value}</div>

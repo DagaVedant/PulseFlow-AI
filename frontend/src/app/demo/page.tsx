@@ -105,10 +105,10 @@ export default function DemoPage() {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-8 p-8 bg-clinical-canvas">
       <div className="text-center select-none">
-        <h1 className="text-5xl font-black text-slate-900 tracking-tight">
+        <h1 className="text-5xl font-black text-ink tracking-tight">
           PulseFlow AI
         </h1>
-        <p className="text-slate-600 font-mono text-base mt-2 tracking-widest uppercase">
+        <p className="text-muted font-mono text-base mt-2 tracking-widest uppercase">
           Demo
         </p>
       </div>
@@ -138,7 +138,7 @@ export default function DemoPage() {
         <button
           key="stop"
           onClick={stop}
-          className="flex items-center gap-4 px-8 py-6 rounded-lg text-xl font-black border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-colors min-h-11"
+          className="flex items-center gap-4 px-8 py-6 rounded-lg text-xl font-black border border-crit-line bg-crit-soft text-crit-ink hover:bg-crit-soft transition-colors min-h-11"
         >
           <Square className="w-7 h-7" fill="currentColor" />
           Stop

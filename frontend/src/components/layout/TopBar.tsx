@@ -2,6 +2,7 @@
 import { useSimulationStore } from "@/store/simulationStore";
 import { formatSimTime } from "@/lib/utils";
 import { AutoLogoutTimer } from "@/components/layout/AutoLogoutTimer";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 export function TopBar() {
   const { hospitalState } = useSimulationStore();
@@ -11,14 +12,17 @@ export function TopBar() {
   return (
     <div className="h-14 flex items-center justify-between gap-4 px-4 flex-shrink-0 bg-clinical-surface border-b border-clinical-border">
       <div className="flex items-center gap-2 border rounded px-3 py-1.5 border-clinical-border bg-clinical-canvas">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-600">
+        <span className="text-xs font-medium uppercase tracking-wide text-muted">
           Sim Time
         </span>
-        <span className="text-sm font-mono tabular-nums font-semibold text-slate-900">
+        <span className="text-sm font-mono tabular-nums font-semibold text-ink">
           {formatSimTime(displayTime)}
         </span>
       </div>
-      <AutoLogoutTimer />
+      <div className="flex items-center gap-3">
+        <ThemeToggle />
+        <AutoLogoutTimer />
+      </div>
     </div>
   );
 }

@@ -32,36 +32,18 @@ function priorityStatus(priority: string): ClinicalStatus {
   return "flagged";
 }
 
-/**
- * Returns a Tailwind text color class for a patient risk percentage value (0–100).
- * @param pct - A number from 0 to 100 representing the patient's risk percentage.
- * @returns Red for >= 80%, amber for >= 50%, amber for >= 25%, emerald otherwise.
- * Called from: TrackedCard to color the risk percentage display and progress bar.
- */
 function riskColor(pct: number): string {
-  if (pct >= 80) return "text-red-600";
-  if (pct >= 25) return "text-amber-600";
-  return "text-emerald-600";
+  if (pct >= 80) return "text-crit-ink";
+  if (pct >= 25) return "text-flag-ink";
+  return "text-safe-ink";
 }
 
-/**
- * Returns a risk progress-bar fill color class for a patient risk percentage value (0–100).
- * @param pct - A number from 0 to 100 representing the patient's risk percentage.
- * @returns A Tailwind background color class matching the risk severity.
- * Called from: TrackedCard to fill the risk progress bar.
- */
 function riskBarColor(pct: number): string {
   if (pct >= 80) return "bg-red-600";
   if (pct >= 25) return "bg-amber-600";
   return "bg-emerald-600";
 }
 
-/**
- * Returns a dual-channel status and label string for a specialist's availability status.
- * @param status - The specialist's status string: "available", "in_surgery", or anything else (treated as "busy").
- * @returns An object with a ClinicalStatus and a short uppercase label like "AVAILABLE", "IN SURGERY", or "BUSY".
- * Called from: TrackedCard to style the specialist status badge.
- */
 function specialistStatusStyle(status: string): {
   status: ClinicalStatus;
   label: string;
@@ -72,13 +54,6 @@ function specialistStatusStyle(status: string): {
   return { status: "flagged", label: "BUSY" };
 }
 
-/**
- * The Patient Intelligence page showing tracked high-acuity patients in a 2-column card grid.
- * Provides an "Analyze All" button that triggers AI care plan generation for every tracked patient.
- * Also shows a "HIGH RISK" warning badge if any patients have a risk percentage >= 80%.
- * @returns The full-page layout with a header and a scrollable grid of TrackedCard components.
- * Called from: Next.js router at the /patient-intel route.
- */
 export default function PatientIntelPage() {
   const { hospitalState } = useSimulationStore();
   const patients = hospitalState?.care?.tracked_patients ?? [];
@@ -91,12 +66,6 @@ export default function PatientIntelPage() {
     setAnalyzing(false);
   }, []);
 
-  /**
-   * Triggers the AI analysis sequence for all tracked patients by showing a 1.1-second loading shimmer.
-   * Sets the "analyzed" flag to true when complete so each TrackedCard reveals its AI recommendation panel.
-   * @returns A Promise that resolves after the simulated analysis delay completes.
-   * Called from: the "Analyze All" button in PatientIntelPage, and the demo store pendingAction handler.
-   */
   const analyzeAll = useCallback(async () => {
     if (patients.length === 0) return;
     setAnalyzing(true);
@@ -119,23 +88,23 @@ export default function PatientIntelPage() {
     <div className="flex flex-col h-full p-6 gap-6 overflow-hidden font-sans bg-clinical-canvas">
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Users className="w-6 h-6 text-slate-600" aria-hidden="true" />
+          <h1 className="text-lg font-bold text-ink flex items-center gap-2">
+            <Users className="w-6 h-6 text-muted" aria-hidden="true" />
             Patient Intelligence
           </h1>
-          <p className="text-sm text-slate-600 mt-2">
+          <p className="text-sm text-muted mt-2">
             Tracked high-acuity patients · specialist-await status ·
             constraint-aware AI recommendations
           </p>
         </div>
         <div className="flex items-center gap-4">
           {highRisk > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-50 border border-red-200">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-crit-soft border border-crit-line">
               <AlertTriangle
-                className="w-4 h-4 text-red-600"
+                className="w-4 h-4 text-crit-ink"
                 aria-hidden="true"
               />
-              <span className="text-sm font-medium text-red-700">
+              <span className="text-sm font-medium text-crit-ink">
                 {highRisk} HIGH RISK
               </span>
             </div>
@@ -146,8 +115,8 @@ export default function PatientIntelPage() {
             className={
               "flex items-center gap-2 min-h-11 px-4 rounded-lg text-sm font-medium border transition-colors disabled:opacity-60 " +
               (analyzed
-                ? "bg-emerald-50 border-emerald-200 text-emerald-700"
-                : "bg-clinical-surface border-clinical-border text-slate-900 hover:bg-slate-50")
+                ? "bg-safe-soft border-safe-line text-safe-ink"
+                : "bg-clinical-surface border-clinical-border text-ink hover:bg-elevated")
             }
           >
             {analyzing ? (
@@ -175,7 +144,7 @@ export default function PatientIntelPage() {
 
       <div className="flex-1 min-h-0 overflow-y-auto pr-1">
         {patients.length === 0 ? (
-          <div className="flex items-center justify-center py-20 text-slate-600 text-sm">
+          <div className="flex items-center justify-center py-20 text-muted text-sm">
             Loading patient data...
           </div>
         ) : (
@@ -195,16 +164,6 @@ export default function PatientIntelPage() {
   );
 }
 
-/**
- * Renders a detailed card for a single tracked high-acuity patient.
- * Shows patient identity, priority badge, ED wait time, risk percentage bar, specialist status,
- * care pathway steps, and — once analyzed — the AI-generated care recommendation.
- * @param patient - The TrackedPatient object with all clinical and recommendation data.
- * @param analyzing - When true, shows a loading placeholder while analysis is in progress.
- * @param analyzed - When true, reveals the full AI recommendation panel.
- * @returns A card element for display in the PatientIntelPage grid.
- * Called from: PatientIntelPage for each patient in the tracked patients array.
- */
 function TrackedCard({
   patient: p,
   analyzing,
@@ -221,14 +180,14 @@ function TrackedCard({
     <div className="flex flex-col border border-clinical-border bg-clinical-surface rounded-lg p-6">
       <div className="flex items-start justify-between gap-4 mb-4">
         <div className="flex-1 min-w-0">
-          <div className="text-lg font-bold text-slate-900 leading-tight">
+          <div className="text-lg font-bold text-ink leading-tight">
             <PrivacyMask
               value={p.name}
               label="Patient name"
               fieldId={`patient-name-${p.patient_id}`}
             />
           </div>
-          <div className="flex items-center gap-2 text-xs text-slate-600 mt-1">
+          <div className="flex items-center gap-2 text-xs text-muted mt-1">
             <span className="font-medium">MRN</span>
             <PrivacyMask
               value={p.patient_id}
@@ -245,22 +204,22 @@ function TrackedCard({
         />
       </div>
 
-      <div className="text-base font-semibold text-slate-900 mb-4">
+      <div className="text-base font-semibold text-ink mb-4">
         {p.condition}
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-4">
         <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Clock className="w-3 h-3 text-slate-600" aria-hidden="true" />
-            <span className="text-xs text-slate-600 font-medium uppercase">
+            <Clock className="w-3 h-3 text-muted" aria-hidden="true" />
+            <span className="text-xs text-muted font-medium uppercase">
               ED Wait
             </span>
           </div>
           <div
             className={
               "text-lg font-bold font-mono " +
-              (p.over_target ? "text-red-600" : "text-slate-900")
+              (p.over_target ? "text-crit-ink" : "text-ink")
             }
           >
             {p.ed_wait_min}m
@@ -268,7 +227,7 @@ function TrackedCard({
           <div
             className={
               "text-xs mt-1 " +
-              (p.over_target ? "text-red-600" : "text-slate-600")
+              (p.over_target ? "text-crit-ink" : "text-muted")
             }
           >
             {p.over_target
@@ -278,7 +237,7 @@ function TrackedCard({
         </div>
 
         <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4">
-          <div className="text-xs text-slate-600 font-medium uppercase mb-2">
+          <div className="text-xs text-muted font-medium uppercase mb-2">
             Risk
           </div>
           <div
@@ -286,7 +245,7 @@ function TrackedCard({
           >
             {p.risk_pct}%
           </div>
-          <div className="mt-2 h-1 rounded-full bg-slate-100 overflow-hidden">
+          <div className="mt-2 h-1 rounded-full bg-elevated overflow-hidden">
             <div
               className={"h-full rounded-full " + riskBarColor(p.risk_pct)}
               style={{ width: `${p.risk_pct}%` }}
@@ -297,17 +256,17 @@ function TrackedCard({
         <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <Stethoscope
-              className="w-3 h-3 text-slate-600"
+              className="w-3 h-3 text-muted"
               aria-hidden="true"
             />
-            <span className="text-xs text-slate-600 font-medium uppercase">
+            <span className="text-xs text-muted font-medium uppercase">
               Awaiting
             </span>
           </div>
-          <div className="text-sm font-bold font-mono text-slate-900 leading-tight">
+          <div className="text-sm font-bold font-mono text-ink leading-tight">
             {p.awaiting_specialty}
           </div>
-          <div className="text-xs mt-1 text-slate-600 truncate">
+          <div className="text-xs mt-1 text-muted truncate">
             {p.preferred_role}
           </div>
         </div>
@@ -316,8 +275,8 @@ function TrackedCard({
       {sp && (
         <div className="flex items-center justify-between border border-clinical-border bg-clinical-surface rounded-lg p-4 mb-4">
           <div className="min-w-0 flex-1">
-            <div className="text-sm text-slate-900 truncate">{sp.name}</div>
-            <div className="text-xs text-slate-600 truncate">
+            <div className="text-sm text-ink truncate">{sp.name}</div>
+            <div className="text-xs text-muted truncate">
               {sp.current_assignment}
             </div>
           </div>
@@ -330,8 +289,8 @@ function TrackedCard({
               className={
                 "text-sm font-bold font-mono " +
                 (sp.available_in_min === 0
-                  ? "text-emerald-600"
-                  : "text-amber-600")
+                  ? "text-safe-ink"
+                  : "text-flag-ink")
               }
             >
               {sp.available_in_min === 0 ? "now" : `${sp.available_in_min}m`}
@@ -344,10 +303,10 @@ function TrackedCard({
         <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4 mb-4">
           <div className="flex items-center gap-2 mb-2">
             <RefreshCw
-              className="w-4 h-4 text-slate-600 animate-spin flex-shrink-0"
+              className="w-4 h-4 text-muted animate-spin flex-shrink-0"
               aria-hidden="true"
             />
-            <span className="text-xs font-medium text-slate-600 uppercase">
+            <span className="text-xs font-medium text-muted uppercase">
               Analyzing...
             </span>
           </div>
@@ -355,7 +314,7 @@ function TrackedCard({
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="h-2 rounded bg-slate-100"
+                className="h-2 rounded bg-elevated"
                 style={{ width: `${90 - i * 18}%` }}
               />
             ))}
@@ -366,7 +325,7 @@ function TrackedCard({
           className={
             "border rounded-lg p-4 mb-4 " +
             (rec.blocked
-              ? "bg-amber-50 border-amber-200"
+              ? "bg-flag-soft border-flag-line"
               : "border-clinical-border bg-clinical-surface")
           }
         >
@@ -374,25 +333,25 @@ function TrackedCard({
             <div className="flex items-center gap-2 min-w-0">
               {rec.blocked ? (
                 <Ban
-                  className="w-4 h-4 text-amber-600 flex-shrink-0"
+                  className="w-4 h-4 text-flag-ink flex-shrink-0"
                   aria-hidden="true"
                 />
               ) : (
                 <ShieldAlert
-                  className="w-4 h-4 text-slate-600 flex-shrink-0"
+                  className="w-4 h-4 text-muted flex-shrink-0"
                   aria-hidden="true"
                 />
               )}
               <span
                 className={
                   "text-sm font-bold leading-tight truncate " +
-                  (rec.blocked ? "text-amber-700" : "text-slate-900")
+                  (rec.blocked ? "text-flag-ink" : "text-ink")
                 }
               >
                 {rec.title}
               </span>
             </div>
-            <span className="flex items-center gap-2 text-xs font-medium px-2 py-1 rounded text-emerald-700 bg-emerald-50 border border-emerald-200 flex-shrink-0">
+            <span className="flex items-center gap-2 text-xs font-medium px-2 py-1 rounded text-safe-ink bg-safe-soft border border-safe-line flex-shrink-0">
               <CheckCircle2 className="w-4 h-4" aria-hidden="true" /> AI
               ANALYSIS
             </span>
@@ -401,31 +360,31 @@ function TrackedCard({
             {rec.reasons.map((reason, i) => (
               <div key={i} className="flex items-start gap-2">
                 <ArrowRight
-                  className="w-3 h-3 text-slate-600 flex-shrink-0 mt-1"
+                  className="w-3 h-3 text-muted flex-shrink-0 mt-1"
                   aria-hidden="true"
                 />
-                <span className="text-sm text-slate-600 leading-relaxed">
+                <span className="text-sm text-muted leading-relaxed">
                   {reason}
                 </span>
               </div>
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-emerald-50 border border-emerald-200">
+            <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-safe-soft border border-safe-line">
               <ShieldAlert
-                className="w-3 h-3 text-emerald-700"
+                className="w-3 h-3 text-safe-ink"
                 aria-hidden="true"
               />
-              <span className="text-xs font-medium font-mono text-emerald-700">
+              <span className="text-xs font-medium font-mono text-safe-ink">
                 -{rec.deterioration_reduction}% risk
               </span>
             </div>
             <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-clinical-surface border border-clinical-border">
               <TrendingUp
-                className="w-3 h-3 text-slate-600"
+                className="w-3 h-3 text-muted"
                 aria-hidden="true"
               />
-              <span className="text-xs font-medium font-mono text-slate-900">
+              <span className="text-xs font-medium font-mono text-ink">
                 +{rec.throughput_improvement}% flow
               </span>
             </div>
@@ -433,8 +392,8 @@ function TrackedCard({
         </div>
       ) : (
         <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4 mb-4 flex items-center justify-center gap-2">
-          <Zap className="w-4 h-4 text-slate-600" aria-hidden="true" />
-          <span className="text-sm text-slate-600">
+          <Zap className="w-4 h-4 text-muted" aria-hidden="true" />
+          <span className="text-sm text-muted">
             Click Analyze All to generate AI care plan
           </span>
         </div>
@@ -444,7 +403,7 @@ function TrackedCard({
         {p.pathway.map((step) => (
           <span
             key={step}
-            className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600 font-medium border border-clinical-border"
+            className="text-xs px-2 py-1 rounded bg-elevated text-muted font-medium border border-clinical-border"
           >
             {step}
           </span>

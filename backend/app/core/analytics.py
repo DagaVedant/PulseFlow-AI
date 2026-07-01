@@ -176,7 +176,6 @@ class HospitalForecaster:
         value_cap: Optional[float] = None,
         unit: str = "",
     ) -> ForecastResult:
-        # Applying Holt-Winters double exponential smoothing to the input time series
         if not values:
             values = [0.0]
         if len(values) >= 5:
@@ -354,9 +353,6 @@ class HospitalForecaster:
         return predictions[:5]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# OPTIMIZATION
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 @dataclass
@@ -997,9 +993,6 @@ def build_optimization_input_from_state(state: dict) -> OptimizationInput:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# AI NARRATIVE
-# ─────────────────────────────────────────────────────────────────────────────
 
 _AI_SYSTEM_PROMPT = """You are the AI Operations Copilot for PulseFlow AI, a hospital management platform.
 
@@ -1278,7 +1271,6 @@ class AICopilot:
             state, history
         )
 
-    # ---- Deterministic fallbacks ----
 
     def _build_bottleneck_context(self, state: dict, opt: dict) -> str:
         """
@@ -1463,9 +1455,6 @@ class AICopilot:
         )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# CARE COORDINATION
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 @dataclass

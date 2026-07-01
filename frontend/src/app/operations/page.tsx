@@ -123,27 +123,27 @@ export default function OperationsPage() {
     <div className="flex flex-col h-full p-6 gap-6 overflow-hidden font-sans">
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-lg font-bold text-slate-900 tracking-wide flex items-center gap-2">
-            <Network className="w-6 h-6 text-slate-600" />
+          <h1 className="text-lg font-bold text-ink tracking-wide flex items-center gap-2">
+            <Network className="w-6 h-6 text-muted" />
             Operations Hub
           </h1>
-          <p className="text-sm text-slate-600 mt-1">
+          <p className="text-sm text-muted mt-1">
             Specialist availability · fixed operational constraints the
             optimizer must respect
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="px-4 py-2 rounded-lg border border-emerald-200 bg-emerald-50">
-            <span className="text-base font-mono font-bold text-emerald-700">
+          <div className="px-4 py-2 rounded-lg border border-safe-line bg-safe-soft">
+            <span className="text-base font-mono font-bold text-safe-ink">
               {availableCount}
             </span>
-            <span className="text-xs text-slate-600 ml-2">available now</span>
+            <span className="text-xs text-muted ml-2">available now</span>
           </div>
-          <div className="px-4 py-2 rounded-lg border border-amber-200 bg-amber-50">
-            <span className="text-base font-mono font-bold text-amber-700">
+          <div className="px-4 py-2 rounded-lg border border-flag-line bg-flag-soft">
+            <span className="text-base font-mono font-bold text-flag-ink">
               {bottlenecks.length}
             </span>
-            <span className="text-xs text-slate-600 ml-2">
+            <span className="text-xs text-muted ml-2">
               fixed constraints
             </span>
           </div>
@@ -153,15 +153,15 @@ export default function OperationsPage() {
       <div className="flex flex-1 gap-6 min-h-0 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0 rounded-lg p-6 overflow-hidden border border-clinical-border bg-clinical-surface">
           <div className="flex items-center gap-2 mb-4 flex-shrink-0">
-            <Stethoscope className="w-5 h-5 text-slate-600" />
-            <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
+            <Stethoscope className="w-5 h-5 text-muted" />
+            <span className="text-sm font-medium text-ink uppercase tracking-wider">
               Specialist Availability
             </span>
           </div>
           <div className="flex-1 overflow-y-auto pr-2 space-y-4">
             {Object.entries(groups).map(([specialty, list]) => (
               <div key={specialty}>
-                <div className="text-xs font-medium text-slate-600 uppercase tracking-wider mb-2">
+                <div className="text-xs font-medium text-muted uppercase tracking-wider mb-2">
                   {specialty}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -174,10 +174,10 @@ export default function OperationsPage() {
                       >
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div className="min-w-0 flex-1">
-                            <div className="text-sm font-mono font-semibold text-slate-900 truncate">
+                            <div className="text-sm font-mono font-semibold text-ink truncate">
                               {sp.name}
                             </div>
-                            <div className="text-xs text-slate-600 truncate">
+                            <div className="text-xs text-muted truncate">
                               {sp.role}
                             </div>
                           </div>
@@ -187,11 +187,11 @@ export default function OperationsPage() {
                             className="flex-shrink-0"
                           />
                         </div>
-                        <div className="text-xs text-slate-600 truncate mb-2">
+                        <div className="text-xs text-muted truncate mb-2">
                           {sp.current_assignment}
                         </div>
                         <div className="flex items-center justify-between text-xs font-mono">
-                          <span className="text-slate-600">
+                          <span className="text-muted">
                             Load {sp.patient_load} · Q{sp.queue_length}
                           </span>
                           <span
@@ -215,7 +215,7 @@ export default function OperationsPage() {
               </div>
             ))}
             {specialists.length === 0 && (
-              <div className="text-center py-8 text-slate-600 text-sm">
+              <div className="text-center py-8 text-muted text-sm">
                 Loading specialist roster...
               </div>
             )}
@@ -225,8 +225,8 @@ export default function OperationsPage() {
         <div className="w-[400px] flex-shrink-0 flex flex-col gap-4 overflow-hidden">
           <div className="rounded-lg p-6 flex-shrink-0 border border-clinical-border bg-clinical-surface">
             <div className="flex items-center gap-2 mb-4">
-              <Lock className="w-5 h-5 text-slate-600" />
-              <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
+              <Lock className="w-5 h-5 text-muted" />
+              <span className="text-sm font-medium text-ink uppercase tracking-wider">
                 Fixed Bottlenecks &amp; Constraints
               </span>
             </div>
@@ -235,7 +235,7 @@ export default function OperationsPage() {
               <div>
                 <label
                   htmlFor="constraint-resource-name"
-                  className="block text-xs font-medium text-slate-600 mb-2"
+                  className="block text-xs font-medium text-muted mb-2"
                 >
                   Resource name
                 </label>
@@ -246,14 +246,14 @@ export default function OperationsPage() {
                     setForm({ ...form, resource_name: e.target.value })
                   }
                   autoComplete="off"
-                  className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                  className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-ink focus:outline-none focus:border-muted"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label
                     htmlFor="constraint-resource-type"
-                    className="block text-xs font-medium text-slate-600 mb-2"
+                    className="block text-xs font-medium text-muted mb-2"
                   >
                     Type
                   </label>
@@ -266,7 +266,7 @@ export default function OperationsPage() {
                         resource_type: e.target.value as BottleneckType,
                       })
                     }
-                    className="w-full px-4 py-2 rounded-lg text-sm bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                    className="w-full px-4 py-2 rounded-lg text-sm bg-clinical-surface border border-clinical-border text-ink focus:outline-none focus:border-muted"
                   >
                     {RESOURCE_TYPES.map((t) => (
                       <option key={t} value={t}>
@@ -278,7 +278,7 @@ export default function OperationsPage() {
                 <div>
                   <label
                     htmlFor="constraint-priority"
-                    className="block text-xs font-medium text-slate-600 mb-2"
+                    className="block text-xs font-medium text-muted mb-2"
                   >
                     Priority
                   </label>
@@ -291,7 +291,7 @@ export default function OperationsPage() {
                         priority: e.target.value as (typeof PRIORITIES)[number],
                       })
                     }
-                    className="w-full px-4 py-2 rounded-lg text-sm bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                    className="w-full px-4 py-2 rounded-lg text-sm bg-clinical-surface border border-clinical-border text-ink focus:outline-none focus:border-muted"
                   >
                     {PRIORITIES.map((p) => (
                       <option key={p} value={p}>
@@ -304,7 +304,7 @@ export default function OperationsPage() {
               <div>
                 <label
                   htmlFor="constraint-status"
-                  className="block text-xs font-medium text-slate-600 mb-2"
+                  className="block text-xs font-medium text-muted mb-2"
                 >
                   Status
                 </label>
@@ -313,19 +313,19 @@ export default function OperationsPage() {
                   value={form.status}
                   onChange={(e) => setForm({ ...form, status: e.target.value })}
                   autoComplete="off"
-                  className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                  className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-ink focus:outline-none focus:border-muted"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label
                     htmlFor="constraint-release-min"
-                    className="block text-xs font-medium text-slate-600 mb-2"
+                    className="block text-xs font-medium text-muted mb-2"
                   >
                     Release in (min)
                   </label>
                   <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-clinical-surface border border-clinical-border">
-                    <Clock className="w-4 h-4 text-slate-600 flex-shrink-0" />
+                    <Clock className="w-4 h-4 text-muted flex-shrink-0" />
                     <input
                       id="constraint-release-min"
                       type="number"
@@ -337,9 +337,9 @@ export default function OperationsPage() {
                           release_in_min: Number(e.target.value),
                         })
                       }
-                      className="w-full bg-transparent text-sm font-mono text-slate-900 focus:outline-none"
+                      className="w-full bg-transparent text-sm font-mono text-ink focus:outline-none"
                     />
-                    <span className="text-xs text-slate-600 flex-shrink-0">
+                    <span className="text-xs text-muted flex-shrink-0">
                       min
                     </span>
                   </div>
@@ -347,7 +347,7 @@ export default function OperationsPage() {
                 <div>
                   <label
                     htmlFor="constraint-release-label"
-                    className="block text-xs font-medium text-slate-600 mb-2"
+                    className="block text-xs font-medium text-muted mb-2"
                   >
                     Until (clock)
                   </label>
@@ -358,14 +358,14 @@ export default function OperationsPage() {
                       setForm({ ...form, release_label: e.target.value })
                     }
                     autoComplete="off"
-                    className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                    className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-ink focus:outline-none focus:border-muted"
                   />
                 </div>
               </div>
               <div>
                 <label
                   htmlFor="constraint-notes"
-                  className="block text-xs font-medium text-slate-600 mb-2"
+                  className="block text-xs font-medium text-muted mb-2"
                 >
                   Notes (optional)
                 </label>
@@ -374,18 +374,18 @@ export default function OperationsPage() {
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   autoComplete="off"
-                  className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-slate-900 focus:outline-none focus:border-slate-600"
+                  className="w-full px-4 py-2 rounded-lg text-sm font-mono bg-clinical-surface border border-clinical-border text-ink focus:outline-none focus:border-muted"
                 />
               </div>
               <button
                 onClick={submit}
                 disabled={!form.resource_name.trim()}
-                className="w-full flex items-center justify-center gap-2 py-2 min-h-11 rounded-lg text-sm font-bold transition-colors disabled:opacity-40 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100"
+                className="w-full flex items-center justify-center gap-2 py-2 min-h-11 rounded-lg text-sm font-bold transition-colors disabled:opacity-40 bg-flag-soft border border-flag-line text-flag-ink hover:bg-flag-soft"
               >
                 <Plus className="w-4 h-4" /> Add Constraint
               </button>
               {lastSaved && (
-                <div className="text-xs text-slate-600">
+                <div className="text-xs text-muted">
                   Saved at {lastSaved} by clinician
                 </div>
               )}
@@ -393,7 +393,7 @@ export default function OperationsPage() {
           </div>
 
           <div className="flex-1 rounded-lg p-6 overflow-hidden flex flex-col border border-clinical-border bg-clinical-surface">
-            <div className="text-xs font-medium text-slate-600 uppercase tracking-wider mb-4 flex-shrink-0">
+            <div className="text-xs font-medium text-muted uppercase tracking-wider mb-4 flex-shrink-0">
               Active Constraints ({bottlenecks.length})
             </div>
             <div className="flex-1 overflow-y-auto pr-2 space-y-2">
@@ -405,7 +405,7 @@ export default function OperationsPage() {
                 />
               ))}
               {bottlenecks.length === 0 && (
-                <div className="text-center py-8 text-slate-600 text-sm">
+                <div className="text-center py-8 text-muted text-sm">
                   No fixed constraints. The optimizer treats all resources as
                   movable.
                 </div>
@@ -432,35 +432,35 @@ function BottleneckRow({
     <div className="rounded-lg p-4 border border-clinical-border bg-clinical-surface">
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 min-w-0 flex-1">
-          <AlertOctagon className="w-4 h-4 flex-shrink-0 text-slate-600" />
-          <span className="text-sm font-mono font-semibold text-slate-900 truncate">
+          <AlertOctagon className="w-4 h-4 flex-shrink-0 text-muted" />
+          <span className="text-sm font-mono font-semibold text-ink truncate">
             {bn.resource_name}
           </span>
         </div>
         <button
           onClick={onRemove}
           aria-label={`Remove constraint for ${bn.resource_name}`}
-          className="flex items-center justify-center w-11 h-11 -m-2 rounded text-slate-600 hover:text-red-600 transition-colors flex-shrink-0"
+          className="flex items-center justify-center w-11 h-11 -m-2 rounded text-muted hover:text-crit-ink transition-colors flex-shrink-0"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
       <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600">
+        <span className="text-xs px-2 py-1 rounded bg-elevated text-muted">
           {bn.resource_type}
         </span>
         <StatusBadge status={priorityStatus} label={bn.priority} />
       </div>
-      <div className="text-sm font-mono text-slate-600">{bn.status}</div>
+      <div className="text-sm font-mono text-muted">{bn.status}</div>
       {bn.notes && (
-        <div className="text-xs text-slate-600 mt-1">{bn.notes}</div>
+        <div className="text-xs text-muted mt-1">{bn.notes}</div>
       )}
       <div className="flex items-center justify-between mt-2 text-xs font-mono">
-        <span className="text-slate-600">
+        <span className="text-muted">
           {bn.release_label ? `until ${bn.release_label}` : ""}
         </span>
         {bn.release_in_min !== null && (
-          <span className="font-bold text-slate-900">
+          <span className="font-bold text-ink">
             frees in {displayMin}m
           </span>
         )}

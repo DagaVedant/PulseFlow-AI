@@ -590,7 +590,6 @@ class HospitalSimulation:
             for p in self.active_patients.values():
                 sev = p.severity.value
 
-                # Deterioration: waiting past severity threshold
                 if p.state.value.startswith("waiting") and not p.deterioration_notified:
                     thresh = self._DETERIORATION_THRESH.get(sev, 180)
                     queue_enter = (
@@ -606,7 +605,6 @@ class HospitalSimulation:
                             f"DETERIORATION — {p.name} ({sev.upper()}) waiting "
                             f"{now - queue_enter:.0f} min · risk now {p.risk_score:.2f}")
 
-                # Sepsis risk: high-risk complaint waiting > 60 min
                 if (not p.sepsis_risk and
                         p.chief_complaint.lower() in self._SEPSIS_COMPLAINTS and
                         p.state.value.startswith("waiting")):
@@ -617,7 +615,6 @@ class HospitalSimulation:
                             f"SEPSIS RISK — {p.name}: '{p.chief_complaint}' — "
                             f"{wait:.0f} min without treatment")
 
-                # Boarding: finished ER but still waiting for bed
                 if (p.state in (PatientState.WAITING_ICU, PatientState.WAITING_WARD)
                         and p.er_end is not None):
                     board_time = now - p.er_end
@@ -628,7 +625,6 @@ class HospitalSimulation:
                             f"BOARDING — {p.name} ({sev.upper()}) boarded "
                             f"{board_time:.0f} min waiting for {p.state.value.replace('waiting_', '').upper()} bed")
 
-                # SLA breach
                 if p.er_start is not None and not p.sla_breached:
                     time_to_care = p.er_start - p.arrival_time
                     if time_to_care > self._SLA_THRESH.get(sev, 120):

@@ -1,4 +1,3 @@
-/* Global demo orchestration store — persists across Next.js client-side navigation. */
 import { create } from "zustand";
 
 export type DemoAction =

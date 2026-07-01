@@ -1,13 +1,5 @@
-/* REST API client for the backend, covering simulation control, hospital data, AI copilot, and care coordination. */
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
-/**
- * Makes an HTTP request to the backend API and returns the parsed JSON response.
- * @param path - The API path to request, relative to the API base URL (e.g. "/simulation/state").
- * @param options - Optional fetch configuration such as method, body, and additional headers.
- * @returns A Promise resolving to the parsed JSON response, typed as T.
- * Called from: all methods on the exported `api` object.
- */
 async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -21,7 +13,6 @@ async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  // ── Simulation control ──────────────────────────────────────────────────
   getState:         () => fetchJSON<any>("/simulation/state"),
   getMetricsHistory:(minutes = 60) => fetchJSON<any>(`/simulation/metrics/history?minutes=${minutes}`),
   triggerEvent:     (eventType: string, params?: object) =>
@@ -37,7 +28,6 @@ export const api = {
   getForecast:      (horizon = 60) => fetchJSON<any>(`/simulation/forecast?horizon_minutes=${horizon}`),
   resetSimulation:  () => fetchJSON<any>("/simulation/reset", { method: "POST" }),
 
-  // ── Hospital data (patients + departments) ──────────────────────────────
   getPatients: (dept?: string, severity?: string) => {
     const params = new URLSearchParams();
     if (dept)     params.set("department", dept);
@@ -50,13 +40,11 @@ export const api = {
   getDepartments:    ()           => fetchJSON<any>("/hospital/departments"),
   getDepartment:     (id: string) => fetchJSON<any>(`/hospital/departments/${id}`),
 
-  // ── AI copilot ───────────────────────────────────────────────────────────
   getCopilotAnalysis:      () => fetchJSON<any>("/ai/analysis"),
   runOptimization:         () => fetchJSON<any>("/ai/optimize"),
   getShiftReport:          () => fetchJSON<any>("/ai/shift-report"),
   getBottleneckPredictions:() => fetchJSON<any>("/ai/forecast/bottlenecks"),
 
-  // ── Care coordination ────────────────────────────────────────────────────
   getCareState:           ()           => fetchJSON<any>("/ai/care/state"),
   getCareRecommendations: ()           => fetchJSON<any>("/ai/care/recommendations"),
   getSpecialists:         ()           => fetchJSON<any>("/ai/care/specialists"),

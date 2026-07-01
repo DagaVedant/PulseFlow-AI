@@ -41,17 +41,17 @@ import type { LucideIcon } from "lucide-react";
 
 const STATUS_STYLES = {
   healthy: {
-    className: "bg-emerald-50 border-emerald-200",
-    color: "text-emerald-700",
+    className: "bg-safe-soft border-safe-line",
+    color: "text-safe-ink",
   },
   warning: {
-    className: "bg-amber-50 border-amber-200",
-    color: "text-amber-700",
+    className: "bg-flag-soft border-flag-line",
+    color: "text-flag-ink",
   },
-  critical: { className: "bg-red-50 border-red-200", color: "text-red-700" },
+  critical: { className: "bg-crit-soft border-crit-line", color: "text-crit-ink" },
   neutral: {
     className: "bg-clinical-surface border-clinical-border",
-    color: "text-slate-900",
+    color: "text-ink",
   },
 };
 
@@ -86,8 +86,8 @@ function MetricCard({
             className={cn(
               "text-xs font-mono font-medium px-2 py-1 rounded",
               trend > 0
-                ? "text-red-700 bg-red-50"
-                : "text-emerald-700 bg-emerald-50",
+                ? "text-crit-ink bg-crit-soft"
+                : "text-safe-ink bg-safe-soft",
             )}
           >
             {trend > 0 ? "↑" : "↓"} {Math.abs(trend).toFixed(1)}%
@@ -95,7 +95,7 @@ function MetricCard({
         )}
       </div>
       <div className="space-y-2">
-        <div className="text-xs text-slate-600 font-medium uppercase tracking-wide">
+        <div className="text-xs text-muted font-medium uppercase tracking-wide">
           {label}
         </div>
         <div className="flex items-baseline gap-2">
@@ -103,11 +103,11 @@ function MetricCard({
             {value}
           </span>
           {unit && (
-            <span className="text-sm text-slate-600 font-mono">{unit}</span>
+            <span className="text-sm text-muted font-mono">{unit}</span>
           )}
         </div>
         {subtitle && (
-          <div className="text-xs text-slate-600 font-mono">{subtitle}</div>
+          <div className="text-xs text-muted font-mono">{subtitle}</div>
         )}
       </div>
     </div>
@@ -131,11 +131,11 @@ function DiversionBanner({ metrics }: { metrics: any }) {
   const label = risk > 0.8 ? "HIGH RISK" : risk > 0.6 ? "ELEVATED" : "NORMAL";
   const riskTextClass =
     riskStatus === "critical"
-      ? "text-red-700"
+      ? "text-crit-ink"
       : riskStatus === "warning"
-        ? "text-amber-700"
-        : "text-emerald-700";
-  const slaClass = sla < 0.7 ? "text-red-700" : "text-emerald-700";
+        ? "text-flag-ink"
+        : "text-safe-ink";
+  const slaClass = sla < 0.7 ? "text-crit-ink" : "text-safe-ink";
 
   return (
     <div className="flex items-center gap-4 flex-shrink-0 border border-clinical-border bg-clinical-surface rounded-lg px-4 py-2 flex-wrap">
@@ -159,15 +159,15 @@ function DiversionBanner({ metrics }: { metrics: any }) {
           {Math.round(risk * 100)}%
         </span>
         {risk > 0.6 && mins > 0 && (
-          <span className="text-xs font-mono text-slate-600">~{mins}m</span>
+          <span className="text-xs font-mono text-muted">~{mins}m</span>
         )}
       </div>
 
       <div className="w-px h-4 bg-clinical-border flex-shrink-0" />
 
       <div className="flex items-center gap-2 flex-shrink-0">
-        <DollarSign className="w-4 h-4 text-amber-600" />
-        <span className="text-xs font-mono text-amber-700">
+        <DollarSign className="w-4 h-4 text-flag-ink" />
+        <span className="text-xs font-mono text-flag-ink">
           ${cost.toLocaleString()}/hr delay cost
         </span>
       </div>
@@ -185,8 +185,8 @@ function DiversionBanner({ metrics }: { metrics: any }) {
         <>
           <div className="w-px h-4 bg-clinical-border flex-shrink-0" />
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Anchor className="w-4 h-4 text-amber-600" />
-            <span className="text-xs font-mono text-amber-700">
+            <Anchor className="w-4 h-4 text-flag-ink" />
+            <span className="text-xs font-mono text-flag-ink">
               {boarding} boarding
             </span>
           </div>
@@ -197,8 +197,8 @@ function DiversionBanner({ metrics }: { metrics: any }) {
         <>
           <div className="w-px h-4 bg-clinical-border flex-shrink-0" />
           <div className="flex items-center gap-2 flex-shrink-0">
-            <AlertTriangle className="w-4 h-4 text-red-600" />
-            <span className="text-xs font-mono text-red-700">
+            <AlertTriangle className="w-4 h-4 text-crit-ink" />
+            <span className="text-xs font-mono text-crit-ink">
               {deteriorating} deteriorating
             </span>
           </div>
@@ -209,8 +209,8 @@ function DiversionBanner({ metrics }: { metrics: any }) {
         <>
           <div className="w-px h-4 bg-clinical-border flex-shrink-0" />
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Zap className="w-4 h-4 text-red-600" />
-            <span className="text-xs font-mono text-red-700">
+            <Zap className="w-4 h-4 text-crit-ink" />
+            <span className="text-xs font-mono text-crit-ink">
               {sepsis} sepsis risk
             </span>
           </div>
@@ -248,10 +248,10 @@ function HospitalScore({ metrics }: { metrics: any }) {
   const label = score >= 80 ? "GOOD" : score >= 60 ? "FAIR" : "CRITICAL";
   const scoreTextClass =
     scoreStatus === "critical"
-      ? "text-red-700"
+      ? "text-crit-ink"
       : scoreStatus === "warning"
-        ? "text-amber-700"
-        : "text-emerald-700";
+        ? "text-flag-ink"
+        : "text-safe-ink";
   const circumference = 2 * Math.PI * 20;
   const dashOffset = circumference * (1 - score / 100);
 
@@ -297,7 +297,7 @@ function HospitalScore({ metrics }: { metrics: any }) {
             Hospital Score
           </span>
         </div>
-        <span className="text-xs font-mono text-slate-600">
+        <span className="text-xs font-mono text-muted">
           {label} — composite efficiency index
         </span>
       </div>
@@ -326,16 +326,6 @@ interface AmbulanceUnit {
   dispatched_at: number;
 }
 
-/**
- * Custom hook that maintains a list of simulated ambulance units en route to the hospital.
- * New units are created whenever a critical or high-severity patient arrives (state === "arriving").
- * A real-time interval decrements each unit's ETA every simulated minute (1 real second at 60x speed).
- * Units are removed once their ETA reaches zero and they have been on screen for 10+ simulated minutes.
- * @param simTime - The current simulation time in minutes, used to timestamp and expire units.
- * @param patients - The full patient list from the latest hospital state, used to detect new arrivals.
- * @returns An array of AmbulanceUnit objects currently en route.
- * Called from: AmbulancePanel.
- */
 function useAmbulanceSimulation(simTime: number, patients: Patient[]) {
   const [units, setUnits] = useState<AmbulanceUnit[]>([]);
   const seenRef = useRef<Set<string>>(new Set());
@@ -386,15 +376,6 @@ function useAmbulanceSimulation(simTime: number, patients: Patient[]) {
   return units;
 }
 
-/**
- * Renders the ambulance tracker sub-panel with summary counters and a list of units en route.
- * Shows total en-route count, critical count, and the peak dispatch hour.
- * Each ambulance row displays unit ID, severity badge, ETA, origin address, and chief complaint.
- * @param patients - The full patient array from the hospital state, passed to useAmbulanceSimulation.
- * @param simTime - The current simulation time in minutes, passed to useAmbulanceSimulation.
- * @returns A scrollable panel of ambulance rows.
- * Called from: AlertsAmbulancePanel when the "Ambulances" tab is selected.
- */
 function AmbulancePanel({
   patients,
   simTime,
@@ -414,36 +395,36 @@ function AmbulancePanel({
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       <div className="flex gap-2 mb-4">
-        <div className="flex-1 border border-amber-200 bg-amber-50 rounded-lg p-2 text-center">
-          <div className="text-lg font-mono font-bold text-amber-700">
+        <div className="flex-1 border border-flag-line bg-flag-soft rounded-lg p-2 text-center">
+          <div className="text-lg font-mono font-bold text-flag-ink">
             {units.length}
           </div>
-          <div className="text-xs font-medium text-slate-600 uppercase">
+          <div className="text-xs font-medium text-muted uppercase">
             En Route
           </div>
         </div>
-        <div className="flex-1 border border-red-200 bg-red-50 rounded-lg p-2 text-center">
-          <div className="text-lg font-mono font-bold text-red-700">
+        <div className="flex-1 border border-crit-line bg-crit-soft rounded-lg p-2 text-center">
+          <div className="text-lg font-mono font-bold text-crit-ink">
             {units.filter((u) => u.severity === "critical").length}
           </div>
-          <div className="text-xs font-medium text-slate-600 uppercase">
+          <div className="text-xs font-medium text-muted uppercase">
             Critical
           </div>
         </div>
         <div className="flex-1 border border-clinical-border bg-clinical-canvas rounded-lg p-2 text-center">
-          <div className="text-lg font-mono font-bold text-slate-900">
+          <div className="text-lg font-mono font-bold text-ink">
             {peakHour
               ? `${String(Number(peakHour[0])).padStart(2, "0")}:00`
               : "--"}
           </div>
-          <div className="text-xs font-medium text-slate-600 uppercase">
+          <div className="text-xs font-medium text-muted uppercase">
             Peak Hr
           </div>
         </div>
       </div>
 
       {units.length === 0 ? (
-        <div className="text-sm text-slate-600 font-mono text-center py-6">
+        <div className="text-sm text-muted font-mono text-center py-6">
           No ambulances currently dispatched
         </div>
       ) : (
@@ -456,15 +437,15 @@ function AmbulancePanel({
                 : "safe";
           const sevText =
             sevStatus === "critical"
-              ? "text-red-700"
+              ? "text-crit-ink"
               : sevStatus === "flagged"
-                ? "text-amber-700"
-                : "text-slate-600";
+                ? "text-flag-ink"
+                : "text-muted";
           const sevBorder =
             sevStatus === "critical"
-              ? "border-red-200 bg-red-50"
+              ? "border-crit-line bg-crit-soft"
               : sevStatus === "flagged"
-                ? "border-amber-200 bg-amber-50"
+                ? "border-flag-line bg-flag-soft"
                 : "border-clinical-border bg-clinical-canvas";
           return (
             <div key={u.id} className={cn("rounded-lg p-2 border", sevBorder)}>
@@ -480,17 +461,17 @@ function AmbulancePanel({
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Timer className="w-4 h-4 text-slate-600" />
+                  <Timer className="w-4 h-4 text-muted" />
                   <span className={cn("text-xs font-mono font-bold", sevText)}>
                     {u.eta_min === 0 ? "ARRIVING" : `${u.eta_min}m`}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-xs font-mono text-slate-600">
+              <div className="flex items-center gap-2 text-xs font-mono text-muted">
                 <MapPin className="w-4 h-4 flex-shrink-0" />
                 <span className="truncate">{u.origin}</span>
               </div>
-              <div className="text-xs font-mono text-slate-600 mt-2 truncate">
+              <div className="text-xs font-mono text-muted mt-2 truncate">
                 {u.complaint}
               </div>
             </div>
@@ -501,17 +482,6 @@ function AmbulancePanel({
   );
 }
 
-/**
- * Renders a tabbed panel that switches between the live Alerts list and the Ambulance Tracker.
- * The Alerts tab shows all active hospital alerts in reverse chronological order.
- * The Ambulances tab renders the AmbulancePanel component.
- * Also responds to the demo store "view_ambulances" action to auto-switch to the ambulances tab.
- * @param alerts - The array of active HospitalAlert objects from the hospital state.
- * @param patients - The full patient list from the hospital state, forwarded to AmbulancePanel.
- * @param simTime - The current simulation time in minutes, forwarded to AmbulancePanel.
- * @returns A tabbed card component in the right sidebar of the Command Center.
- * Called from: CommandCenterPage.
- */
 function AlertsAmbulancePanel({
   alerts,
   patients,
@@ -542,14 +512,14 @@ function AlertsAmbulancePanel({
           className={cn(
             "flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wide border-b-2",
             tab === "alerts"
-              ? "text-red-700 border-red-600"
-              : "text-slate-600 border-transparent",
+              ? "text-crit-ink border-crit-ink"
+              : "text-muted border-transparent",
           )}
         >
           <AlertTriangle className="w-4 h-4" />
           Alerts
           {alerts.length > 0 && (
-            <span className="text-xs font-mono font-bold px-2 py-1 rounded bg-red-50 text-red-700">
+            <span className="text-xs font-mono font-bold px-2 py-1 rounded bg-crit-soft text-crit-ink">
               {alerts.length}
             </span>
           )}
@@ -559,8 +529,8 @@ function AlertsAmbulancePanel({
           className={cn(
             "flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wide border-b-2",
             tab === "ambulances"
-              ? "text-amber-700 border-amber-600"
-              : "text-slate-600 border-transparent",
+              ? "text-flag-ink border-flag-ink"
+              : "text-muted border-transparent",
           )}
         >
           <Truck className="w-4 h-4" />
@@ -571,7 +541,7 @@ function AlertsAmbulancePanel({
       {tab === "alerts" ? (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {alerts.length === 0 ? (
-            <div className="text-sm text-slate-600 font-mono text-center py-6">
+            <div className="text-sm text-muted font-mono text-center py-6">
               No active alerts
             </div>
           ) : (
@@ -584,10 +554,10 @@ function AlertsAmbulancePanel({
                     : "safe";
               const sevText =
                 sevStatus === "critical"
-                  ? "text-red-700"
+                  ? "text-crit-ink"
                   : sevStatus === "flagged"
-                    ? "text-amber-700"
-                    : "text-slate-600";
+                    ? "text-flag-ink"
+                    : "text-muted";
               return (
                 <div
                   key={alert.alert_id}
@@ -607,7 +577,7 @@ function AlertsAmbulancePanel({
                     >
                       {alert.department.toUpperCase()} — {alert.severity}
                     </div>
-                    <div className="text-xs text-slate-600 leading-snug">
+                    <div className="text-xs text-muted leading-snug">
                       {alert.message}
                     </div>
                   </div>
@@ -623,12 +593,6 @@ function AlertsAmbulancePanel({
   );
 }
 
-/**
- * Converts a simulation time in minutes to a 24-hour HH:MM clock string.
- * @param simTime - The total simulated minutes elapsed; wraps around every 1440 minutes (24 hours).
- * @returns A zero-padded time string like "09:05" or "23:47".
- * Called from: LiveEventLog to timestamp each event entry.
- */
 function simClock(simTime: number): string {
   const totalMin = Math.max(0, Math.floor(simTime));
   const hh = String(Math.floor(totalMin / 60) % 24).padStart(2, "0");
@@ -636,16 +600,6 @@ function simClock(simTime: number): string {
   return `${hh}:${mm}`;
 }
 
-/**
- * Renders a live event feed that appends a new entry whenever a patient is admitted or an alert fires.
- * Shows up to four of the most recent events, each timestamped with the simulation clock.
- * Critical and high-severity events are colored red/amber; normal events use muted text.
- * @param patients - The full patient array; changes in length trigger new patient-admission entries.
- * @param alerts - The active alerts array; changes in length trigger new alert entries.
- * @param simTime - The current simulation time in minutes, used to timestamp events.
- * @returns A compact feed panel with a "Live Event Feed" header and a list of entries.
- * Called from: CommandCenterPage in the right sidebar above the alerts panel.
- */
 function LiveEventLog({
   patients,
   alerts,
@@ -676,10 +630,10 @@ function LiveEventLog({
       const p = patients[patients.length - 1];
       const colorClass =
         p?.severity === "critical"
-          ? "text-red-700"
+          ? "text-crit-ink"
           : p?.severity === "high"
-            ? "text-amber-700"
-            : "text-slate-600";
+            ? "text-flag-ink"
+            : "text-muted";
       if (p?.severity === "critical" || p?.severity === "high") {
         setEvents((prev) => [
           {
@@ -713,10 +667,10 @@ function LiveEventLog({
     const latest = alerts[alerts.length - 1];
     const colorClass =
       latest.severity === "critical"
-        ? "text-red-700"
+        ? "text-crit-ink"
         : latest.severity === "warning"
-          ? "text-amber-700"
-          : "text-slate-600";
+          ? "text-flag-ink"
+          : "text-muted";
     setEvents((prev) => {
       const newEvent = {
         id: `alert-${latest.alert_id}-${Date.now()}`,
@@ -731,14 +685,14 @@ function LiveEventLog({
   return (
     <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4 flex-shrink-0">
       <div className="flex items-center gap-2 mb-2">
-        <Radio className="w-4 h-4 text-slate-600" />
-        <span className="text-xs text-slate-600 font-medium uppercase tracking-wide">
+        <Radio className="w-4 h-4 text-muted" />
+        <span className="text-xs text-muted font-medium uppercase tracking-wide">
           Live Event Feed
         </span>
       </div>
       <div className="space-y-2 max-h-[88px] overflow-hidden">
         {events.length === 0 ? (
-          <div className="text-xs text-slate-600 font-mono py-2">
+          <div className="text-xs text-muted font-mono py-2">
             Monitoring...
           </div>
         ) : (
@@ -747,7 +701,7 @@ function LiveEventLog({
               key={e.id}
               className="text-xs font-mono truncate flex items-center gap-2"
             >
-              <span className="text-slate-600 flex-shrink-0 tabular-nums">
+              <span className="text-muted flex-shrink-0 tabular-nums">
                 {e.clock}
               </span>
               {e.name ? (
@@ -776,7 +730,6 @@ function LiveEventLog({
   );
 }
 
-// ─── HospitalFloorPlan (inlined from components/hospital/HospitalFloorPlan.tsx) ─
 
 const FLOOR = { width: 1100, height: 570 };
 type RoomType =
@@ -927,12 +880,6 @@ const DEPT_PATIENT_AREA: Record<
   discharge: { x: 20, y: 274, w: 300, h: 281 },
 };
 
-/**
- * Returns a hex color for a patient dot on the floor plan based on severity.
- * @param sev - The severity string from the patient object: "low", "medium", "high", or "critical".
- * @returns A hex color — green, amber, orange, or red; slate if severity is unrecognized.
- * Called from: HospitalFloorPlan when rendering patient dots on the SVG.
- */
 function _fpColor(sev: string): string {
   return (
     (
@@ -945,15 +892,6 @@ function _fpColor(sev: string): string {
     )[sev] ?? "#475569"
   );
 }
-/**
- * Computes the x/y pixel coordinates for each patient dot on the floor plan SVG.
- * Groups patients by current department, then distributes them randomly but consistently
- * within the designated patient area rectangle for that department using a deterministic hash.
- * @param patients - The full patient array from the latest hospital state.
- * @returns An array of dot descriptors, each with id, x, y, severity, and state.
- * Called from: HospitalFloorPlan via useMemo, recalculated whenever the patients array changes.
- */
-// Halton low-discrepancy sequence — produces evenly spread positions that never form diagonal lines
 function _halton(index: number, base: number): number {
   let f = 1,
     r = 0,
@@ -980,7 +918,6 @@ function _fpDots(patients: Patient[]) {
     (groups[p.current_department] ??= []).push(p);
   }
 
-  // Small hash used only for per-dot jitter (not for base position)
   const jitter = (s: string, salt: string) => {
     let h = 0;
     const t = s + salt;
@@ -999,14 +936,12 @@ function _fpDots(patients: Patient[]) {
   for (const [dk, dps] of Object.entries(groups)) {
     const a = DEPT_PATIENT_AREA[dk];
     if (!a) continue;
-    // Show most severe patients first, cap to MAX_DOTS_PER_DEPT
     const visible = [...dps]
       .sort(
         (a, b) => (SEV_ORDER[a.severity] ?? 3) - (SEV_ORDER[b.severity] ?? 3),
       )
       .slice(0, MAX_DOTS_PER_DEPT);
     visible.forEach((p, i) => {
-      // Halton base positions guarantee scatter — no diagonal lines possible
       const bx = _halton(i, 2);
       const by = _halton(i, 3);
       const x = a.x + 12 + bx * (a.w - 24) + jitter(p.patient_id, "x");
@@ -1023,18 +958,6 @@ function _fpDots(patients: Patient[]) {
   return dots;
 }
 
-/**
- * Renders an SVG illustration of a hospital bed for use inside a floor plan room cell.
- * Optionally includes a heart monitor display above the bed for ICU/critical bay rooms.
- * @param x - Left edge x coordinate of the room rectangle.
- * @param y - Top edge y coordinate of the room rectangle.
- * @param w - Width of the room rectangle in SVG units.
- * @param h - Height of the room rectangle in SVG units.
- * @param color - The department accent color used for bed rails and monitor outlines.
- * @param monitor - When true, adds a heart-monitor screen and IV pole above the bed (default false).
- * @returns An SVG group element containing the bed illustration.
- * Called from: _FpEquipment for "er_bay", "critical_bay", "icu_bed", and "ward_bed" room types.
- */
 function _FpBed({
   x,
   y,
@@ -1166,16 +1089,6 @@ function _FpBed({
     </g>
   );
 }
-/**
- * Renders an SVG illustration of a CT scanner for use in an imaging room floor plan cell.
- * @param x - Left edge x coordinate of the room rectangle.
- * @param y - Top edge y coordinate of the room rectangle.
- * @param w - Width of the room rectangle in SVG units.
- * @param h - Height of the room rectangle in SVG units.
- * @param color - The department accent color used for the scanner gantry rings.
- * @returns An SVG group element showing a stylized CT scanner.
- * Called from: _FpEquipment for "ct" room types.
- */
 function _FpCT({
   x,
   y,
@@ -1257,16 +1170,6 @@ function _FpCT({
     </g>
   );
 }
-/**
- * Renders an SVG illustration of an MRI machine for use in an imaging room floor plan cell.
- * @param x - Left edge x coordinate of the room rectangle.
- * @param y - Top edge y coordinate of the room rectangle.
- * @param w - Width of the room rectangle in SVG units.
- * @param h - Height of the room rectangle in SVG units.
- * @param color - The department accent color used for the bore rings.
- * @returns An SVG group element showing a stylized MRI machine.
- * Called from: _FpEquipment for "mri" room types.
- */
 function _FpMRI({
   x,
   y,
@@ -1329,16 +1232,6 @@ function _FpMRI({
     </g>
   );
 }
-/**
- * Renders an SVG illustration of an X-ray machine for use in an imaging room floor plan cell.
- * @param x - Left edge x coordinate of the room rectangle.
- * @param y - Top edge y coordinate of the room rectangle.
- * @param w - Width of the room rectangle in SVG units.
- * @param h - Height of the room rectangle in SVG units.
- * @param color - The department accent color used for the X-ray tube and cassette.
- * @returns An SVG group element showing a stylized X-ray unit.
- * Called from: _FpEquipment for "xray" room types.
- */
 function _FpXRay({
   x,
   y,
@@ -1426,16 +1319,6 @@ function _FpXRay({
     </g>
   );
 }
-/**
- * Renders an SVG illustration of laboratory equipment (flasks, test tubes, an analyzer) for a lab room cell.
- * @param x - Left edge x coordinate of the room rectangle.
- * @param y - Top edge y coordinate of the room rectangle.
- * @param w - Width of the room rectangle in SVG units.
- * @param h - Height of the room rectangle in SVG units.
- * @param color - The department accent color used for the equipment outlines.
- * @returns An SVG group element showing lab benchtop equipment.
- * Called from: _FpEquipment for "lab" room types.
- */
 function _FpLab({
   x,
   y,
@@ -1530,16 +1413,6 @@ function _FpLab({
     </g>
   );
 }
-/**
- * Renders an SVG illustration of a triage desk/station for use in the ER triage room cell.
- * @param x - Left edge x coordinate of the room rectangle.
- * @param y - Top edge y coordinate of the room rectangle.
- * @param w - Width of the room rectangle in SVG units.
- * @param h - Height of the room rectangle in SVG units.
- * @param color - The department accent color used for the desk and chair outlines.
- * @returns An SVG group element showing a stylized triage station.
- * Called from: _FpEquipment for "triage" room types.
- */
 function _FpTriage({
   x,
   y,
@@ -1623,14 +1496,6 @@ function _FpTriage({
     </g>
   );
 }
-/**
- * Routes a floor plan room to the correct SVG equipment illustration based on its room type.
- * Acts as a dispatcher that returns the appropriate _Fp* component for each room type.
- * @param room - The RoomDef object describing the room's position, dimensions, and type.
- * @param color - The department accent color passed through to the equipment illustration.
- * @returns The matching SVG equipment element, or null for unrecognized room types.
- * Called from: HospitalFloorPlan when rendering each room inside a department zone.
- */
 function _FpEquipment({ room, color }: { room: RoomDef; color: string }) {
   const { x, y, w, h, type } = room;
   if (type === "er_bay")
@@ -1681,13 +1546,6 @@ const FP_TINT: Record<DepartmentStatus, string> = {
   critical: "#FEF2F2",
 };
 
-/**
- * Renders the full hospital floor plan as a responsive SVG.
- * Draws all five department zones with occupancy bars, individual room cells with equipment illustrations,
- * patient dots colored by severity, a main corridor divider, and a hover tooltip per department.
- * @returns A container div wrapping the full SVG floor plan, sized to fill its parent.
- * Called from: CommandCenterPage inside the main floor plan card.
- */
 function HospitalFloorPlan() {
   const { hospitalState } = useSimulationStore();
   const [tooltip, setTooltip] = useState<{
@@ -1948,14 +1806,6 @@ function HospitalFloorPlan() {
   );
 }
 
-/**
- * The Hospital Command Center page — the primary dashboard of the PulseFlow AI application.
- * Renders six KPI metric cards, the DiversionBanner, the HospitalScore widget,
- * the full hospital floor plan with patient dots, the department status sidebar,
- * the LiveEventLog, and the AlertsAmbulancePanel.
- * @returns The full Command Center page layout.
- * Called from: Next.js router at the /command-center route (and as the default redirect from /).
- */
 export default function CommandCenterPage() {
   const { hospitalState } = useSimulationStore();
   const metrics = hospitalState?.metrics;
@@ -2028,20 +1878,18 @@ export default function CommandCenterPage() {
 
   return (
     <div className="flex flex-col h-full p-4 gap-4 overflow-hidden bg-clinical-canvas">
-      {}
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-lg font-bold text-slate-900 tracking-wide">
+          <h1 className="text-lg font-bold text-ink tracking-wide">
             Hospital Command Center
           </h1>
-          <p className="text-xs text-slate-600 font-mono mt-2">
+          <p className="text-xs text-muted font-mono mt-2">
             Real-time digital twin visualization • Patient flow simulation
           </p>
         </div>
         <div />
       </div>
 
-      {}
       <div className="grid grid-cols-6 gap-4 flex-shrink-0">
         {kpis.map((kpi) => (
           <MetricCard
@@ -2054,23 +1902,19 @@ export default function CommandCenterPage() {
         ))}
       </div>
 
-      {}
       <div className="flex items-center gap-4 flex-shrink-0">
         {metrics && <DiversionBanner metrics={metrics} />}
         {metrics && <HospitalScore metrics={metrics} />}
       </div>
 
-      {}
       <div className="flex flex-1 gap-4 overflow-hidden min-h-0">
-        {}
         <div className="flex-1 border border-clinical-border bg-clinical-surface rounded-lg overflow-hidden relative">
           <div className="absolute top-4 left-4 z-10">
-            <div className="text-xs font-mono px-2 py-1 rounded border border-clinical-border bg-clinical-surface text-slate-600">
+            <div className="text-xs font-mono px-2 py-1 rounded border border-clinical-border bg-clinical-surface text-muted">
               FLOOR PLAN — ACTIVE PATIENTS SHOWN
             </div>
           </div>
 
-          {}
           <div className="absolute top-4 right-4 z-10 flex items-center gap-4 px-2 py-1 rounded border border-clinical-border bg-clinical-surface">
             {[
               { label: "Low", color: "#059669" },
@@ -2083,7 +1927,7 @@ export default function CommandCenterPage() {
                   className="w-2 h-2 rounded-full"
                   style={{ background: s.color }}
                 />
-                <span className="text-xs text-slate-600 font-mono">
+                <span className="text-xs text-muted font-mono">
                   {s.label}
                 </span>
               </div>
@@ -2094,19 +1938,16 @@ export default function CommandCenterPage() {
             <HospitalFloorPlan />
           </div>
 
-          {}
           <div className="absolute bottom-4 left-4 z-10">
-            <div className="text-xs font-mono px-2 py-1 rounded border border-clinical-border bg-clinical-surface text-slate-600">
+            <div className="text-xs font-mono px-2 py-1 rounded border border-clinical-border bg-clinical-surface text-muted">
               {hospitalState?.patients?.length ?? 0} PATIENTS ACTIVE
             </div>
           </div>
         </div>
 
-        {}
         <div className="w-[320px] flex flex-col gap-4 overflow-y-auto flex-shrink-0 min-h-0">
-          {}
           <div className="border border-clinical-border bg-clinical-surface rounded-lg p-4 flex-shrink-0">
-            <div className="text-xs text-slate-600 font-medium uppercase mb-4 tracking-wide">
+            <div className="text-xs text-muted font-medium uppercase mb-4 tracking-wide">
               Department Status
             </div>
             <div className="space-y-4">
@@ -2117,10 +1958,10 @@ export default function CommandCenterPage() {
                 const sColor = statusColor(status);
                 const sText =
                   status === "critical"
-                    ? "text-red-700"
+                    ? "text-crit-ink"
                     : status === "warning"
-                      ? "text-amber-700"
-                      : "text-emerald-700";
+                      ? "text-flag-ink"
+                      : "text-safe-ink";
                 const badgeStatus =
                   status === "critical"
                     ? "critical"
@@ -2143,7 +1984,7 @@ export default function CommandCenterPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-900 font-medium truncate">
+                        <span className="text-sm text-ink font-medium truncate">
                           {dept.display_name}
                         </span>
                         <span
@@ -2165,7 +2006,7 @@ export default function CommandCenterPage() {
                         />
                       </div>
                       <div className="flex justify-between mt-2">
-                        <span className="text-xs text-slate-600 font-mono">
+                        <span className="text-xs text-muted font-mono">
                           {dept.current_patients}/{dept.capacity} beds
                         </span>
                         {dept.queue_length > 0 && (
@@ -2183,14 +2024,12 @@ export default function CommandCenterPage() {
             </div>
           </div>
 
-          {}
           <LiveEventLog
             patients={hospitalState?.patients ?? []}
             alerts={hospitalState?.alerts ?? []}
             simTime={hospitalState?.sim_time ?? 0}
           />
 
-          {}
           <AlertsAmbulancePanel
             alerts={hospitalState?.alerts ?? []}
             patients={hospitalState?.patients ?? []}

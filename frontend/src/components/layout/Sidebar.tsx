@@ -106,10 +106,10 @@ export function Sidebar() {
       <div className="px-4 py-4 border-b border-clinical-border">
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded border border-clinical-border bg-clinical-canvas px-3 py-2">
-            <div className="text-xs font-medium uppercase tracking-wide text-slate-600 mb-1">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted mb-1">
               Patients
             </div>
-            <div className="text-lg font-mono font-bold tabular-nums text-slate-900">
+            <div className="text-lg font-mono font-bold tabular-nums text-ink">
               {activePatients}
             </div>
           </div>
@@ -117,17 +117,17 @@ export function Sidebar() {
             className={cn(
               "rounded border px-3 py-2",
               alertCount > 0
-                ? "border-red-200 bg-red-50"
+                ? "border-crit-line bg-crit-soft"
                 : "border-clinical-border bg-clinical-canvas",
             )}
           >
-            <div className="text-xs font-medium uppercase tracking-wide text-slate-600 mb-1">
+            <div className="text-xs font-medium uppercase tracking-wide text-muted mb-1">
               Alerts
             </div>
             <div
               className={cn(
                 "text-lg font-mono font-bold tabular-nums",
-                alertCount > 0 ? "text-red-700" : "text-slate-400",
+                alertCount > 0 ? "text-crit-ink" : "text-faint",
               )}
             >
               {alertCount > 0 ? alertCount : "—"}
@@ -150,21 +150,21 @@ export function Sidebar() {
                 className={cn(
                   "flex items-center gap-3 px-3 py-2 rounded group cursor-pointer border-l-[3px]",
                   isActive
-                    ? "bg-slate-100 border-slate-900"
-                    : "border-transparent hover:bg-slate-50",
-                  isDemoStep && "bg-slate-100",
+                    ? "bg-elevated border-accent"
+                    : "border-transparent hover:bg-elevated",
+                  isDemoStep && "bg-elevated",
                 )}
               >
                 <div
                   className={cn(
                     "w-9 h-9 rounded flex items-center justify-center flex-shrink-0",
-                    isActive ? "bg-slate-200" : "bg-slate-100",
+                    isActive ? "bg-elevated" : "bg-elevated",
                   )}
                 >
                   <Icon
                     className={cn(
                       "w-5 h-5",
-                      isActive ? "text-slate-900" : "text-slate-600",
+                      isActive ? "text-accent" : "text-muted",
                     )}
                   />
                 </div>
@@ -172,25 +172,25 @@ export function Sidebar() {
                   <div
                     className={cn(
                       "text-sm font-semibold leading-tight",
-                      isActive ? "text-slate-900" : "text-slate-700",
+                      isActive ? "text-ink" : "text-ink",
                     )}
                   >
                     {item.label}
                     {isDemo && (
-                      <span className="ml-2 text-xs font-medium uppercase text-slate-500">
+                      <span className="ml-2 text-xs font-medium uppercase text-muted">
                         Demo
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
+                  <div className="text-xs text-muted mt-0.5">
                     {item.sublabel}
                   </div>
                 </div>
                 {isActive && (
-                  <ChevronRight className="w-4 h-4 flex-shrink-0 text-slate-900" />
+                  <ChevronRight className="w-4 h-4 flex-shrink-0 text-accent" />
                 )}
                 {isDemoStep && (
-                  <span className="text-xs font-bold uppercase text-slate-700 flex-shrink-0">
+                  <span className="text-xs font-bold uppercase text-ink flex-shrink-0">
                     Active
                   </span>
                 )}
@@ -207,8 +207,8 @@ export function Sidebar() {
           className={cn(
             "w-full min-h-11 flex items-center justify-center gap-2 rounded text-sm font-semibold border disabled:opacity-40",
             resetDone
-              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-              : "border-clinical-border bg-clinical-surface text-slate-700 hover:bg-slate-50",
+              ? "border-safe-line bg-safe-soft text-safe-ink"
+              : "border-clinical-border bg-clinical-surface text-ink hover:bg-elevated",
           )}
         >
           <RotateCcw className={cn("w-4 h-4", resetting && "spinner")} />
@@ -218,7 +218,7 @@ export function Sidebar() {
               ? "Resetting…"
               : "Reset Simulation"}
         </button>
-        <div className="text-xs font-mono text-center text-slate-400">
+        <div className="text-xs font-mono text-center text-faint">
           PULSEFLOW AI v1.0
         </div>
       </div>

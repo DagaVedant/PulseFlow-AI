@@ -11,17 +11,17 @@ const STATUS_CONFIG: Record<
   safe: {
     label: "Stable",
     icon: CheckCircle2,
-    className: "bg-emerald-50 border-emerald-200 text-emerald-700",
+    className: "bg-safe-soft border-safe-line text-safe-ink",
   },
   flagged: {
     label: "Review",
     icon: AlertTriangle,
-    className: "bg-amber-50 border-amber-200 text-amber-700",
+    className: "bg-flag-soft border-flag-line text-flag-ink",
   },
   critical: {
     label: "Critical",
     icon: OctagonAlert,
-    className: "bg-red-50 border-red-200 text-red-700",
+    className: "bg-crit-soft border-crit-line text-crit-ink",
   },
 };
 

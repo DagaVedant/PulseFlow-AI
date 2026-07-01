@@ -22,7 +22,7 @@ export function PrivacyMask({
       <span className="inline-flex items-center gap-2">
         <span
           id={fieldId}
-          className="font-mono tabular-nums text-slate-900"
+          className="font-mono tabular-nums text-ink"
           aria-live="polite"
         >
           {revealed
@@ -34,7 +34,7 @@ export function PrivacyMask({
           onClick={() => setRevealed((current) => !current)}
           aria-pressed={revealed}
           aria-label={revealed ? `Hide ${label}` : `Reveal ${label}`}
-          className="inline-flex items-center justify-center w-11 h-11 -my-3 rounded text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+          className="inline-flex items-center justify-center w-11 h-11 -my-3 rounded text-muted hover:text-ink hover:bg-elevated"
         >
           {revealed ? (
             <EyeOff className="w-4 h-4" aria-hidden="true" />

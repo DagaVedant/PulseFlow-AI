@@ -35,15 +35,15 @@ export function AutoLogoutTimer() {
       aria-live="off"
     >
       <Lock
-        className={`w-4 h-4 ${expiringSoon ? "text-red-600" : "text-slate-600"}`}
+        className={`w-4 h-4 ${expiringSoon ? "text-crit-ink" : "text-muted"}`}
         aria-hidden="true"
       />
-      <span className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+      <span className="text-xs font-medium text-muted uppercase tracking-wide">
         Auto-logout
       </span>
       <span
         className={`text-sm font-mono tabular-nums font-semibold ${
-          expiringSoon ? "text-red-700" : "text-slate-900"
+          expiringSoon ? "text-crit-ink" : "text-ink"
         }`}
       >
         {minutes}:{seconds}

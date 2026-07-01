@@ -2,17 +2,58 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 :root {
-  --canvas: #f8fafc;
-  --surface: #ffffff;
-  --border-line: #e2e8f0;
-  --text-strong: #0f172a;
-  --text-muted: #475569;
-  --status-safe: #059669;
-  --status-flagged: #d97706;
-  --status-critical: #dc2626;
+  --canvas: #efede9;
+  --surface: #faf9f6;
+  --elevated: #e6e3dd;
+  --line: #dad6cd;
+  --ink: #26241f;
+  --muted: #5b564d;
+  --faint: #7a746a;
+  --accent: #12766e;
+  --accent-contrast: #ffffff;
+  --status-safe: #0e7c57;
+  --status-flagged: #b26b08;
+  --status-critical: #c43a32;
+
+  --safe-soft: #ecfdf5;
+  --safe-line: #a7f3d0;
+  --safe-ink: #047857;
+  --flag-soft: #fffbeb;
+  --flag-line: #fde68a;
+  --flag-ink: #b45309;
+  --crit-soft: #fef2f2;
+  --crit-line: #fecaca;
+  --crit-ink: #b91c1c;
+
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+}
+
+.dark {
+  --canvas: #1b1a17;
+  --surface: #24231f;
+  --elevated: #2e2c27;
+  --line: #3b3833;
+  --ink: #f2f0ea;
+  --muted: #b7b1a6;
+  --faint: #8b857a;
+  --accent: #2dd4bf;
+  --accent-contrast: #0b0b0a;
+  --status-safe: #34d399;
+  --status-flagged: #fbbf24;
+  --status-critical: #f87171;
+
+  --safe-soft: #16241d;
+  --safe-line: #2e5f49;
+  --safe-ink: #6ee7b7;
+  --flag-soft: #262010;
+  --flag-line: #5c4a1e;
+  --flag-ink: #fcd34d;
+  --crit-soft: #271717;
+  --crit-line: #6e322e;
+  --crit-ink: #fca5a5;
 }
 
 * {
@@ -24,12 +65,34 @@
 html {
   font-family: "Inter", "Roboto", system-ui, sans-serif;
   background: var(--canvas);
-  color: var(--text-strong);
+  color: var(--ink);
 }
 
 body {
   background: var(--canvas);
+  color: var(--ink);
   overflow-x: hidden;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
 ::-webkit-scrollbar {
@@ -40,23 +103,23 @@ body {
   background: var(--canvas);
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--line);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--faint);
 }
 
 .clinical-card {
   background: var(--surface);
-  border: 1px solid var(--border-line);
+  border: 1px solid var(--line);
   border-radius: 8px;
 }
 
 .nav-active {
-  background: #f1f5f9;
-  border-left: 3px solid var(--text-strong);
-  color: var(--text-strong);
+  background: var(--elevated);
+  border-left: 3px solid var(--accent);
+  color: var(--ink);
 }
 
 .react-flow__renderer {
@@ -67,27 +130,27 @@ body {
 }
 .react-flow__controls {
   background: var(--surface) !important;
-  border: 1px solid var(--border-line) !important;
+  border: 1px solid var(--line) !important;
 }
 .react-flow__controls button {
   background: var(--surface) !important;
-  color: var(--text-strong) !important;
-  border-bottom: 1px solid var(--border-line) !important;
+  color: var(--ink) !important;
+  border-bottom: 1px solid var(--line) !important;
 }
 
 .recharts-cartesian-grid line {
-  stroke: var(--border-line) !important;
+  stroke: var(--line) !important;
 }
 .recharts-text {
-  fill: var(--text-muted) !important;
+  fill: var(--muted) !important;
   font-size: 12px !important;
 }
 .recharts-tooltip-wrapper .recharts-default-tooltip {
   background: var(--surface) !important;
-  border: 1px solid var(--border-line) !important;
+  border: 1px solid var(--line) !important;
   border-radius: 8px !important;
   font-size: 12px !important;
-  color: var(--text-strong) !important;
+  color: var(--ink) !important;
 }
 
 @keyframes spin {

@@ -98,10 +98,10 @@ function Slider({
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-baseline">
-        <label htmlFor={inputId} className="text-sm text-slate-600 font-medium">
+        <label htmlFor={inputId} className="text-sm text-muted font-medium">
           {label}
         </label>
-        <span className="text-base font-bold font-mono text-slate-900">
+        <span className="text-base font-bold font-mono text-ink">
           {value}
           {unit}
         </span>
@@ -111,7 +111,7 @@ function Slider({
           type="button"
           aria-label={`Decrease ${label}`}
           onClick={() => onChange(Math.max(min, value - step))}
-          className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-600 border border-clinical-border bg-clinical-surface hover:bg-slate-100 transition-colors flex-shrink-0"
+          className="w-11 h-11 rounded-lg flex items-center justify-center text-muted border border-clinical-border bg-clinical-surface hover:bg-elevated transition-colors flex-shrink-0"
         >
           <Minus className="w-4 h-4" />
         </button>
@@ -123,13 +123,13 @@ function Slider({
           step={step}
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="flex-1 h-2 appearance-none rounded-full cursor-pointer bg-slate-200 accent-emerald-600 min-h-11"
+          className="flex-1 h-2 appearance-none rounded-full cursor-pointer bg-elevated accent-emerald-600 min-h-11"
         />
         <button
           type="button"
           aria-label={`Increase ${label}`}
           onClick={() => onChange(Math.min(max, value + step))}
-          className="w-11 h-11 rounded-lg flex items-center justify-center text-slate-600 border border-clinical-border bg-clinical-surface hover:bg-slate-100 transition-colors flex-shrink-0"
+          className="w-11 h-11 rounded-lg flex items-center justify-center text-muted border border-clinical-border bg-clinical-surface hover:bg-elevated transition-colors flex-shrink-0"
         >
           <Plus className="w-4 h-4" />
         </button>
@@ -178,13 +178,6 @@ const EVENTS: { key: EventType; label: string; desc: string; icon: any }[] = [
   },
 ];
 
-/**
- * The Simulation Sandbox page with left-side sliders for staffing/infrastructure
- * and a right panel of toggleable emergency event buttons and a live department status preview.
- * Config changes are debounced 600ms before being sent to the backend.
- * @returns The full-page Sandbox layout.
- * Called from: Next.js router at the /sandbox route.
- */
 export default function SandboxPage() {
   const { hospitalState } = useSimulationStore();
   const { triggerEvent, updateConfig } = useWebSocket();
@@ -206,23 +199,9 @@ export default function SandboxPage() {
     return () => clearTimeout(debounceRef.current);
   }, [cfg]);
 
-  /**
-   * Returns a setter function for a single SimpleConfig field, used to wire up Slider onChange props.
-   * @param key - The key of the SimpleConfig field to update (e.g. "doctors", "beds").
-   * @returns A function that accepts a new number value and updates that field in the config state.
-   * Called from: each Slider component in SandboxPage.
-   */
   const set = (key: keyof SimpleConfig) => (v: number) =>
     setCfg((prev) => ({ ...prev, [key]: v }));
 
-  /**
-   * Toggles a crisis event on or off and sends the corresponding WebSocket message to the backend.
-   * If the event is already active, it is removed and a "clear_event" message is sent.
-   * If the event is new, it is added and its trigger message is sent.
-   * @param event - The EventType to toggle, e.g. "flu_outbreak", "ct_failure".
-   * @returns void — updates local activeEvents state and sends a WebSocket message.
-   * Called from: each event button in SandboxPage.
-   */
   const toggleEvent = useCallback(
     (event: EventType) => {
       setActiveEvents((prev) => {
@@ -240,11 +219,6 @@ export default function SandboxPage() {
     [triggerEvent],
   );
 
-  /**
-   * Clears all currently active crisis events and sends a "clear_event" message to the backend.
-   * @returns void — resets the activeEvents set and sends a WebSocket message.
-   * Called from: the "Clear Events" button that appears when at least one event is active.
-   */
   const clearAll = () => {
     setActiveEvents(new Set());
     triggerEvent("clear_event");
@@ -362,19 +336,19 @@ export default function SandboxPage() {
     <div className="flex flex-col h-full p-6 gap-6 overflow-hidden bg-clinical-canvas">
       <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 tracking-wide flex items-center gap-2">
-            <FlaskConical className="w-6 h-6 text-slate-600" />
+          <h1 className="text-xl font-bold text-ink tracking-wide flex items-center gap-2">
+            <FlaskConical className="w-6 h-6 text-muted" />
             Simulation Sandbox
           </h1>
-          <p className="text-sm text-slate-600 mt-2">
+          <p className="text-sm text-muted mt-2">
             Changes apply automatically · Events &amp; constraints drive dynamic
             delays and resource competition
           </p>
         </div>
         <div className="flex items-center gap-4 flex-shrink-0">
           {(hospitalState?.care?.bottlenecks?.length ?? 0) > 0 && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-amber-200 bg-amber-50">
-              <span className="text-xs font-medium text-amber-700">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg border border-flag-line bg-flag-soft">
+              <span className="text-xs font-medium text-flag-ink">
                 {hospitalState?.care?.bottlenecks.length} fixed constraint
                 {(hospitalState?.care?.bottlenecks.length ?? 0) === 1
                   ? ""
@@ -387,7 +361,7 @@ export default function SandboxPage() {
             <button
               type="button"
               onClick={clearAll}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-slate-600 border border-clinical-border bg-clinical-surface hover:bg-slate-100 transition-colors min-h-11"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-muted border border-clinical-border bg-clinical-surface hover:bg-elevated transition-colors min-h-11"
             >
               <RefreshCw className="w-4 h-4" /> Clear Events
             </button>
@@ -399,8 +373,8 @@ export default function SandboxPage() {
         <div className="w-[340px] flex flex-col gap-4 overflow-y-auto flex-shrink-0">
           <div className="border border-clinical-border bg-clinical-surface rounded-lg p-6 space-y-6">
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-slate-600" />
-              <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
+              <Users className="w-5 h-5 text-muted" />
+              <span className="text-sm font-medium text-ink uppercase tracking-wider">
                 Staffing
               </span>
             </div>
@@ -434,15 +408,15 @@ export default function SandboxPage() {
               max={20}
               onChange={set("technicians")}
             />
-            <div className="pt-2 text-xs text-slate-600 border-t border-clinical-border">
+            <div className="pt-2 text-xs text-muted border-t border-clinical-border">
               Doctors & nurses auto-distributed across ER / ICU / Ward
             </div>
           </div>
 
           <div className="border border-clinical-border bg-clinical-surface rounded-lg p-6 space-y-6">
             <div className="flex items-center gap-2">
-              <Bed className="w-5 h-5 text-slate-600" />
-              <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
+              <Bed className="w-5 h-5 text-muted" />
+              <span className="text-sm font-medium text-ink uppercase tracking-wider">
                 Infrastructure
               </span>
             </div>
@@ -467,7 +441,7 @@ export default function SandboxPage() {
               max={4}
               onChange={set("mri_machines")}
             />
-            <div className="pt-2 text-xs text-slate-600 border-t border-clinical-border">
+            <div className="pt-2 text-xs text-muted border-t border-clinical-border">
               Beds split: ~28% ER · 14% ICU · 58% Ward
             </div>
           </div>
@@ -476,12 +450,12 @@ export default function SandboxPage() {
         <div className="flex-1 flex flex-col gap-4 overflow-y-auto min-w-0">
           <div className="border border-clinical-border bg-clinical-surface rounded-lg p-6 flex-shrink-0">
             <div className="flex items-center gap-2 mb-4">
-              <AlertTriangle className="w-5 h-5 text-slate-600" />
-              <span className="text-sm font-medium text-slate-900 uppercase tracking-wider">
+              <AlertTriangle className="w-5 h-5 text-muted" />
+              <span className="text-sm font-medium text-ink uppercase tracking-wider">
                 Emergency Events
               </span>
               {activeEvents.size > 0 && (
-                <span className="ml-2 text-xs font-medium text-amber-700 px-2 py-1 rounded border border-amber-200 bg-amber-50">
+                <span className="ml-2 text-xs font-medium text-flag-ink px-2 py-1 rounded border border-flag-line bg-flag-soft">
                   {activeEvents.size} ACTIVE
                 </span>
               )}
@@ -499,31 +473,31 @@ export default function SandboxPage() {
                     className={
                       "flex flex-col items-center gap-2 p-4 rounded-lg text-center border transition-colors min-h-11 " +
                       (isActive
-                        ? "border-amber-200 bg-amber-50"
-                        : "border-clinical-border bg-clinical-surface hover:bg-slate-100")
+                        ? "border-flag-line bg-flag-soft"
+                        : "border-clinical-border bg-clinical-surface hover:bg-elevated")
                     }
                   >
                     <Icon
                       className={
                         "w-5 h-5 " +
-                        (isActive ? "text-amber-700" : "text-slate-600")
+                        (isActive ? "text-flag-ink" : "text-muted")
                       }
                     />
                     <div>
                       <div
                         className={
                           "text-xs font-medium " +
-                          (isActive ? "text-amber-700" : "text-slate-900")
+                          (isActive ? "text-flag-ink" : "text-ink")
                         }
                       >
                         {event.label}
                       </div>
-                      <div className="text-xs text-slate-600 mt-2">
+                      <div className="text-xs text-muted mt-2">
                         {event.desc}
                       </div>
                     </div>
                     {isActive && (
-                      <span className="text-xs font-medium text-amber-700">
+                      <span className="text-xs font-medium text-flag-ink">
                         Active
                       </span>
                     )}
@@ -535,7 +509,7 @@ export default function SandboxPage() {
 
           {hospitalState?.departments && (
             <div className="border border-clinical-border bg-clinical-surface rounded-lg p-6 flex-1 min-h-0 overflow-y-auto">
-              <div className="text-sm font-medium text-slate-900 uppercase tracking-wider mb-4">
+              <div className="text-sm font-medium text-ink uppercase tracking-wider mb-4">
                 Department Status — Adjust Sliders to See Changes
               </div>
               <div className="grid grid-cols-3 gap-4">
@@ -548,7 +522,7 @@ export default function SandboxPage() {
                       key={dept}
                       className="p-4 rounded-lg border border-clinical-border bg-clinical-surface"
                     >
-                      <div className="text-xs font-medium text-slate-900 uppercase tracking-wider mb-2">
+                      <div className="text-xs font-medium text-ink uppercase tracking-wider mb-2">
                         {dept === "er"
                           ? "Emergency"
                           : dept === "icu"
@@ -557,51 +531,51 @@ export default function SandboxPage() {
                       </div>
                       <div className="space-y-2">
                         <div>
-                          <div className="text-xs text-slate-600 mb-2">
+                          <div className="text-xs text-muted mb-2">
                             Occupancy
                           </div>
                           <div
                             className={
                               "text-lg font-bold font-mono " +
                               (p.occupancy > 0.9
-                                ? "text-red-600"
+                                ? "text-crit-ink"
                                 : p.occupancy > 0.7
-                                  ? "text-amber-600"
-                                  : "text-slate-900")
+                                  ? "text-flag-ink"
+                                  : "text-ink")
                             }
                           >
                             {formatPercent(p.occupancy)}
                           </div>
                         </div>
                         <div>
-                          <div className="text-xs text-slate-600 mb-2">
+                          <div className="text-xs text-muted mb-2">
                             Queue
                           </div>
                           <div
                             className={
                               "text-lg font-bold font-mono " +
                               (p.queue > 8
-                                ? "text-red-600"
+                                ? "text-crit-ink"
                                 : p.queue > 4
-                                  ? "text-amber-600"
-                                  : "text-slate-900")
+                                  ? "text-flag-ink"
+                                  : "text-ink")
                             }
                           >
                             {p.queue}
                           </div>
                         </div>
                         <div>
-                          <div className="text-xs text-slate-600 mb-2">
+                          <div className="text-xs text-muted mb-2">
                             Wait
                           </div>
                           <div
                             className={
                               "text-lg font-bold font-mono " +
                               (d.avg_wait_time > 120
-                                ? "text-red-600"
+                                ? "text-crit-ink"
                                 : d.avg_wait_time > 80
-                                  ? "text-amber-600"
-                                  : "text-slate-900")
+                                  ? "text-flag-ink"
+                                  : "text-ink")
                             }
                           >
                             {formatTime(d.avg_wait_time)}
@@ -612,7 +586,7 @@ export default function SandboxPage() {
                   );
                 })}
               </div>
-              <div className="mt-4 pt-2 border-t border-clinical-border text-xs text-slate-600">
+              <div className="mt-4 pt-2 border-t border-clinical-border text-xs text-muted">
                 Try: Reduce Doctors to see queues grow | Reduce Beds to see
                 occupancy spike | Increase Arrival Rate for cascading effects
               </div>
