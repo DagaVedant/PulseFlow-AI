@@ -3,6 +3,7 @@ import { useSimulationStore } from "@/store/simulationStore";
 import { formatSimTime } from "@/lib/utils";
 import { AutoLogoutTimer } from "@/components/layout/AutoLogoutTimer";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
+import { LogoutButton } from "@/components/layout/LogoutButton";
 
 export function TopBar() {
   const { hospitalState } = useSimulationStore();
@@ -22,6 +23,7 @@ export function TopBar() {
       <div className="flex items-center gap-3">
         <ThemeToggle />
         <AutoLogoutTimer />
+        <LogoutButton />
       </div>
     </div>
   );
