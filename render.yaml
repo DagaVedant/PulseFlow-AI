@@ -14,6 +14,6 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: '["https://pulseflow-ai.vercel.app","https://*.vercel.app"]'
+        value: '["https://pulse-flow-ai.vercel.app"]'
       - key: ANTHROPIC_API_KEY
         sync: false

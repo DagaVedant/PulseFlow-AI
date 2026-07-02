@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
-        "https://pulseflow-ai.vercel.app",
+        "https://pulse-flow-ai.vercel.app",
     ]
 
     SIMULATION_SPEED: int = 8
