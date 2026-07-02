@@ -37,8 +37,8 @@ frontend/.env.development.local
 frontend/.env.test.local
 frontend/.env.production.local
 
-frontend/.next/
 frontend/next-env.d.ts
+*.tsbuildinfo
 
 *.db
 *.sqlite
