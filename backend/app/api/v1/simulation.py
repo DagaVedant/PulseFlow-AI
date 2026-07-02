@@ -1,12 +1,11 @@
 """Simulation control API endpoints."""
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
 from app.services.service import simulation_service
-from app.api.deps import AuthenticatedUser, require_operator
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
 audit_logger = structlog.get_logger("audit")
@@ -73,9 +72,7 @@ async def get_metrics_history(minutes: int = 60):
 
 
 @router.post("/events/trigger")
-async def trigger_event(
-    request: EventRequest, user: AuthenticatedUser = Depends(require_operator)
-):
+async def trigger_event(request: EventRequest):
     """
     Fires a named simulation event that changes patient arrival rates or
     disables resources, simulating real-world emergencies or equipment
@@ -108,8 +105,6 @@ async def trigger_event(
     if request.event_type not in allowed_events:
         audit_logger.info(
             "trigger_event",
-            username=user.username,
-            role=user.role,
             action="trigger_event",
             event_type=request.event_type,
             outcome=f"error: unknown event type {request.event_type}",
@@ -121,8 +116,6 @@ async def trigger_event(
     simulation_service.trigger_event(request.event_type, request.params)
     audit_logger.info(
         "trigger_event",
-        username=user.username,
-        role=user.role,
         action="trigger_event",
         event_type=request.event_type,
         params=request.params,
@@ -132,9 +125,7 @@ async def trigger_event(
 
 
 @router.post("/config/update")
-async def update_config(
-    request: ConfigUpdateRequest, user: AuthenticatedUser = Depends(require_operator)
-):
+async def update_config(request: ConfigUpdateRequest):
     """
     Applies a partial configuration update to the running simulation without
     restarting it, changing only the fields that are included in the request.
@@ -155,8 +146,6 @@ async def update_config(
     simulation_service.update_config(updates)
     audit_logger.info(
         "update_config",
-        username=user.username,
-        role=user.role,
         action="update_config",
         updates=updates,
         outcome="success",
@@ -165,7 +154,7 @@ async def update_config(
 
 
 @router.post("/reset")
-async def reset_simulation(user: AuthenticatedUser = Depends(require_operator)):
+async def reset_simulation():
     """
     Stops the current simulation and starts a completely fresh one with
     default settings, erasing all patients, active events, bottlenecks,
@@ -181,8 +170,6 @@ async def reset_simulation(user: AuthenticatedUser = Depends(require_operator)):
     simulation_service.reset()
     audit_logger.info(
         "reset_simulation",
-        username=user.username,
-        role=user.role,
         action="reset_simulation",
         outcome="success",
     )

@@ -8,7 +8,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
-import jwt
+import secrets
+
 import structlog
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,7 +19,6 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.api.deps import decode_access_token
 from app.api.v1.router import api_router
 from app.api.v1.ws_schemas import WS_MESSAGE_SCHEMAS
 from app.core.rate_limit import limiter
@@ -144,20 +144,12 @@ async def websocket_endpoint(websocket: WebSocket):
     the connection alive.
     On disconnect: calls manager.disconnect() to clean up.
 
-    Before accepting the connection: requires a "token" query param holding
-    a valid JWT issued by POST /api/v1/auth/login. If missing, invalid, or
-    expired, closes the connection with code 4401 and returns without ever
-    calling manager.connect(). The token's role claim is kept for the
-    lifetime of this connection and threaded into _handle_client_message()
-    to gate operator-only actions.
+    Before accepting the connection: requires a "token" query param matching
+    SECRET_KEY. If missing or wrong, closes the connection with code 4401
+    and returns without ever calling manager.connect().
     """
     token = websocket.query_params.get("token")
-    if not token:
-        await websocket.close(code=4401)
-        return
-    try:
-        user = decode_access_token(token)
-    except jwt.PyJWTError:
+    if not token or not secrets.compare_digest(token, settings.SECRET_KEY):
         await websocket.close(code=4401)
         return
 
@@ -178,7 +170,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 import json
 
                 msg = json.loads(data)
-                await _handle_client_message(websocket, msg, user.role, user.username)
+                await _handle_client_message(websocket, msg)
             except asyncio.TimeoutError:
                 await manager.send_to(websocket, {"type": "ping"})
             except Exception:
@@ -190,17 +182,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await manager.disconnect(websocket)
 
 
-OPERATOR_ONLY_MESSAGE_TYPES = {
-    "trigger_event",
-    "update_config",
-    "add_bottleneck",
-    "remove_bottleneck",
-}
-
-
-async def _handle_client_message(
-    websocket: WebSocket, msg: dict, role: str, username: str
-):
+async def _handle_client_message(websocket: WebSocket, msg: dict):
     """
     Validates and routes an incoming WebSocket message from a browser client
     to the correct simulation action, then sends back an acknowledgement to
@@ -213,18 +195,12 @@ async def _handle_client_message(
                    Expected to have a "type" key whose value is one of:
                    "trigger_event", "update_config", "request_optimization",
                    "add_bottleneck", "remove_bottleneck", or "request_state".
-        role:      The role ("viewer" or "operator") carried by this
-                    connection's JWT, resolved once at connect time.
-        username:  The username carried by this connection's JWT, used for
-                   audit logging of write actions.
 
     Returns nothing directly; instead it awaits a send back to the client
     with a result, acknowledgement, or error dict. The message is validated
     against its pydantic schema (app/api/v1/ws_schemas.py) before anything
     else happens — an unrecognized type or a schema mismatch sends back
-    {"type": "error", ...} and never touches simulation_service. Messages
-    whose type is operator-only are rejected the same way if role isn't
-    "operator".
+    {"type": "error", ...} and never touches simulation_service.
 
     Called from the websocket_endpoint handler whenever the client sends text.
     """
@@ -247,18 +223,10 @@ async def _handle_client_message(
         )
         return
 
-    if msg_type in OPERATOR_ONLY_MESSAGE_TYPES and role != "operator":
-        await manager.send_to(
-            websocket, {"type": "error", "message": "operator role required"}
-        )
-        return
-
     if msg_type == "trigger_event":
         simulation_service.trigger_event(validated.event_type, validated.params)
         audit_logger.info(
             "trigger_event",
-            username=username,
-            role=role,
             action="trigger_event",
             event_type=validated.event_type,
             params=validated.params,
@@ -277,8 +245,6 @@ async def _handle_client_message(
         simulation_service.update_config(validated.config)
         audit_logger.info(
             "update_config",
-            username=username,
-            role=role,
             action="update_config",
             updates=validated.config,
             outcome="success",
@@ -305,8 +271,6 @@ async def _handle_client_message(
         bottleneck = simulation_service.add_bottleneck(validated.bottleneck)
         audit_logger.info(
             "add_bottleneck",
-            username=username,
-            role=role,
             action="add_bottleneck",
             bottleneck=validated.bottleneck,
             outcome="success",
@@ -323,8 +287,6 @@ async def _handle_client_message(
         ok = simulation_service.remove_bottleneck(validated.bottleneck_id)
         audit_logger.info(
             "remove_bottleneck",
-            username=username,
-            role=role,
             action="remove_bottleneck",
             bottleneck_id=validated.bottleneck_id,
             outcome="success" if ok else "error: bottleneck not found",

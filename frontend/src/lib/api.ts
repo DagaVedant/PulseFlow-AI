@@ -1,5 +1,3 @@
-import { clearAuth, getToken, type Role } from "./auth";
-
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
@@ -7,47 +5,18 @@ async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
+      Authorization: `Bearer ${process.env.NEXT_PUBLIC_API_KEY}`,
     },
     ...options,
   });
   if (!res.ok) {
     const text = await res.text();
-    if (res.status === 401) {
-      clearAuth();
-      if (typeof window !== "undefined") {
-        window.location.href = "/login";
-      }
-    }
     throw new Error(`API error ${res.status}: ${text}`);
   }
   return res.json();
 }
 
-interface LoginResponse {
-  access_token: string;
-  token_type: string;
-  role: Role;
-  expires_in: number;
-}
-
 export const api = {
-  login: async (username: string, password: string): Promise<LoginResponse> => {
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      let detail = text;
-      try {
-        detail = JSON.parse(text).detail || text;
-      } catch {}
-      throw new Error(detail);
-    }
-    return res.json();
-  },
   getState: () => fetchJSON<any>("/simulation/state"),
   getMetricsHistory: (minutes = 60) =>
     fetchJSON<any>(`/simulation/metrics/history?minutes=${minutes}`),

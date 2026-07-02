@@ -2,7 +2,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { api } from "@/lib/api";
-import { getToken } from "@/lib/auth";
 import type { HospitalState } from "@/types";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
@@ -26,11 +25,8 @@ export function useWebSocket() {
     if (!mountedRef.current) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const token = getToken();
-    if (!token) return;
-
     try {
-      const connectUrl = `${WS_URL}${WS_URL.includes("?") ? "&" : "?"}token=${token}`;
+      const connectUrl = `${WS_URL}${WS_URL.includes("?") ? "&" : "?"}token=${process.env.NEXT_PUBLIC_API_KEY}`;
       const ws = new WebSocket(connectUrl);
       wsRef.current = ws;
 

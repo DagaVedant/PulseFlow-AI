@@ -1,9 +1,8 @@
 """AI and care coordination API — copilot analysis, optimization, shift reports, specialists, and constraints."""
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Body
+from fastapi import APIRouter, HTTPException, Body
 from app.services.service import simulation_service
-from app.api.deps import AuthenticatedUser, require_operator
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 audit_logger = structlog.get_logger("audit")
@@ -157,9 +156,7 @@ async def list_bottlenecks():
 
 
 @router.post("/care/bottlenecks")
-async def add_bottleneck(
-    data: dict = Body(...), user: AuthenticatedUser = Depends(require_operator)
-):
+async def add_bottleneck(data: dict = Body(...)):
     """
     Creates a new care-coordination bottleneck record from the JSON body
     sent by the client.
@@ -175,8 +172,6 @@ async def add_bottleneck(
     bottleneck = simulation_service.add_bottleneck(data)
     audit_logger.info(
         "add_bottleneck",
-        username=user.username,
-        role=user.role,
         action="add_bottleneck",
         bottleneck=data,
         outcome="success",
@@ -185,9 +180,7 @@ async def add_bottleneck(
 
 
 @router.delete("/care/bottlenecks/{bottleneck_id}")
-async def remove_bottleneck(
-    bottleneck_id: str, user: AuthenticatedUser = Depends(require_operator)
-):
+async def remove_bottleneck(bottleneck_id: str):
     """
     Deletes a care-coordination bottleneck by its unique ID.
 
@@ -203,8 +196,6 @@ async def remove_bottleneck(
     ok = simulation_service.remove_bottleneck(bottleneck_id)
     audit_logger.info(
         "remove_bottleneck",
-        username=user.username,
-        role=user.role,
         action="remove_bottleneck",
         bottleneck_id=bottleneck_id,
         outcome="success" if ok else "error: bottleneck not found",
