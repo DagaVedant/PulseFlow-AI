@@ -2,25 +2,49 @@
 PulseFlow AI — FastAPI Backend Entry Point
 Hospital Digital Twin Platform
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 
+import jwt
+import structlog
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
+from app.api.deps import decode_access_token
 from app.api.v1.router import api_router
+from app.api.v1.ws_schemas import WS_MESSAGE_SCHEMAS
+from app.core.rate_limit import limiter
 from app.services.service import manager, simulation_service
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
-    format="%(asctime)s | %(name)s | %(levelname)s | %(message)s",
+    format="%(message)s",
 )
+
+structlog.configure(
+    processors=[
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.add_log_level,
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(
+        getattr(logging, settings.LOG_LEVEL)
+    ),
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
 logger = logging.getLogger(__name__)
+audit_logger = structlog.get_logger("audit")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,12 +79,16 @@ async def lifespan(app: FastAPI):
     simulation_service.stop()
     logger.info("PulseFlow AI backend shutdown complete.")
 
+
 app = FastAPI(
     title="PulseFlow AI",
     description="AI-Powered Hospital Operating System — Digital Twin Platform",
     version=settings.VERSION,
     lifespan=lifespan,
 )
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,6 +99,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+
 
 @app.get("/health")
 async def health():
@@ -94,6 +123,7 @@ async def health():
         "websocket_connections": manager.connection_count,
     }
 
+
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """
@@ -113,8 +143,28 @@ async def websocket_endpoint(websocket: WebSocket):
     Every 30 seconds without a message: sends a {"type": "ping"} to keep
     the connection alive.
     On disconnect: calls manager.disconnect() to clean up.
+
+    Before accepting the connection: requires a "token" query param holding
+    a valid JWT issued by POST /api/v1/auth/login. If missing, invalid, or
+    expired, closes the connection with code 4401 and returns without ever
+    calling manager.connect(). The token's role claim is kept for the
+    lifetime of this connection and threaded into _handle_client_message()
+    to gate operator-only actions.
     """
-    await manager.connect(websocket)
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4401)
+        return
+    try:
+        user = decode_access_token(token)
+    except jwt.PyJWTError:
+        await websocket.close(code=4401)
+        return
+
+    accepted = await manager.connect(websocket)
+    if not accepted:
+        await websocket.close(code=4429)
+        return
 
     try:
         state = simulation_service.get_current_state()
@@ -126,8 +176,9 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=30.0)
                 import json
+
                 msg = json.loads(data)
-                await _handle_client_message(websocket, msg)
+                await _handle_client_message(websocket, msg, user.role, user.username)
             except asyncio.TimeoutError:
                 await manager.send_to(websocket, {"type": "ping"})
             except Exception:
@@ -138,10 +189,22 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         await manager.disconnect(websocket)
 
-async def _handle_client_message(websocket: WebSocket, msg: dict):
+
+OPERATOR_ONLY_MESSAGE_TYPES = {
+    "trigger_event",
+    "update_config",
+    "add_bottleneck",
+    "remove_bottleneck",
+}
+
+
+async def _handle_client_message(
+    websocket: WebSocket, msg: dict, role: str, username: str
+):
     """
-    Routes an incoming WebSocket message from a browser client to the correct
-    simulation action and sends back an acknowledgement to that same client.
+    Validates and routes an incoming WebSocket message from a browser client
+    to the correct simulation action, then sends back an acknowledgement to
+    that same client.
 
     Parameters:
         websocket: The WebSocket connection object for the specific client
@@ -150,52 +213,129 @@ async def _handle_client_message(websocket: WebSocket, msg: dict):
                    Expected to have a "type" key whose value is one of:
                    "trigger_event", "update_config", "request_optimization",
                    "add_bottleneck", "remove_bottleneck", or "request_state".
+        role:      The role ("viewer" or "operator") carried by this
+                    connection's JWT, resolved once at connect time.
+        username:  The username carried by this connection's JWT, used for
+                   audit logging of write actions.
 
     Returns nothing directly; instead it awaits a send back to the client
-    with a result or acknowledgement dict.
+    with a result, acknowledgement, or error dict. The message is validated
+    against its pydantic schema (app/api/v1/ws_schemas.py) before anything
+    else happens — an unrecognized type or a schema mismatch sends back
+    {"type": "error", ...} and never touches simulation_service. Messages
+    whose type is operator-only are rejected the same way if role isn't
+    "operator".
 
     Called from the websocket_endpoint handler whenever the client sends text.
     """
     msg_type = msg.get("type", "")
 
+    schema = WS_MESSAGE_SCHEMAS.get(msg_type)
+    if schema is None:
+        await manager.send_to(
+            websocket,
+            {"type": "error", "message": f"Unrecognized message type: {msg_type}"},
+        )
+        return
+
+    try:
+        validated = schema.model_validate(msg)
+    except Exception as exc:
+        await manager.send_to(
+            websocket,
+            {"type": "error", "message": f"Invalid message for type {msg_type}: {exc}"},
+        )
+        return
+
+    if msg_type in OPERATOR_ONLY_MESSAGE_TYPES and role != "operator":
+        await manager.send_to(
+            websocket, {"type": "error", "message": "operator role required"}
+        )
+        return
+
     if msg_type == "trigger_event":
-        event = msg.get("event_type", "")
-        params = msg.get("params", {})
-        simulation_service.trigger_event(event, params)
-        await manager.send_to(websocket, {
-            "type": "event_triggered",
-            "event": event,
-            "success": True,
-        })
+        simulation_service.trigger_event(validated.event_type, validated.params)
+        audit_logger.info(
+            "trigger_event",
+            username=username,
+            role=role,
+            action="trigger_event",
+            event_type=validated.event_type,
+            params=validated.params,
+            outcome="success",
+        )
+        await manager.send_to(
+            websocket,
+            {
+                "type": "event_triggered",
+                "event": validated.event_type,
+                "success": True,
+            },
+        )
 
     elif msg_type == "update_config":
-        updates = msg.get("config", {})
-        simulation_service.update_config(updates)
-        await manager.send_to(websocket, {
-            "type": "config_updated",
-            "success": True,
-        })
+        simulation_service.update_config(validated.config)
+        audit_logger.info(
+            "update_config",
+            username=username,
+            role=role,
+            action="update_config",
+            updates=validated.config,
+            outcome="success",
+        )
+        await manager.send_to(
+            websocket,
+            {
+                "type": "config_updated",
+                "success": True,
+            },
+        )
 
     elif msg_type == "request_optimization":
         result = await simulation_service.run_optimization()
-        await manager.send_to(websocket, {
-            "type": "optimization_result",
-            "result": result,
-        })
+        await manager.send_to(
+            websocket,
+            {
+                "type": "optimization_result",
+                "result": result,
+            },
+        )
 
     elif msg_type == "add_bottleneck":
-        bottleneck = simulation_service.add_bottleneck(msg.get("bottleneck", {}))
-        await manager.send_to(websocket, {
-            "type": "bottleneck_added",
-            "bottleneck": bottleneck,
-        })
+        bottleneck = simulation_service.add_bottleneck(validated.bottleneck)
+        audit_logger.info(
+            "add_bottleneck",
+            username=username,
+            role=role,
+            action="add_bottleneck",
+            bottleneck=validated.bottleneck,
+            outcome="success",
+        )
+        await manager.send_to(
+            websocket,
+            {
+                "type": "bottleneck_added",
+                "bottleneck": bottleneck,
+            },
+        )
 
     elif msg_type == "remove_bottleneck":
-        ok = simulation_service.remove_bottleneck(msg.get("bottleneck_id", ""))
-        await manager.send_to(websocket, {
-            "type": "bottleneck_removed",
-            "success": ok,
-        })
+        ok = simulation_service.remove_bottleneck(validated.bottleneck_id)
+        audit_logger.info(
+            "remove_bottleneck",
+            username=username,
+            role=role,
+            action="remove_bottleneck",
+            bottleneck_id=validated.bottleneck_id,
+            outcome="success" if ok else "error: bottleneck not found",
+        )
+        await manager.send_to(
+            websocket,
+            {
+                "type": "bottleneck_removed",
+                "success": ok,
+            },
+        )
 
     elif msg_type == "request_state":
         state = simulation_service.get_current_state()

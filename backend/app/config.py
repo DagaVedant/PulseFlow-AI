@@ -1,7 +1,9 @@
 """Centralized application settings loaded from environment variables via pydantic-settings."""
+
 from pydantic_settings import BaseSettings
 from typing import List, Optional
 import os
+
 
 class Settings(BaseSettings):
     APP_NAME: str = "PulseFlow AI"
@@ -18,7 +20,16 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "dev-secret-key-change-in-production"
     ANTHROPIC_API_KEY: Optional[str] = None
 
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:3001", "https://pulseflow-ai.vercel.app"]
+    AUTH_VIEWER_USERNAME: str = "viewer"
+    AUTH_VIEWER_PASSWORD: str = "viewer-dev-password"
+    AUTH_OPERATOR_USERNAME: str = "operator"
+    AUTH_OPERATOR_PASSWORD: str = "operator-dev-password"
+
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://pulseflow-ai.vercel.app",
+    ]
 
     SIMULATION_SPEED: int = 8
 
@@ -46,4 +57,19 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
 
+
 settings = Settings()
+
+if settings.ENVIRONMENT == "production":
+    if settings.SECRET_KEY == "dev-secret-key-change-in-production":
+        raise RuntimeError(
+            "SECRET_KEY must be set to a non-default value in production"
+        )
+    if settings.AUTH_VIEWER_PASSWORD == "viewer-dev-password":
+        raise RuntimeError(
+            "AUTH_VIEWER_PASSWORD must be set to a non-default value in production"
+        )
+    if settings.AUTH_OPERATOR_PASSWORD == "operator-dev-password":
+        raise RuntimeError(
+            "AUTH_OPERATOR_PASSWORD must be set to a non-default value in production"
+        )

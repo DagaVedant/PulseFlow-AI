@@ -1,15 +1,21 @@
 """Simulation control API endpoints."""
-from fastapi import APIRouter, HTTPException
+
+import structlog
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
 from app.services.service import simulation_service
+from app.api.deps import AuthenticatedUser, require_operator
 
 router = APIRouter(prefix="/simulation", tags=["simulation"])
+audit_logger = structlog.get_logger("audit")
+
 
 class EventRequest(BaseModel):
     event_type: str
     params: Optional[dict] = None
+
 
 class ConfigUpdateRequest(BaseModel):
     arrival_rate: Optional[float] = None
@@ -27,6 +33,7 @@ class ConfigUpdateRequest(BaseModel):
     ward_doctors: Optional[int] = None
     ward_nurses: Optional[int] = None
     simulation_speed: Optional[int] = None
+
 
 @router.get("/state")
 async def get_simulation_state():
@@ -46,6 +53,7 @@ async def get_simulation_state():
         raise HTTPException(status_code=503, detail="Simulation not running")
     return state
 
+
 @router.get("/metrics/history")
 async def get_metrics_history(minutes: int = 60):
     """
@@ -63,8 +71,11 @@ async def get_metrics_history(minutes: int = 60):
     """
     return simulation_service.get_metrics_history(min(minutes, 1440))
 
+
 @router.post("/events/trigger")
-async def trigger_event(request: EventRequest):
+async def trigger_event(
+    request: EventRequest, user: AuthenticatedUser = Depends(require_operator)
+):
     """
     Fires a named simulation event that changes patient arrival rates or
     disables resources, simulating real-world emergencies or equipment
@@ -84,18 +95,46 @@ async def trigger_event(request: EventRequest):
     REST endpoint: POST /api/v1/simulation/events/trigger
     """
     allowed_events = {
-        "flu_outbreak", "ct_failure", "mri_failure", "lab_slowdown",
-        "mass_casualty", "heatwave", "covid_surge", "staff_shortage",
+        "flu_outbreak",
+        "ct_failure",
+        "mri_failure",
+        "lab_slowdown",
+        "mass_casualty",
+        "heatwave",
+        "covid_surge",
+        "staff_shortage",
         "clear_event",
     }
     if request.event_type not in allowed_events:
-        raise HTTPException(status_code=400, detail=f"Unknown event type: {request.event_type}")
+        audit_logger.info(
+            "trigger_event",
+            username=user.username,
+            role=user.role,
+            action="trigger_event",
+            event_type=request.event_type,
+            outcome=f"error: unknown event type {request.event_type}",
+        )
+        raise HTTPException(
+            status_code=400, detail=f"Unknown event type: {request.event_type}"
+        )
 
     simulation_service.trigger_event(request.event_type, request.params)
+    audit_logger.info(
+        "trigger_event",
+        username=user.username,
+        role=user.role,
+        action="trigger_event",
+        event_type=request.event_type,
+        params=request.params,
+        outcome="success",
+    )
     return {"success": True, "event": request.event_type}
 
+
 @router.post("/config/update")
-async def update_config(request: ConfigUpdateRequest):
+async def update_config(
+    request: ConfigUpdateRequest, user: AuthenticatedUser = Depends(require_operator)
+):
     """
     Applies a partial configuration update to the running simulation without
     restarting it, changing only the fields that are included in the request.
@@ -114,10 +153,19 @@ async def update_config(request: ConfigUpdateRequest):
     """
     updates = {k: v for k, v in request.model_dump().items() if v is not None}
     simulation_service.update_config(updates)
+    audit_logger.info(
+        "update_config",
+        username=user.username,
+        role=user.role,
+        action="update_config",
+        updates=updates,
+        outcome="success",
+    )
     return {"success": True, "updated": list(updates.keys())}
 
+
 @router.post("/reset")
-async def reset_simulation():
+async def reset_simulation(user: AuthenticatedUser = Depends(require_operator)):
     """
     Stops the current simulation and starts a completely fresh one with
     default settings, erasing all patients, active events, bottlenecks,
@@ -131,7 +179,15 @@ async def reset_simulation():
     Called from the "Reset Simulation" button on the Sandbox page.
     """
     simulation_service.reset()
+    audit_logger.info(
+        "reset_simulation",
+        username=user.username,
+        role=user.role,
+        action="reset_simulation",
+        outcome="success",
+    )
     return {"success": True}
+
 
 @router.get("/forecast")
 async def get_forecast(horizon_minutes: int = 60):
@@ -151,6 +207,5 @@ async def get_forecast(horizon_minutes: int = 60):
     """
     forecasts = simulation_service.get_forecast(horizon_minutes)
     return {
-        k: v.to_dict() if hasattr(v, "to_dict") else v
-        for k, v in forecasts.items()
+        k: v.to_dict() if hasattr(v, "to_dict") else v for k, v in forecasts.items()
     }

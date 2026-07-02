@@ -13,6 +13,14 @@ services:
         value: INFO
       - key: SECRET_KEY
         generateValue: true
+      - key: AUTH_VIEWER_USERNAME
+        sync: false
+      - key: AUTH_VIEWER_PASSWORD
+        sync: false
+      - key: AUTH_OPERATOR_USERNAME
+        sync: false
+      - key: AUTH_OPERATOR_PASSWORD
+        sync: false
       - key: CORS_ORIGINS
         value: '["https://pulseflow-ai.vercel.app","https://*.vercel.app"]'
       - key: ANTHROPIC_API_KEY

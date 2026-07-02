@@ -1,9 +1,12 @@
 """AI and care coordination API — copilot analysis, optimization, shift reports, specialists, and constraints."""
 
-from fastapi import APIRouter, HTTPException, Body
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Body
 from app.services.service import simulation_service
+from app.api.deps import AuthenticatedUser, require_operator
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+audit_logger = structlog.get_logger("audit")
 
 
 @router.get("/analysis")
@@ -154,7 +157,9 @@ async def list_bottlenecks():
 
 
 @router.post("/care/bottlenecks")
-async def add_bottleneck(data: dict = Body(...)):
+async def add_bottleneck(
+    data: dict = Body(...), user: AuthenticatedUser = Depends(require_operator)
+):
     """
     Creates a new care-coordination bottleneck record from the JSON body
     sent by the client.
@@ -167,11 +172,22 @@ async def add_bottleneck(data: dict = Body(...)):
 
     REST endpoint: POST /api/v1/ai/care/bottlenecks
     """
-    return simulation_service.add_bottleneck(data)
+    bottleneck = simulation_service.add_bottleneck(data)
+    audit_logger.info(
+        "add_bottleneck",
+        username=user.username,
+        role=user.role,
+        action="add_bottleneck",
+        bottleneck=data,
+        outcome="success",
+    )
+    return bottleneck
 
 
 @router.delete("/care/bottlenecks/{bottleneck_id}")
-async def remove_bottleneck(bottleneck_id: str):
+async def remove_bottleneck(
+    bottleneck_id: str, user: AuthenticatedUser = Depends(require_operator)
+):
     """
     Deletes a care-coordination bottleneck by its unique ID.
 
@@ -185,6 +201,14 @@ async def remove_bottleneck(bottleneck_id: str):
     REST endpoint: DELETE /api/v1/ai/care/bottlenecks/{bottleneck_id}
     """
     ok = simulation_service.remove_bottleneck(bottleneck_id)
+    audit_logger.info(
+        "remove_bottleneck",
+        username=user.username,
+        role=user.role,
+        action="remove_bottleneck",
+        bottleneck_id=bottleneck_id,
+        outcome="success" if ok else "error: bottleneck not found",
+    )
     if not ok:
         raise HTTPException(status_code=404, detail="Bottleneck not found")
     return {"removed": bottleneck_id}

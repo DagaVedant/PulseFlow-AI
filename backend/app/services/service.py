@@ -2,19 +2,24 @@
 PulseFlow AI — Service Layer
 Consolidates WebSocket connection management and simulation orchestration.
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
+from collections import defaultdict
 from typing import Dict, Optional, Set
 
 from fastapi import WebSocket
 
 from app.core.simulation.engine import HospitalSimulation, SimulationConfig
 from app.core.analytics import (
-    HospitalOptimizer, build_optimization_input_from_state,
-    HospitalForecaster, AICopilot, CareCoordinator,
+    HospitalOptimizer,
+    build_optimization_input_from_state,
+    HospitalForecaster,
+    AICopilot,
+    CareCoordinator,
 )
 from app.config import settings
 
@@ -36,26 +41,39 @@ class ConnectionManager:
         `manager` singleton is created at import time.
         """
         self.active_connections: Set[WebSocket] = set()
+        self._connections_by_ip: Dict[str, Set[WebSocket]] = defaultdict(set)
         self._lock = asyncio.Lock()
 
-    async def connect(self, websocket: WebSocket):
+    MAX_CONNECTIONS_PER_IP = 5
+
+    async def connect(self, websocket: WebSocket) -> bool:
         """
         Accepts an incoming WebSocket handshake and adds the connection to
-        the active pool so it will receive future broadcasts.
+        the active pool so it will receive future broadcasts, unless the
+        client's IP already has MAX_CONNECTIONS_PER_IP concurrent connections.
 
         Parameters:
             websocket: The WebSocket object provided by FastAPI when a new
                        client connects to the /ws endpoint.
 
-        Returns nothing; logs the new total connection count.
+        Returns True if the connection was accepted, or False if it was
+        rejected for exceeding the per-IP connection cap (in which case the
+        handshake is never accepted).
 
         Called from main.py's websocket_endpoint when a browser opens a
         WebSocket connection.
         """
+        client_ip = websocket.client.host if websocket.client else "unknown"
+        async with self._lock:
+            if len(self._connections_by_ip[client_ip]) >= self.MAX_CONNECTIONS_PER_IP:
+                return False
+
         await websocket.accept()
         async with self._lock:
             self.active_connections.add(websocket)
+            self._connections_by_ip[client_ip].add(websocket)
         logger.info(f"WebSocket connected. Total: {len(self.active_connections)}")
+        return True
 
     async def disconnect(self, websocket: WebSocket):
         """
@@ -69,8 +87,12 @@ class ConnectionManager:
 
         Called from the finally block of main.py's websocket_endpoint.
         """
+        client_ip = websocket.client.host if websocket.client else "unknown"
         async with self._lock:
             self.active_connections.discard(websocket)
+            self._connections_by_ip[client_ip].discard(websocket)
+            if not self._connections_by_ip[client_ip]:
+                del self._connections_by_ip[client_ip]
         logger.info(f"WebSocket disconnected. Total: {len(self.active_connections)}")
 
     async def broadcast(self, data: dict):
@@ -156,12 +178,20 @@ def _make_config() -> SimulationConfig:
     return SimulationConfig(
         arrival_rate=settings.BASE_ARRIVAL_RATE,
         simulation_speed=settings.SIMULATION_SPEED,
-        er_beds=settings.ER_BEDS, er_doctors=settings.ER_DOCTORS, er_nurses=settings.ER_NURSES,
-        lab_technicians=settings.LAB_TECHNICIANS, lab_analyzers=settings.LAB_ANALYZERS,
-        imaging_ct=settings.IMAGING_CT_SCANNERS, imaging_mri=settings.IMAGING_MRI_MACHINES,
+        er_beds=settings.ER_BEDS,
+        er_doctors=settings.ER_DOCTORS,
+        er_nurses=settings.ER_NURSES,
+        lab_technicians=settings.LAB_TECHNICIANS,
+        lab_analyzers=settings.LAB_ANALYZERS,
+        imaging_ct=settings.IMAGING_CT_SCANNERS,
+        imaging_mri=settings.IMAGING_MRI_MACHINES,
         imaging_xray=settings.IMAGING_XRAY_ROOMS,
-        icu_beds=settings.ICU_BEDS, icu_doctors=settings.ICU_DOCTORS, icu_nurses=settings.ICU_NURSES,
-        ward_beds=settings.WARD_BEDS, ward_doctors=settings.WARD_DOCTORS, ward_nurses=settings.WARD_NURSES,
+        icu_beds=settings.ICU_BEDS,
+        icu_doctors=settings.ICU_DOCTORS,
+        icu_nurses=settings.ICU_NURSES,
+        ward_beds=settings.WARD_BEDS,
+        ward_doctors=settings.WARD_DOCTORS,
+        ward_nurses=settings.WARD_NURSES,
         discharge_staff=settings.DISCHARGE_STAFF,
     )
 
@@ -181,11 +211,13 @@ class SimulationService:
         `simulation_service` singleton is created at import time.
         """
         self.simulation = HospitalSimulation(_make_config())
-        self.optimizer  = HospitalOptimizer()
+        self.optimizer = HospitalOptimizer()
         self.forecaster = HospitalForecaster()
-        self.copilot    = AICopilot(base_url=settings.OLLAMA_BASE_URL, model=settings.OLLAMA_MODEL)
-        self.care       = CareCoordinator()
-        self._running   = False
+        self.copilot = AICopilot(
+            base_url=settings.OLLAMA_BASE_URL, model=settings.OLLAMA_MODEL
+        )
+        self.care = CareCoordinator()
+        self._running = False
 
     def start(self):
         """
@@ -266,9 +298,11 @@ class SimulationService:
         state = self.simulation.get_hospital_state()
         if not state:
             return {}
-        inp    = build_optimization_input_from_state(state)
+        inp = build_optimization_input_from_state(state)
         result = self.optimizer.optimize(inp).to_dict()
-        result["ai_narrative"] = await self.copilot.generate_intervention_narrative(result, state)
+        result["ai_narrative"] = await self.copilot.generate_intervention_narrative(
+            result, state
+        )
         return result
 
     async def get_copilot_analysis(self) -> dict:
@@ -290,10 +324,12 @@ class SimulationService:
         state = self.simulation.get_hospital_state()
         if not state:
             return {}
-        inp        = build_optimization_input_from_state(state)
+        inp = build_optimization_input_from_state(state)
         opt_result = self.optimizer.optimize(inp).to_dict()
-        history    = self.simulation.get_metrics_history(60)
-        bottleneck_preds = self.forecaster.generate_bottleneck_predictions(state, history)
+        history = self.simulation.get_metrics_history(60)
+        bottleneck_preds = self.forecaster.generate_bottleneck_predictions(
+            state, history
+        )
 
         narrative, explanation = await asyncio.gather(
             self.copilot.generate_intervention_narrative(opt_result, state),
@@ -303,7 +339,9 @@ class SimulationService:
         if isinstance(narrative, Exception):
             narrative = self.copilot._fallback_intervention_narrative(opt_result)
         if isinstance(explanation, Exception):
-            explanation = self.copilot._fallback_bottleneck_explanation(state, opt_result, "")
+            explanation = self.copilot._fallback_bottleneck_explanation(
+                state, opt_result, ""
+            )
 
         opt_result["ai_narrative"] = narrative
         forecast = self.simulation.get_forecast(horizon_minutes=180)
