@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
     REDIS_URL: Optional[str] = None
 
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    SECRET_KEY: str = "pulseflow-demo-key"
     ANTHROPIC_API_KEY: Optional[str] = None
 
     CORS_ORIGINS: List[str] = [
@@ -56,7 +56,7 @@ class Settings(BaseSettings):
 settings = Settings()
 
 if settings.ENVIRONMENT == "production":
-    if settings.SECRET_KEY == "dev-secret-key-change-in-production":
+    if settings.SECRET_KEY == "pulseflow-demo-key":
         raise RuntimeError(
             "SECRET_KEY must be set to a non-default value in production"
         )
