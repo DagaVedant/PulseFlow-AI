@@ -6,7 +6,9 @@ Simulates a whole hospital in real time and layers AI on top of it, patient flow
 
 ## Try it
 
-**[Demo Link](https://pulse-flow-d1g7ub4bc-dagavedants-projects.vercel.app/command-center)**, not live yet. `render.yaml` for the backend and the CORS config already pointing at `pulseflow-ai.vercel.app` are both sitting there, so it's basically wired up, just needs an actual push and this link filled in.
+**[Demo Link](https://pulse-flow-d1g7ub4bc-dagavedants-projects.vercel.app/command-center)** 
+
+`render.yaml` for the backend and being fed to `pulseflow-ai.vercel.app`
 
 ## Quick start
 
