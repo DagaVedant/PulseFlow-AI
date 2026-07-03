@@ -30,7 +30,7 @@ export function AutoLogoutTimer() {
 
   return (
     <div
-      className="flex items-center gap-2 border rounded px-3 py-1.5 border-clinical-border bg-clinical-surface"
+      className="flex items-center gap-2 bg-[rgba(255,255,255,0.5)] dark:bg-[rgba(42,40,34,0.5)] backdrop-blur-xl rounded-2xl px-3.5 py-2"
       role="timer"
       aria-live="off"
     >
@@ -38,9 +38,7 @@ export function AutoLogoutTimer() {
         className={`w-4 h-4 ${expiringSoon ? "text-crit-ink" : "text-muted"}`}
         aria-hidden="true"
       />
-      <span className="text-xs font-medium text-muted uppercase tracking-wide">
-        Auto-logout
-      </span>
+      <span className="text-xs text-muted">Auto-logout</span>
       <span
         className={`text-sm font-mono tabular-nums font-semibold ${
           expiringSoon ? "text-crit-ink" : "text-ink"

@@ -10,19 +10,15 @@ export function TopBar() {
   const displayTime = Math.floor(simTime / 30) * 30;
 
   return (
-    <div className="h-14 flex items-center justify-between gap-4 px-4 flex-shrink-0 bg-clinical-surface border-b border-clinical-border">
-      <div className="flex items-center gap-2 border rounded px-3 py-1.5 border-clinical-border bg-clinical-canvas">
-        <span className="text-xs font-medium uppercase tracking-wide text-muted">
-          Sim Time
-        </span>
+    <div className="h-16 flex items-center justify-end gap-3 px-5 flex-shrink-0 bg-transparent">
+      <div className="flex items-center gap-2 bg-[rgba(255,255,255,0.5)] dark:bg-[rgba(42,40,34,0.5)] backdrop-blur-xl rounded-2xl px-3.5 py-2">
+        <span className="text-xs text-muted">Sim</span>
         <span className="text-sm font-mono tabular-nums font-semibold text-ink">
           {formatSimTime(displayTime)}
         </span>
       </div>
-      <div className="flex items-center gap-3">
-        <ThemeToggle />
-        <AutoLogoutTimer />
-      </div>
+      <ThemeToggle />
+      <AutoLogoutTimer />
     </div>
   );
 }

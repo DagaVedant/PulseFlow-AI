@@ -29,30 +29,30 @@ export function formatPercent(value: number, decimals = 0): string {
 export function statusColor(status: DepartmentStatus): string {
   return (
     {
-      healthy: "#059669",
-      warning: "#D97706",
-      critical: "#DC2626",
-    }[status] ?? "#475569"
+      healthy: "#1F6F4A",
+      warning: "#D89A3E",
+      critical: "#C4603A",
+    }[status] ?? "#6B6455"
   );
 }
 
 export function statusBg(status: DepartmentStatus): string {
   return (
     {
-      healthy: "#ECFDF5",
-      warning: "#FFFBEB",
-      critical: "#FEF2F2",
-    }[status] ?? "#F1F5F9"
+      healthy: "#DCEEE3",
+      warning: "#F7EEDC",
+      critical: "#FBE4DA",
+    }[status] ?? "#F7F5EF"
   );
 }
 
 export function statusBorder(status: DepartmentStatus): string {
   return (
     {
-      healthy: "#A7F3D0",
-      warning: "#FDE68A",
-      critical: "#FECACA",
-    }[status] ?? "#CBD5E1"
+      healthy: "#A8D4BC",
+      warning: "#EAC98A",
+      critical: "#E8A987",
+    }[status] ?? "#E5E2D8"
   );
 }
 

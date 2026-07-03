@@ -52,7 +52,7 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["Inter", "Roboto", "system-ui", "sans-serif"],
-        display: ["Space Grotesk", "Inter", "system-ui", "sans-serif"],
+        display: ["Bricolage Grotesque", "Inter", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "Roboto Mono", "monospace"],
       },
     },

@@ -1,227 +1,95 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
-  Activity,
-  Network,
+  LayoutGrid,
+  Share2,
   Users,
+  Stethoscope,
   Brain,
   FlaskConical,
-  ChevronRight,
-  Play,
   ClipboardList,
-  Stethoscope,
-  RotateCcw,
+  Play,
 } from "lucide-react";
-import { useSimulationStore } from "@/store/simulationStore";
-import { useDemoStore } from "@/store/demoStore";
 import { cn } from "@/lib/utils";
-import { api } from "@/lib/api";
-import { useState } from "react";
 
 const NAV_ITEMS = [
-  {
-    href: "/command-center",
-    icon: Activity,
-    label: "Command Center",
-    sublabel: "Hospital floor plan",
-  },
-  {
-    href: "/digital-twin",
-    icon: Network,
-    label: "Digital Twin",
-    sublabel: "System network",
-  },
-  {
-    href: "/patient-intel",
-    icon: Users,
-    label: "Patient Intel",
-    sublabel: "Patient tracking",
-  },
-  {
-    href: "/operations",
-    icon: Stethoscope,
-    label: "Operations Hub",
-    sublabel: "Specialists & constraints",
-  },
-  {
-    href: "/copilot",
-    icon: Brain,
-    label: "AI Copilot",
-    sublabel: "Operations AI",
-  },
-  {
-    href: "/sandbox",
-    icon: FlaskConical,
-    label: "Sandbox",
-    sublabel: "What-if scenarios",
-  },
-  {
-    href: "/shift-report",
-    icon: ClipboardList,
-    label: "Shift Report",
-    sublabel: "Handoff summary",
-  },
-  {
-    href: "/demo",
-    icon: Play,
-    label: "Auto Demo",
-    sublabel: "1-click walkthrough",
-    accent: true,
-  },
+  { href: "/command-center", icon: LayoutGrid, label: "Command center" },
+  { href: "/digital-twin", icon: Share2, label: "Digital twin" },
+  { href: "/patient-intel", icon: Users, label: "Patient intel" },
+  { href: "/operations", icon: Stethoscope, label: "Operations hub" },
+  { href: "/copilot", icon: Brain, label: "AI copilot" },
+  { href: "/sandbox", icon: FlaskConical, label: "Sandbox" },
+  { href: "/shift-report", icon: ClipboardList, label: "Shift report" },
+  { href: "/demo", icon: Play, label: "Auto demo" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { criticalAlerts, hospitalState } = useSimulationStore();
-  const { isRunning, currentStep } = useDemoStore();
-  const activePatients = hospitalState?.metrics?.active_patients ?? 0;
-  const alertCount = criticalAlerts.length;
-  const [resetting, setResetting] = useState(false);
-  const [resetDone, setResetDone] = useState(false);
+  const FULL = "PulseFlow AI";
+  const [typed, setTyped] = useState("");
 
-  const handleReset = async () => {
-    if (resetting) return;
-    setResetting(true);
-    try {
-      await api.resetSimulation();
-      setResetDone(true);
-      setTimeout(() => setResetDone(false), 2000);
-    } catch {
-    } finally {
-      setResetting(false);
-    }
-  };
+  useEffect(() => {
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setTyped(FULL.slice(0, i));
+      if (i >= FULL.length) clearInterval(id);
+    }, 140);
+    return () => clearInterval(id);
+  }, []);
 
   return (
-    <div className="w-72 flex-shrink-0 flex flex-col h-full bg-clinical-surface border-r border-clinical-border">
-      <div className="px-4 py-4 border-b border-clinical-border">
-        <img
-          src="/logo-full.png"
-          alt="PulseFlow AI"
-          className="w-full object-contain"
-        />
-      </div>
+    <aside className="sticky top-0 relative h-screen w-[210px] shrink-0 flex flex-col items-center pt-10 pb-8">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(255,255,255,0.62), rgba(255,255,255,0.34))",
+          backdropFilter: "blur(40px) saturate(180%)",
+          WebkitBackdropFilter: "blur(40px) saturate(180%)",
+          boxShadow:
+            "inset -1px 0 0 rgba(255,255,255,0.35), 1px 0 30px -10px rgba(4,18,54,0.25)",
+        }}
+      />
+      <div className="pointer-events-none absolute top-8 bottom-8 right-0 w-px bg-gradient-to-b from-transparent via-white/50 to-transparent" />
 
-      <div className="px-4 py-4 border-b border-clinical-border">
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded border border-clinical-border bg-clinical-canvas px-3 py-2">
-            <div className="text-xs font-medium uppercase tracking-wide text-muted mb-1">
-              Patients
-            </div>
-            <div className="text-lg font-mono font-bold tabular-nums text-ink">
-              {activePatients}
-            </div>
-          </div>
-          <div
-            className={cn(
-              "rounded border px-3 py-2",
-              alertCount > 0
-                ? "border-crit-line bg-crit-soft"
-                : "border-clinical-border bg-clinical-canvas",
-            )}
-          >
-            <div className="text-xs font-medium uppercase tracking-wide text-muted mb-1">
-              Alerts
-            </div>
-            <div
-              className={cn(
-                "text-lg font-mono font-bold tabular-nums",
-                alertCount > 0 ? "text-crit-ink" : "text-faint",
-              )}
-            >
-              {alertCount > 0 ? alertCount : "—"}
-            </div>
-          </div>
+      <div className="relative z-10 px-5 mb-10 self-start">
+        <div className="text-[22px] font-extrabold tracking-tight text-neutral-800 whitespace-nowrap">
+          {typed}
+          <span className="ml-[2px] inline-block h-[18px] w-[3px] translate-y-[2px] rounded-sm bg-emerald-600 animate-pulse align-middle" />
         </div>
       </div>
 
-      <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map((item, idx) => {
-          const Icon = item.icon;
-          const isActive =
-            pathname === item.href || pathname.startsWith(item.href + "/");
-          const isDemo = (item as any).accent;
-          const isDemoStep = isRunning && currentStep === idx;
-
+      <nav className="relative z-10 flex flex-col items-center gap-5">
+        {NAV_ITEMS.map(({ icon: Icon, href, label }) => {
+          const isActive = pathname === href || pathname.startsWith(href + "/");
           return (
-            <Link key={item.href} href={item.href}>
-              <div
+            <Link key={href} href={href} title={label}>
+              <button
+                type="button"
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2 rounded group cursor-pointer border-l-[3px]",
+                  "group grid h-[62px] w-[62px] place-items-center rounded-[22px] transition-all duration-300",
                   isActive
-                    ? "bg-elevated border-accent"
-                    : "border-transparent hover:bg-elevated",
-                  isDemoStep && "bg-elevated",
+                    ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-[0_14px_28px_-8px_rgba(6,95,70,0.55),inset_0_1px_0_rgba(255,255,255,0.4)]"
+                    : "glass-soft text-neutral-500 hover:text-neutral-800 hover:-translate-y-0.5",
                 )}
               >
-                <div
-                  className={cn(
-                    "w-9 h-9 rounded flex items-center justify-center flex-shrink-0",
-                    isActive ? "bg-elevated" : "bg-elevated",
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "w-5 h-5",
-                      isActive ? "text-accent" : "text-muted",
-                    )}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div
-                    className={cn(
-                      "text-sm font-semibold leading-tight",
-                      isActive ? "text-ink" : "text-ink",
-                    )}
-                  >
-                    {item.label}
-                    {isDemo && (
-                      <span className="ml-2 text-xs font-medium uppercase text-muted">
-                        Demo
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted mt-0.5">
-                    {item.sublabel}
-                  </div>
-                </div>
-                {isActive && (
-                  <ChevronRight className="w-4 h-4 flex-shrink-0 text-accent" />
-                )}
-                {isDemoStep && (
-                  <span className="text-xs font-bold uppercase text-ink flex-shrink-0">
-                    Active
-                  </span>
-                )}
-              </div>
+                <Icon
+                  size={26}
+                  strokeWidth={2}
+                  className="transition-transform duration-300 group-hover:scale-110"
+                />
+              </button>
             </Link>
           );
         })}
       </nav>
 
-      <div className="px-4 py-4 space-y-3 border-t border-clinical-border">
-        <button
-          onClick={handleReset}
-          disabled={resetting}
-          className={cn(
-            "w-full min-h-11 flex items-center justify-center gap-2 rounded text-sm font-semibold border disabled:opacity-40",
-            resetDone
-              ? "border-safe-line bg-safe-soft text-safe-ink"
-              : "border-clinical-border bg-clinical-surface text-ink hover:bg-elevated",
-          )}
-        >
-          <RotateCcw className={cn("w-4 h-4", resetting && "spinner")} />
-          {resetDone
-            ? "Reset Complete"
-            : resetting
-              ? "Resetting…"
-              : "Reset Simulation"}
-        </button>
-        <div className="text-xs font-mono text-center text-faint">
-          PULSEFLOW AI v1.0
-        </div>
+      <div className="relative z-10 mt-auto text-[11px] font-medium tracking-wide text-neutral-400">
+        v1.0
       </div>
-    </div>
+    </aside>
   );
 }

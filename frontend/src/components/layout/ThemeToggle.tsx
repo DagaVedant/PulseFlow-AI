@@ -24,7 +24,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-pressed={dark}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
-      className="h-11 w-11 flex items-center justify-center rounded border border-clinical-border bg-clinical-canvas text-muted hover:text-ink hover:bg-elevated transition-colors"
+      className="h-10 w-10 flex items-center justify-center rounded-2xl bg-[rgba(255,255,255,0.5)] dark:bg-[rgba(42,40,34,0.5)] backdrop-blur-xl text-muted hover:text-ink transition-colors"
     >
       {dark ? (
         <Sun className="w-5 h-5" aria-hidden="true" />
