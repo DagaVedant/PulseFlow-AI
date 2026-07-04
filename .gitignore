@@ -59,8 +59,11 @@ Desktop.ini
 logs/
 
 .claude/
-/.ruff_cache
+.ruff_cache/
 CLAUDE.md
 DESIGN.md
 
+coverage/
+.turbo/
+*.tmp
 
