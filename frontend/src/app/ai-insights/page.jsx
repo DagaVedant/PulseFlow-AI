@@ -146,13 +146,17 @@ export default function AiInsights() {
           {columns.map((c, i) => (
             <div
               key={i}
-              className="-mt-[9%] h-[118%] rounded-[140px]"
-              style={{ flex: c.flex, background: c.bg }}
+              className="-mt-[9%] h-[118%] rounded-[140px] wallpaper-col"
+              style={{
+                flex: c.flex,
+                background: c.bg,
+                animationDelay: `${i * 0.6}s`,
+              }}
             />
           ))}
         </div>
         <div
-          className="absolute rounded-[120px]"
+          className="absolute rounded-[120px] wallpaper-capsule-a"
           style={{
             width: 130,
             height: 230,
@@ -163,7 +167,7 @@ export default function AiInsights() {
           }}
         />
         <div
-          className="absolute rounded-full"
+          className="absolute rounded-full wallpaper-capsule-b"
           style={{
             width: 150,
             height: 190,
