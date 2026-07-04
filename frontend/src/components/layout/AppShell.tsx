@@ -4,7 +4,14 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
 import { CriticalAlertBanner } from "@/components/layout/CriticalAlertBanner";
 
-const STANDALONE_ROUTES = ["/command-center", "/patient-flow"];
+const STANDALONE_ROUTES = [
+  "/command-center",
+  "/patient-flow",
+  "/staffing",
+  "/clinical",
+  "/ai-insights",
+  "/labs",
+];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
