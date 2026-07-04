@@ -1,14 +1,9 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { AlertTriangle, Radio } from "lucide-react";
 import Sidebar from "@/components/liquid-glass/Sidebar";
-import {
-  initialState,
-  floorPlan,
-  departments,
-  alertPatient,
-  feedMessages,
-} from "@/components/liquid-glass/mock";
+import { useSimulationStore } from "@/store/simulationStore";
+import { formatSimTime, departmentLabel } from "@/lib/utils";
 
 const cellColor = {
   green: "bg-emerald-600",
@@ -22,6 +17,64 @@ const barColor = {
   amber: "from-amber-400 to-amber-500",
   red: "from-orange-500 to-red-500",
 };
+
+function computeHospitalScore(metrics) {
+  if (!metrics) return { score: 50, label: "stable" };
+  const stress =
+    metrics.bed_utilization * 0.3 +
+    metrics.icu_utilization * 0.3 +
+    metrics.staff_utilization * 0.2 +
+    Math.min(1, metrics.critical_patients / 40) * 0.2;
+  const score = Math.round(Math.max(0, Math.min(100, (1 - stress) * 100)));
+  const label =
+    score < 35
+      ? "critical"
+      : score < 55
+        ? "strained"
+        : score < 75
+          ? "stable"
+          : "optimal";
+  return { score, label };
+}
+
+function buildFloorPlan(departments) {
+  if (!departments) return [];
+  return ["er", "labs", "imaging", "icu", "ward"]
+    .filter((k) => departments[k])
+    .map((k) => {
+      const d = departments[k];
+      const count = Math.max(
+        2,
+        Math.min(4, Math.round((d.capacity || 20) / 30)),
+      );
+      const tone =
+        d.occupancy >= 0.85 ? "orange" : d.occupancy >= 0.6 ? "amber" : "green";
+      const cells = Array.from({ length: count }, (_, i) =>
+        i === count - 1 && d.beds_available > 0 ? "muted" : tone,
+      );
+      return { name: departmentLabel(k), cells };
+    });
+}
+
+function buildDepartmentBars(departments) {
+  if (!departments) return [];
+  return ["er", "labs", "imaging", "icu", "ward"]
+    .filter((k) => departments[k])
+    .map((k) => {
+      const d = departments[k];
+      const tone =
+        d.status === "critical"
+          ? "red"
+          : d.status === "warning"
+            ? "amber"
+            : "green";
+      return {
+        name: departmentLabel(k),
+        value: Math.round(d.occupancy * 100),
+        tone,
+      };
+    });
+}
 
 function StatCard({
   label,
@@ -106,47 +159,14 @@ function ScoreRing({ score, label }) {
 }
 
 export default function CommandCenter() {
-  const [active, setActive] = useState("dashboard");
-  const [s, setS] = useState(initialState);
-  const [clock, setClock] = useState("09:05");
+  const { hospitalState, highRiskPatients } = useSimulationStore();
+  const metrics = hospitalState?.metrics;
   const [feedIdx, setFeedIdx] = useState(0);
 
-  // gentle live simulation
-  useEffect(() => {
-    const id = setInterval(() => {
-      setS((p) => {
-        const jitter = (v, d, min, max) =>
-          Math.min(
-            max,
-            Math.max(min, +(v + (Math.random() * 2 - 1) * d).toFixed(0)),
-          );
-        return {
-          ...p,
-          activePatients: jitter(p.activePatients, 3, 168, 192),
-          critical: jitter(p.critical, 1, 26, 34),
-          bedUtil: jitter(p.bedUtil, 2, 30, 42),
-          icuUtil: jitter(p.icuUtil, 2, 8, 18),
-          throughput: +(Math.random() * 1.4).toFixed(1),
-          diversion: jitter(p.diversion, 2, 18, 29),
-        };
-      });
-    }, 3200);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      const d = new Date();
-      setClock(
-        `${String(9 + (d.getMinutes() % 1)).padStart(2, "0")}:${String(
-          5 + (d.getSeconds() % 55),
-        )
-          .toString()
-          .padStart(2, "0")}`,
-      );
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+  const feedMessages = useMemo(() => {
+    const msgs = (hospitalState?.alerts ?? []).map((a) => a.message);
+    return msgs.length > 0 ? msgs : ["Waiting for live hospital data..."];
+  }, [hospitalState?.alerts]);
 
   useEffect(() => {
     const id = setInterval(
@@ -154,7 +174,49 @@ export default function CommandCenter() {
       4200,
     );
     return () => clearInterval(id);
-  }, []);
+  }, [feedMessages.length]);
+
+  const { score: hospitalScore, label: scoreLabel } =
+    computeHospitalScore(metrics);
+  const floorPlan = useMemo(
+    () => buildFloorPlan(hospitalState?.departments),
+    [hospitalState?.departments],
+  );
+  const departments = useMemo(
+    () => buildDepartmentBars(hospitalState?.departments),
+    [hospitalState?.departments],
+  );
+  const topRiskPatient = highRiskPatients?.[0];
+  const alertPatient = topRiskPatient
+    ? {
+        type: topRiskPatient.deterioration_alert
+          ? "DETERIORATION"
+          : topRiskPatient.sepsis_risk
+            ? "SEPSIS RISK"
+            : "HIGH RISK",
+        name: topRiskPatient.name,
+      }
+    : { type: "NO ALERTS", name: "All patients stable" };
+
+  const avgWaitHours = metrics
+    ? Math.round((metrics.avg_wait_time / 60) * 10) / 10
+    : 0;
+  const diversionPct = metrics
+    ? Math.round(
+        (metrics.diversion_risk ?? metrics.bed_utilization * 0.7) * 100,
+      )
+    : 0;
+  const costPerHr = metrics
+    ? Math.round(metrics.delay_cost_per_hour ?? metrics.active_patients * 25)
+    : 0;
+  const slaPct = metrics
+    ? Math.round(
+        metrics.sla_compliance != null
+          ? metrics.sla_compliance * 100
+          : 100 - (metrics.avg_wait_time / 180) * 100,
+      )
+    : 0;
+  const erQueue = hospitalState?.departments?.er?.queue_length ?? 0;
 
   const bgStyle = useMemo(
     () => ({
@@ -164,7 +226,6 @@ export default function CommandCenter() {
     [],
   );
 
-  // Apple iMac-style liquid glass capsule columns (generic recreation)
   const columns = useMemo(
     () => [
       {
@@ -209,7 +270,6 @@ export default function CommandCenter() {
 
   return (
     <div className="min-h-screen w-full flex overflow-hidden" style={bgStyle}>
-      {/* Apple-style liquid glass capsule wallpaper */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div
           className="absolute inset-0 flex gap-2 px-1"
@@ -223,7 +283,6 @@ export default function CommandCenter() {
             />
           ))}
         </div>
-        {/* floating center capsules */}
         <div
           className="absolute rounded-[120px]"
           style={{
@@ -246,7 +305,6 @@ export default function CommandCenter() {
             filter: "blur(7px)",
           }}
         />
-        {/* subtle sheen + darkening for depth */}
         <div
           className="absolute inset-0"
           style={{
@@ -258,18 +316,17 @@ export default function CommandCenter() {
       </div>
 
       <div className="relative z-10 flex w-full">
-        <Sidebar active={active} setActive={setActive} />
+        <Sidebar />
 
         <main className="flex-1 px-8 pb-10 pt-10 md:px-12 lg:px-16 max-w-[1600px]">
           <h1 className="cursive text-[52px] font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_18px_rgba(4,18,54,0.5)]">
             Hospital command center
           </h1>
 
-          {/* KPI row */}
           <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-12">
             <StatCard
               label="Active patients"
-              value={s.activePatients}
+              value={metrics?.active_patients ?? "—"}
               big
               className="lg:col-span-4 min-h-[200px]"
             />
@@ -286,39 +343,36 @@ export default function CommandCenter() {
                   Critical
                 </span>
                 <span className="mt-auto text-[64px] font-bold leading-[0.9] tracking-tight text-[#5c2b1c]">
-                  {s.critical}
+                  {metrics?.critical_patients ?? "—"}
                 </span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 lg:col-span-5">
               <StatCard
                 label="Avg wait"
-                value={`${s.avgWait}h`}
+                value={`${avgWaitHours}h`}
                 className="min-h-[92px]"
               />
               <StatCard
                 label="ICU util"
-                value={`${s.icuUtil}%`}
+                value={`${Math.round((metrics?.icu_utilization ?? 0) * 100)}%`}
                 className="min-h-[92px]"
                 tint
               />
               <StatCard
                 label="Bed util"
-                value={`${s.bedUtil}%`}
+                value={`${Math.round((metrics?.bed_utilization ?? 0) * 100)}%`}
                 className="min-h-[92px]"
               />
               <StatCard
                 label="Throughput"
-                value={`${s.throughput.toFixed(1)}/hr`}
+                value={`${(metrics?.throughput_per_hour ?? 0).toFixed(1)}/hr`}
                 className="min-h-[92px]"
                 tint
               />
             </div>
           </div>
 
-          {/* Peach tint overlay on ICU + Throughput handled via extra cards below is skipped; keep simple */}
-
-          {/* Diversion + score */}
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
             <div className="glass card-hover rounded-[26px] px-7 py-6 lg:col-span-9">
               <div className="flex items-center gap-3">
@@ -330,21 +384,21 @@ export default function CommandCenter() {
                   <div
                     className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-amber-400 to-amber-500"
                     style={{
-                      width: `${s.diversion}%`,
+                      width: `${diversionPct}%`,
                       transition: "width 0.8s cubic-bezier(0.22,1,0.36,1)",
                     }}
                   />
                 </div>
                 <span className="text-[15px] font-semibold text-neutral-700 tabular-nums">
-                  {s.diversion}%
+                  {diversionPct}%
                 </span>
                 <span className="text-neutral-300">·</span>
                 <span className="text-[15px] text-neutral-500 tabular-nums">
-                  ${s.costPerHr.toLocaleString()}/hr
+                  ${costPerHr.toLocaleString()}/hr
                 </span>
                 <span className="text-neutral-300">·</span>
                 <span className="text-[15px] text-neutral-500">
-                  {s.sla}% SLA
+                  {slaPct}% SLA
                 </span>
               </div>
             </div>
@@ -355,13 +409,11 @@ export default function CommandCenter() {
                   "linear-gradient(150deg, rgba(250,232,214,0.85), rgba(247,220,200,0.6))",
               }}
             >
-              <ScoreRing score={s.hospitalScore} label={s.scoreLabel} />
+              <ScoreRing score={hospitalScore} label={scoreLabel} />
             </div>
           </div>
 
-          {/* Bottom panels */}
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
-            {/* Floor plan */}
             <div className="glass card-hover rounded-[26px] p-7 lg:col-span-5">
               <h3 className="text-[20px] font-bold text-neutral-800">
                 Floor plan
@@ -382,10 +434,14 @@ export default function CommandCenter() {
                     </div>
                   </div>
                 ))}
+                {floorPlan.length === 0 && (
+                  <div className="text-[13px] text-neutral-500">
+                    Waiting for department data...
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Department status */}
             <div className="glass card-hover rounded-[26px] p-7 lg:col-span-4">
               <h3 className="text-[20px] font-bold text-neutral-800">
                 Department status
@@ -421,7 +477,6 @@ export default function CommandCenter() {
               </div>
             </div>
 
-            {/* Alerts */}
             <div className="glass card-hover rounded-[26px] p-7 lg:col-span-3">
               <div className="flex items-center justify-between">
                 <span className="text-[16px] font-bold text-red-500">
@@ -442,16 +497,17 @@ export default function CommandCenter() {
                 </div>
               </div>
               <div className="mt-4 text-[13px] text-neutral-400">
-                ER queue: {s.erQueue} waiting
+                ER queue: {erQueue} waiting
               </div>
             </div>
           </div>
 
-          {/* Live footer */}
           <div className="glass-soft mono mt-4 flex items-center gap-3 rounded-[22px] px-7 py-4 text-[13px] text-neutral-500">
             <Radio size={15} className="text-emerald-600 animate-pulse" />
             <span className="font-semibold text-neutral-600">LIVE</span>
-            <span>{clock}</span>
+            <span>
+              {hospitalState ? formatSimTime(hospitalState.sim_time) : "--:--"}
+            </span>
             <span className="text-neutral-300">·</span>
             <span key={feedIdx} className="tick animate-[fadeIn_0.5s_ease]">
               {feedMessages[feedIdx]}

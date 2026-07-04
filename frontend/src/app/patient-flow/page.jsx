@@ -2,15 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Radio } from "lucide-react";
 import Sidebar from "@/components/liquid-glass/Sidebar";
-import {
-  stations,
-  rates,
-  dischargeCount,
-  flowStats,
-  waitByStage,
-  stalled,
-  feedMessages,
-} from "@/components/liquid-glass/patientFlowMock";
+import { useSimulationStore } from "@/store/simulationStore";
+import { formatTime, formatSimTime, departmentLabel } from "@/lib/utils";
 
 const toneColor = {
   green: "#059669",
@@ -19,31 +12,44 @@ const toneColor = {
   coral: "#c0603f",
 };
 
-const toneText = {
-  green: "text-emerald-600",
-  amber: "text-amber-500",
-  red: "text-red-500",
-  coral: "text-[#c0603f]",
-};
+const CHAIN = ["er", "labs", "imaging", "icu", "ward"];
+const FLOW_KEYS = [
+  "registration_to_er",
+  "er_to_labs",
+  "labs_to_imaging",
+  "imaging_to_icu",
+  "icu_to_ward",
+];
+
+function buildStations(departments) {
+  if (!departments) return [];
+  return CHAIN.filter((k) => departments[k]).map((k) => {
+    const d = departments[k];
+    const tone =
+      d.occupancy >= 0.85 ? "red" : d.occupancy >= 0.6 ? "amber" : "green";
+    return {
+      name: departmentLabel(k),
+      count: d.current_patients,
+      load: Math.round(d.occupancy * 100),
+      tone,
+      bottleneck: d.status === "critical",
+    };
+  });
+}
 
 export default function PatientFlow() {
-  const [active, setActive] = useState("flow");
-  const [clock, setClock] = useState("09:41");
+  const { hospitalState } = useSimulationStore();
+  const [clock, setClock] = useState(null);
   const [feedIdx, setFeedIdx] = useState(0);
 
+  const feedMessages = useMemo(() => {
+    const msgs = (hospitalState?.alerts ?? []).map((a) => a.message);
+    return msgs.length > 0 ? msgs : ["Waiting for live flow data..."];
+  }, [hospitalState?.alerts]);
+
   useEffect(() => {
-    const id = setInterval(() => {
-      const d = new Date();
-      setClock(
-        `${String(9 + (d.getMinutes() % 1)).padStart(2, "0")}:${String(
-          41 + (d.getSeconds() % 19),
-        )
-          .toString()
-          .padStart(2, "0")}`,
-      );
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    setClock(hospitalState ? formatSimTime(hospitalState.sim_time) : "--:--");
+  }, [hospitalState?.sim_time]);
 
   useEffect(() => {
     const id = setInterval(
@@ -51,7 +57,78 @@ export default function PatientFlow() {
       4200,
     );
     return () => clearInterval(id);
-  }, []);
+  }, [feedMessages.length]);
+
+  const departments = hospitalState?.departments;
+  const stations = useMemo(() => buildStations(departments), [departments]);
+  const dischargeCount =
+    departments?.discharge?.current_patients ??
+    hospitalState?.metrics?.discharged_today ??
+    0;
+  const flow = hospitalState?.flow;
+  const rates = FLOW_KEYS.map((k) =>
+    flow ? `${Math.round(flow[k] ?? 0)}/hr` : "—",
+  );
+
+  const avgTransit = useMemo(() => {
+    if (!departments) return "—";
+    const vals = CHAIN.filter((k) => departments[k]).map(
+      (k) => departments[k].avg_wait_time,
+    );
+    if (vals.length === 0) return "—";
+    return formatTime(vals.reduce((a, b) => a + b, 0) / vals.length);
+  }, [departments]);
+
+  const bottleneckDept = useMemo(() => {
+    if (!departments) return "—";
+    let worst = null;
+    for (const k of CHAIN) {
+      const d = departments[k];
+      if (!d) continue;
+      if (!worst || d.occupancy > worst.occupancy)
+        worst = { key: k, occupancy: d.occupancy };
+    }
+    return worst ? departmentLabel(worst.key) : "—";
+  }, [departments]);
+
+  const waitByStage = useMemo(() => {
+    if (!departments) return [];
+    const pairs = [
+      ["er", "labs"],
+      ["labs", "imaging"],
+      ["imaging", "icu"],
+      ["icu", "ward"],
+    ];
+    return pairs
+      .filter(([a, b]) => departments[a] && departments[b])
+      .map(([a, b]) => {
+        const d = departments[a];
+        const tone =
+          d.avg_wait_time >= 90
+            ? "coral"
+            : d.avg_wait_time >= 45
+              ? "amber"
+              : "green";
+        return {
+          label: `${departmentLabel(a)} → ${departmentLabel(b)}`,
+          value: formatTime(d.avg_wait_time),
+          pct: Math.min(100, Math.round((d.avg_wait_time / 120) * 100)),
+          tone,
+        };
+      });
+  }, [departments]);
+
+  const stalledPatient = useMemo(() => {
+    const patients = hospitalState?.patients ?? [];
+    const boarding = patients
+      .filter((p) => p.boarding || p.sla_breached)
+      .sort((a, b) => b.total_wait_time - a.total_wait_time);
+    return boarding[0] ?? null;
+  }, [hospitalState?.patients]);
+
+  const overSlaCount = (hospitalState?.patients ?? []).filter(
+    (p) => p.sla_breached,
+  ).length;
 
   const bgStyle = useMemo(
     () => ({
@@ -105,7 +182,6 @@ export default function PatientFlow() {
 
   return (
     <div className="min-h-screen w-full flex overflow-hidden" style={bgStyle}>
-      {/* Apple-style liquid glass capsule wallpaper */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <div
           className="absolute inset-0 flex gap-2 px-1"
@@ -152,14 +228,13 @@ export default function PatientFlow() {
       </div>
 
       <div className="relative z-10 flex w-full">
-        <Sidebar active={active} setActive={setActive} />
+        <Sidebar />
 
         <main className="flex-1 px-8 pb-10 pt-10 md:px-12 lg:px-16 max-w-[1600px]">
           <h1 className="cursive text-[52px] font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_18px_rgba(4,18,54,0.5)]">
             Patient flow
           </h1>
 
-          {/* Live journey pipeline */}
           <div className="glass card-hover mt-8 rounded-[26px] p-7">
             <h3 className="text-[20px] font-bold text-neutral-800">
               Live journey
@@ -176,9 +251,7 @@ export default function PatientFlow() {
                     }
                   >
                     <div
-                      className={`text-[11px] font-semibold uppercase tracking-[0.04em] ${
-                        st.bottleneck ? "text-[#9a3f28]" : "text-neutral-600"
-                      }`}
+                      className={`text-[11px] font-semibold uppercase tracking-[0.04em] ${st.bottleneck ? "text-[#9a3f28]" : "text-neutral-600"}`}
                     >
                       {st.name}
                     </div>
@@ -214,16 +287,20 @@ export default function PatientFlow() {
                 <div className="text-[10px] text-neutral-600">discharged</div>
               </div>
             </div>
+            {stations.length === 0 && (
+              <div className="mt-4 text-[13px] text-neutral-500">
+                Waiting for department data...
+              </div>
+            )}
           </div>
 
-          {/* Flow stats */}
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="glass card-hover rounded-[26px] p-6">
               <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500">
                 Avg transit
               </span>
               <div className="mt-2 text-[38px] font-bold leading-none text-neutral-800">
-                {flowStats.avgTransit}
+                {avgTransit}
               </div>
             </div>
             <div className="glass card-hover rounded-[26px] p-6">
@@ -231,7 +308,7 @@ export default function PatientFlow() {
                 In transit
               </span>
               <div className="mt-2 text-[38px] font-bold leading-none text-neutral-800">
-                {flowStats.inTransit}
+                {hospitalState?.metrics?.active_patients ?? "—"}
               </div>
             </div>
             <div
@@ -245,12 +322,11 @@ export default function PatientFlow() {
                 Bottleneck
               </span>
               <div className="mt-2 text-[30px] font-bold leading-none text-[#5c2b1c]">
-                {flowStats.bottleneck}
+                {bottleneckDept}
               </div>
             </div>
           </div>
 
-          {/* Wait by stage + stalled */}
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
             <div className="glass card-hover rounded-[26px] p-7 lg:col-span-7">
               <h3 className="text-[20px] font-bold text-neutral-800">
@@ -262,7 +338,15 @@ export default function PatientFlow() {
                     <div className="flex items-center justify-between text-[14px]">
                       <span className="text-neutral-600">{w.label}</span>
                       <span
-                        className={`font-semibold tabular-nums ${toneText[w.tone]}`}
+                        className="font-semibold tabular-nums"
+                        style={{
+                          color:
+                            w.tone === "coral"
+                              ? "#c0603f"
+                              : w.tone === "amber"
+                                ? "#f59e0b"
+                                : "#059669",
+                        }}
                       >
                         {w.value}
                       </span>
@@ -279,31 +363,42 @@ export default function PatientFlow() {
                     </div>
                   </div>
                 ))}
+                {waitByStage.length === 0 && (
+                  <div className="text-[13px] text-neutral-500">
+                    Waiting for department data...
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="glass card-hover rounded-[26px] p-7 lg:col-span-5">
               <h3 className="text-[16px] font-bold text-red-500">Stalled</h3>
-              <div
-                className="mt-4 rounded-[18px] px-5 py-4 text-white shadow-[0_14px_30px_-12px_rgba(160,70,45,0.6),inset_0_1px_0_rgba(255,255,255,0.25)]"
-                style={{
-                  background: "linear-gradient(120deg, #c0603f, #a84a34)",
-                }}
-              >
-                <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/80">
-                  {stalled.label}
+              {stalledPatient ? (
+                <div
+                  className="mt-4 rounded-[18px] px-5 py-4 text-white shadow-[0_14px_30px_-12px_rgba(160,70,45,0.6),inset_0_1px_0_rgba(255,255,255,0.25)]"
+                  style={{
+                    background: "linear-gradient(120deg, #c0603f, #a84a34)",
+                  }}
+                >
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-white/80">
+                    {stalledPatient.boarding ? "Boarding" : "SLA breached"}
+                  </div>
+                  <div className="mt-1 text-[19px] font-bold">
+                    {stalledPatient.name} ·{" "}
+                    {formatTime(stalledPatient.total_wait_time)}
+                  </div>
                 </div>
-                <div className="mt-1 text-[19px] font-bold">
-                  {stalled.name} · {stalled.wait}
+              ) : (
+                <div className="mt-4 text-[13px] text-neutral-500">
+                  No stalled patients right now
                 </div>
-              </div>
+              )}
               <div className="mt-4 text-[13px] text-neutral-400">
-                {stalled.moreOverSla} more over SLA
+                {overSlaCount} more over SLA
               </div>
             </div>
           </div>
 
-          {/* Live footer */}
           <div className="glass-soft mono mt-4 flex items-center gap-3 rounded-[22px] px-7 py-4 text-[13px] text-neutral-500">
             <Radio size={15} className="text-emerald-600 animate-pulse" />
             <span className="font-semibold text-neutral-600">LIVE</span>

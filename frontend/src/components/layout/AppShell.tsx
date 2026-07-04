@@ -11,6 +11,9 @@ const STANDALONE_ROUTES = [
   "/clinical",
   "/ai-insights",
   "/labs",
+  "/operations",
+  "/copilot",
+  "/sandbox",
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
