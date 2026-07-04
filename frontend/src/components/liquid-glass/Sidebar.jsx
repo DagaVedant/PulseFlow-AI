@@ -48,7 +48,7 @@ export default function Sidebar() {
       <div className="pointer-events-none absolute top-8 bottom-8 right-0 w-px bg-gradient-to-b from-transparent via-white/50 to-transparent" />
 
       <div className="relative z-10 mb-10">
-        <div className="text-[22px] font-extrabold tracking-tight text-neutral-800 whitespace-nowrap">
+        <div className="text-[22px] font-extrabold tracking-tight text-black whitespace-nowrap">
           {typed}
           <span className="ml-[2px] inline-block h-[18px] w-[3px] translate-y-[2px] rounded-sm bg-emerald-600 animate-pulse align-middle" />
         </div>
@@ -62,10 +62,14 @@ export default function Sidebar() {
               <div
                 className={`cursive w-full rounded-[14px] px-3 py-2 transition-all duration-300 ${
                   isActive
-                    ? "text-emerald-600 font-bold"
-                    : "text-neutral-500 hover:text-neutral-800"
+                    ? "text-emerald-600"
+                    : "text-black/75 hover:text-black"
                 }`}
-                style={{ fontSize: "23px", lineHeight: 1.2 }}
+                style={{
+                  fontSize: "24px",
+                  lineHeight: 1.2,
+                  fontWeight: isActive ? 700 : 600,
+                }}
               >
                 {label}
               </div>
@@ -74,7 +78,7 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="relative z-10 mt-auto text-[11px] font-medium tracking-wide text-neutral-400">
+      <div className="relative z-10 mt-auto text-[11px] font-semibold tracking-wide text-black/60">
         v1.0
       </div>
     </aside>

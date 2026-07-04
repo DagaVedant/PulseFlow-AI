@@ -2,12 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Radio } from "lucide-react";
 import Sidebar from "@/components/liquid-glass/Sidebar";
-import {
-  labStats,
-  analyzers,
-  statQueue,
-  feedMessages,
-} from "@/components/liquid-glass/labsMock";
+import { useSimulationStore } from "@/store/simulationStore";
+import { formatTime, formatSimTime } from "@/lib/utils";
 
 const toneColor = {
   green: "#059669",
@@ -24,22 +20,18 @@ const toneText = {
 };
 
 export default function Labs() {
-  const [clock, setClock] = useState("09:41");
+  const { hospitalState } = useSimulationStore();
+  const [clock, setClock] = useState(null);
   const [feedIdx, setFeedIdx] = useState(0);
 
+  const feedMessages = useMemo(() => {
+    const msgs = (hospitalState?.alerts ?? []).map((a) => a.message);
+    return msgs.length > 0 ? msgs : ["Waiting for live lab data..."];
+  }, [hospitalState?.alerts]);
+
   useEffect(() => {
-    const id = setInterval(() => {
-      const d = new Date();
-      setClock(
-        `${String(9 + (d.getMinutes() % 1)).padStart(2, "0")}:${String(
-          41 + (d.getSeconds() % 19),
-        )
-          .toString()
-          .padStart(2, "0")}`,
-      );
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    setClock(hospitalState ? formatSimTime(hospitalState.sim_time) : "--:--");
+  }, [hospitalState?.sim_time]);
 
   useEffect(() => {
     const id = setInterval(
@@ -47,7 +39,44 @@ export default function Labs() {
       4200,
     );
     return () => clearInterval(id);
-  }, []);
+  }, [feedMessages.length]);
+
+  const labsDept = hospitalState?.departments?.labs;
+  const patients = hospitalState?.patients ?? [];
+
+  const labStats = {
+    pending: labsDept?.queue_length ?? 0,
+    inProgress: labsDept?.current_patients ?? 0,
+    capacity: labsDept?.capacity ?? 0,
+    avgTat: labsDept ? formatTime(labsDept.avg_wait_time) : "—",
+  };
+
+  const load = labsDept ? Math.round(labsDept.occupancy * 100) : 0;
+  const loadTone = load >= 85 ? "coral" : load >= 60 ? "amber" : "green";
+
+  const labQueue = useMemo(
+    () =>
+      patients
+        .filter((p) => p.current_department === "labs")
+        .sort((a, b) => b.total_wait_time - a.total_wait_time)
+        .slice(0, 6)
+        .map((p) => {
+          const tone =
+            p.total_wait_time >= 60
+              ? "coral"
+              : p.total_wait_time >= 30
+                ? "amber"
+                : "green";
+          return {
+            name: p.name,
+            complaint: p.chief_complaint,
+            wait: formatTime(p.total_wait_time),
+            tone,
+            overdue: p.sla_breached,
+          };
+        }),
+    [patients],
+  );
 
   const bgStyle = useMemo(
     () => ({
@@ -157,7 +186,7 @@ export default function Labs() {
           <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-4">
             <div className="glass card-hover rounded-[20px] p-5">
               <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-neutral-500">
-                Pending
+                Queued
               </span>
               <div className="mt-1 text-[28px] font-bold leading-none text-neutral-800">
                 {labStats.pending}
@@ -173,10 +202,10 @@ export default function Labs() {
             </div>
             <div className="glass card-hover rounded-[20px] p-5">
               <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-neutral-500">
-                Resulted today
+                Capacity
               </span>
               <div className="mt-1 text-[28px] font-bold leading-none text-emerald-600">
-                {labStats.resultedToday}
+                {labStats.capacity}
               </div>
             </div>
             <div className="glass card-hover rounded-[20px] p-5">
@@ -192,54 +221,50 @@ export default function Labs() {
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-12">
             <div className="glass card-hover rounded-[26px] p-7 lg:col-span-7">
               <h3 className="text-[20px] font-bold text-neutral-800">
-                Analyzer load
+                Laboratory load
               </h3>
-              <div className="mt-5 space-y-4">
-                {analyzers.map((a) => (
-                  <div key={a.name}>
-                    <div className="flex items-center justify-between text-[14px]">
-                      <span
-                        className={
-                          a.tone === "coral"
-                            ? "text-[#9a3f28] font-semibold"
-                            : "text-neutral-600"
-                        }
-                      >
-                        {a.name}
-                      </span>
-                      <span
-                        className={`mono text-[12px] font-semibold ${toneText[a.tone]}`}
-                      >
-                        {a.pct}%
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between">
-                      <div className="h-[6px] flex-1 mr-3 overflow-hidden rounded-full bg-black/[0.06]">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${a.pct}%`,
-                            background: toneColor[a.tone],
-                            transition:
-                              "width 0.9s cubic-bezier(0.22,1,0.36,1)",
-                          }}
-                        />
-                      </div>
-                      <span className="text-[10px] text-neutral-500 mono flex-shrink-0">
-                        {a.detail}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <div className="mt-5">
+                <div className="flex items-center justify-between text-[14px]">
+                  <span
+                    className={
+                      loadTone === "coral"
+                        ? "text-[#9a3f28] font-semibold"
+                        : "text-neutral-600"
+                    }
+                  >
+                    Laboratory
+                  </span>
+                  <span
+                    className={`mono text-[12px] font-semibold ${toneText[loadTone]}`}
+                  >
+                    {load}%
+                  </span>
+                </div>
+                <div className="mt-1 h-[6px] overflow-hidden rounded-full bg-black/[0.06]">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${load}%`,
+                      background: toneColor[loadTone],
+                      transition: "width 0.9s cubic-bezier(0.22,1,0.36,1)",
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="mt-4 text-[11px] text-neutral-500">
+                {labStats.pending} patients queued · {labStats.inProgress} in
+                progress of {labStats.capacity} capacity
               </div>
             </div>
 
             <div className="glass card-hover rounded-[26px] p-7 lg:col-span-5">
-              <h3 className="text-[16px] font-bold text-red-500">STAT queue</h3>
+              <h3 className="text-[16px] font-bold text-red-500">
+                Longest waits
+              </h3>
               <div className="mt-4 flex flex-col gap-1.5">
-                {statQueue.map((s) => (
+                {labQueue.map((s) => (
                   <div
-                    key={s.test + s.location}
+                    key={s.name}
                     className="flex items-center gap-3 rounded-[12px] px-3 py-2"
                     style={
                       s.overdue
@@ -253,12 +278,12 @@ export default function Labs() {
                     />
                     <div className="flex-1 min-w-0">
                       <div
-                        className={`text-[13px] ${s.overdue ? "font-bold" : "font-semibold"} text-neutral-800`}
+                        className={`text-[13px] ${s.overdue ? "font-bold" : "font-semibold"} text-neutral-800 truncate`}
                       >
-                        {s.test}
+                        {s.name}
                       </div>
-                      <div className="text-[10px] text-neutral-500">
-                        {s.location}
+                      <div className="text-[10px] text-neutral-500 truncate">
+                        {s.complaint}
                       </div>
                     </div>
                     <span
@@ -269,6 +294,11 @@ export default function Labs() {
                     </span>
                   </div>
                 ))}
+                {labQueue.length === 0 && (
+                  <div className="text-[13px] text-neutral-500">
+                    No patients currently in Labs
+                  </div>
+                )}
               </div>
             </div>
           </div>

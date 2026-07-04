@@ -2,12 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Radio, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import Sidebar from "@/components/liquid-glass/Sidebar";
-import {
-  clinicalStats,
-  watchList,
-  patientDetail,
-  feedMessages,
-} from "@/components/liquid-glass/clinicalMock";
+import { useSimulationStore } from "@/store/simulationStore";
+import { formatTime, formatSimTime, departmentLabel } from "@/lib/utils";
 
 const toneColor = {
   green: "#059669",
@@ -17,25 +13,26 @@ const toneColor = {
   muted: "#4b5563",
 };
 
-const trendIcon = { up: TrendingUp, down: TrendingDown, flat: Minus };
+function riskTone(score) {
+  if (score >= 0.75) return "coral";
+  if (score >= 0.5) return "amber";
+  if (score >= 0.25) return "muted";
+  return "green";
+}
 
 export default function Clinical() {
-  const [clock, setClock] = useState("09:41");
+  const { hospitalState, highRiskPatients } = useSimulationStore();
+  const [clock, setClock] = useState(null);
   const [feedIdx, setFeedIdx] = useState(0);
 
+  const feedMessages = useMemo(() => {
+    const msgs = (hospitalState?.alerts ?? []).map((a) => a.message);
+    return msgs.length > 0 ? msgs : ["Waiting for live clinical data..."];
+  }, [hospitalState?.alerts]);
+
   useEffect(() => {
-    const id = setInterval(() => {
-      const d = new Date();
-      setClock(
-        `${String(9 + (d.getMinutes() % 1)).padStart(2, "0")}:${String(
-          41 + (d.getSeconds() % 19),
-        )
-          .toString()
-          .padStart(2, "0")}`,
-      );
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    setClock(hospitalState ? formatSimTime(hospitalState.sim_time) : "--:--");
+  }, [hospitalState?.sim_time]);
 
   useEffect(() => {
     const id = setInterval(
@@ -43,7 +40,76 @@ export default function Clinical() {
       4200,
     );
     return () => clearInterval(id);
-  }, []);
+  }, [feedMessages.length]);
+
+  const patients = hospitalState?.patients ?? [];
+  const metrics = hospitalState?.metrics;
+
+  const clinicalStats = {
+    monitored: metrics?.active_patients ?? 0,
+    highAcuity: patients.filter(
+      (p) => p.severity === "critical" || p.severity === "high",
+    ).length,
+    deteriorating: patients.filter((p) => p.deterioration_alert).length,
+    sepsisRisk: patients.filter((p) => p.sepsis_risk).length,
+  };
+
+  const watchList = useMemo(
+    () =>
+      (highRiskPatients ?? []).slice(0, 5).map((p, i) => {
+        const tone = riskTone(p.risk_score);
+        const trend = p.deterioration_alert || p.sepsis_risk ? "up" : "flat";
+        return {
+          patient_id: p.patient_id,
+          name: p.name,
+          dept: departmentLabel(p.current_department),
+          risk: p.risk_score.toFixed(2),
+          tone,
+          trend,
+          selected: i === 0,
+        };
+      }),
+    [highRiskPatients],
+  );
+
+  const patientDetail = highRiskPatients?.[0];
+  const trendIcon = { up: TrendingUp, down: TrendingDown, flat: Minus };
+
+  const recommendation = useMemo(() => {
+    if (!patientDetail) return null;
+    if (
+      patientDetail.severity === "critical" ||
+      patientDetail.deterioration_alert
+    )
+      return "Escalate to ICU · continuous monitoring";
+    if (patientDetail.sepsis_risk) return "Start sepsis protocol";
+    return "Continue routine monitoring";
+  }, [patientDetail]);
+
+  const vitals = patientDetail
+    ? [
+        {
+          label: "Wait time",
+          value: formatTime(patientDetail.total_wait_time),
+          tone: patientDetail.total_wait_time > 120 ? "coral" : "amber",
+        },
+        {
+          label: "Risk score",
+          value: `${Math.round(patientDetail.risk_score * 100)}%`,
+          tone: riskTone(patientDetail.risk_score),
+        },
+        {
+          label: "Department",
+          value: departmentLabel(patientDetail.current_department),
+          tone: "muted",
+        },
+        {
+          label: "SLA",
+          value: patientDetail.sla_breached ? "Breached" : "On track",
+          tone: patientDetail.sla_breached ? "coral" : "green",
+        },
+      ]
+    : [];
 
   const bgStyle = useMemo(
     () => ({
@@ -201,7 +267,7 @@ export default function Clinical() {
                   const Trend = trendIcon[p.trend];
                   return (
                     <div
-                      key={p.name}
+                      key={p.patient_id}
                       className="flex items-center gap-3 rounded-[12px] px-3 py-2"
                       style={
                         p.selected
@@ -235,70 +301,79 @@ export default function Clinical() {
                           style={{ color: toneColor[p.tone] }}
                         >
                           <Trend size={11} />
-                          {p.selected ? "rising" : ""}
+                          {p.trend === "up" ? "rising" : ""}
                         </div>
                       </div>
                     </div>
                   );
                 })}
+                {watchList.length === 0 && (
+                  <div className="text-[13px] text-neutral-500">
+                    No high-risk patients right now
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="glass card-hover rounded-[26px] p-7 lg:col-span-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <div className="text-[16px] font-extrabold text-neutral-800">
-                    {patientDetail.name}
+              {patientDetail ? (
+                <>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="text-[16px] font-extrabold text-neutral-800">
+                        {patientDetail.name}
+                      </div>
+                      <div className="text-[11px] text-neutral-500">
+                        {departmentLabel(patientDetail.current_department)} ·{" "}
+                        {patientDetail.age}y · {patientDetail.chief_complaint}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[9px] text-neutral-500 uppercase tracking-[0.06em]">
+                        Risk
+                      </div>
+                      <div className="mono text-[22px] font-semibold text-[#c0603f]">
+                        {patientDetail.risk_score.toFixed(2)}
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-neutral-500">
-                    {patientDetail.meta}
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {vitals.map((v) => (
+                      <div
+                        key={v.label}
+                        className="glass-soft rounded-[14px] px-3 py-2.5"
+                      >
+                        <div className="text-[9px] text-neutral-500 uppercase">
+                          {v.label}
+                        </div>
+                        <div
+                          className="mono text-[17px] font-semibold"
+                          style={{ color: toneColor[v.tone] }}
+                        >
+                          {v.value}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-[9px] text-neutral-500 uppercase tracking-[0.06em]">
-                    Risk
-                  </div>
-                  <div className="mono text-[22px] font-semibold text-[#c0603f]">
-                    {patientDetail.risk}
-                  </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {patientDetail.vitals.map((v) => (
                   <div
-                    key={v.label}
-                    className="glass-soft rounded-[14px] px-3 py-2.5"
+                    className="rounded-[16px] px-4 py-3 text-white shadow-[0_14px_30px_-12px_rgba(160,70,45,0.6),inset_0_1px_0_rgba(255,255,255,0.25)]"
+                    style={{
+                      background: "linear-gradient(120deg, #c0603f, #a84a34)",
+                    }}
                   >
-                    <div className="text-[9px] text-neutral-500 uppercase">
-                      {v.label}
+                    <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/80">
+                      Recommendation
                     </div>
-                    <div
-                      className="mono text-[17px] font-semibold"
-                      style={{ color: toneColor[v.tone] }}
-                    >
-                      {v.value}{" "}
-                      {v.unit && (
-                        <span className="text-[10px] text-neutral-500">
-                          {v.unit}
-                        </span>
-                      )}
+                    <div className="text-[15px] font-bold mt-0.5">
+                      {recommendation}
                     </div>
                   </div>
-                ))}
-              </div>
-              <div
-                className="rounded-[16px] px-4 py-3 text-white shadow-[0_14px_30px_-12px_rgba(160,70,45,0.6),inset_0_1px_0_rgba(255,255,255,0.25)]"
-                style={{
-                  background: "linear-gradient(120deg, #c0603f, #a84a34)",
-                }}
-              >
-                <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/80">
-                  Recommendation
+                </>
+              ) : (
+                <div className="text-[13px] text-neutral-500">
+                  No patient selected for review
                 </div>
-                <div className="text-[15px] font-bold mt-0.5">
-                  {patientDetail.recommendation}
-                </div>
-              </div>
+              )}
             </div>
           </div>
 

@@ -1,14 +1,10 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
-import { Radio, Sparkles, Play, MessageSquare } from "lucide-react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { Radio, Sparkles, RefreshCw, MessageSquare } from "lucide-react";
 import Sidebar from "@/components/liquid-glass/Sidebar";
-import {
-  aiStats,
-  forecast,
-  optimizer,
-  narrative,
-  feedMessages,
-} from "@/components/liquid-glass/aiInsightsMock";
+import { useSimulationStore } from "@/store/simulationStore";
+import { api } from "@/lib/api";
+import { formatSimTime, formatPercent } from "@/lib/utils";
 
 const toneColor = {
   green: "#059669",
@@ -22,23 +18,45 @@ const chipStyle = {
   coral: { color: "#c0603f", background: "rgba(192,96,63,0.14)" },
 };
 
+function severityTone(sev) {
+  if (sev === "critical") return "coral";
+  if (sev === "warning") return "amber";
+  return "green";
+}
+
 export default function AiInsights() {
-  const [clock, setClock] = useState("09:41");
+  const { hospitalState } = useSimulationStore();
+  const [clock, setClock] = useState(null);
   const [feedIdx, setFeedIdx] = useState(0);
+  const [analysis, setAnalysis] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const fetchAnalysis = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await api.getCopilotAnalysis();
+      setAnalysis(result);
+    } catch (err) {
+      setError(err?.message ?? "Analysis failed");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const id = setInterval(() => {
-      const d = new Date();
-      setClock(
-        `${String(9 + (d.getMinutes() % 1)).padStart(2, "0")}:${String(
-          41 + (d.getSeconds() % 19),
-        )
-          .toString()
-          .padStart(2, "0")}`,
-      );
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+    fetchAnalysis();
+  }, [fetchAnalysis]);
+
+  const feedMessages = useMemo(() => {
+    const msgs = (hospitalState?.alerts ?? []).map((a) => a.message);
+    return msgs.length > 0 ? msgs : ["Waiting for live hospital data..."];
+  }, [hospitalState?.alerts]);
+
+  useEffect(() => {
+    setClock(hospitalState ? formatSimTime(hospitalState.sim_time) : "--:--");
+  }, [hospitalState?.sim_time]);
 
   useEffect(() => {
     const id = setInterval(
@@ -46,7 +64,27 @@ export default function AiInsights() {
       4200,
     );
     return () => clearInterval(id);
-  }, []);
+  }, [feedMessages.length]);
+
+  const predictions = analysis?.bottleneck_predictions ?? [];
+  const opt = analysis?.optimization;
+
+  const forecast = predictions.slice(0, 4).map((p) => ({
+    name: p.department,
+    event:
+      p.trend_direction === "increasing"
+        ? `peak in ${p.eta_minutes}m`
+        : "stable",
+    pct: Math.round((p.confidence ?? 0.5) * 100),
+    tone: severityTone(p.severity),
+  }));
+
+  const aiStats = {
+    bottlenecks: predictions.length,
+    optimizations: opt?.recommendations?.length ?? 0,
+    confidence: opt ? Math.round(opt.confidence * 100) : 0,
+    timeSaved: opt ? `${Math.round(opt.predicted_wait_reduction)}m` : "—",
+  };
 
   const bgStyle = useMemo(
     () => ({
@@ -149,9 +187,31 @@ export default function AiInsights() {
         <Sidebar />
 
         <main className="flex-1 px-8 pb-10 pt-10 md:px-12 lg:px-16 max-w-[1600px]">
-          <h1 className="cursive text-[52px] font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_18px_rgba(4,18,54,0.5)]">
-            AI insights
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="cursive text-[52px] font-bold leading-tight tracking-tight text-white drop-shadow-[0_2px_18px_rgba(4,18,54,0.5)]">
+              AI insights
+            </h1>
+            <button
+              onClick={fetchAnalysis}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 rounded-[14px] text-[13px] font-bold text-white shadow-[0_10px_20px_-6px_rgba(6,95,70,0.5)] disabled:opacity-60"
+              style={{ background: "linear-gradient(135deg,#10b981,#059669)" }}
+            >
+              <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+              {loading ? "Refreshing..." : "Refresh analysis"}
+            </button>
+          </div>
+
+          {error && (
+            <div
+              className="mt-4 px-4 py-2 rounded-[12px] text-[13px] text-white"
+              style={{
+                background: "linear-gradient(120deg, #c0603f, #a84a34)",
+              }}
+            >
+              {error}
+            </div>
+          )}
 
           <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-4">
             <div
@@ -186,7 +246,7 @@ export default function AiInsights() {
             </div>
             <div className="glass card-hover rounded-[20px] p-5">
               <span className="text-[10px] font-semibold uppercase tracking-[0.04em] text-neutral-500">
-                Time saved
+                Wait reduction
               </span>
               <div className="mt-1 text-[28px] font-bold leading-none text-neutral-800">
                 {aiStats.timeSaved}
@@ -230,44 +290,45 @@ export default function AiInsights() {
                     </div>
                   </div>
                 ))}
+                {forecast.length === 0 && (
+                  <div className="text-[13px] text-neutral-500">
+                    {loading
+                      ? "Running forecast..."
+                      : "No bottlenecks predicted"}
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex flex-col gap-4 lg:col-span-6">
-              <div
-                className="glass card-hover rounded-[26px] p-6"
-                style={{
-                  background:
-                    "linear-gradient(150deg, rgba(167,220,190,0.55), rgba(140,200,170,0.32))",
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#15603a]">
-                    <Sparkles size={14} />
-                    Optimizer
-                  </div>
-                  <span className="mono text-[11px] text-[#15603a]">
-                    {optimizer.confidence}% conf
-                  </span>
-                </div>
-                <div className="mt-2 text-[16px] font-extrabold text-[#14532d] leading-snug">
-                  {optimizer.actions.map((a, i) => (
-                    <div key={i}>{a}</div>
-                  ))}
-                </div>
-                <div className="mt-1.5 text-[12px] text-[#2f6b4c]">
-                  {optimizer.projected}
-                </div>
-                <button
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-[14px] px-4 py-2 text-[12px] font-bold text-white shadow-[0_10px_20px_-6px_rgba(6,95,70,0.5)]"
+              {opt && (
+                <div
+                  className="glass card-hover rounded-[26px] p-6"
                   style={{
-                    background: "linear-gradient(135deg,#10b981,#059669)",
+                    background:
+                      "linear-gradient(150deg, rgba(167,220,190,0.55), rgba(140,200,170,0.32))",
                   }}
                 >
-                  <Play size={13} />
-                  Implement
-                </button>
-              </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.1em] text-[#15603a]">
+                      <Sparkles size={14} />
+                      Optimizer
+                    </div>
+                    <span className="mono text-[11px] text-[#15603a]">
+                      {Math.round(opt.confidence * 100)}% conf
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[16px] font-extrabold text-[#14532d] leading-snug">
+                    {opt.intervention_plan.slice(0, 2).map((a, i) => (
+                      <div key={i}>{a}</div>
+                    ))}
+                  </div>
+                  <div className="mt-1.5 text-[12px] text-[#2f6b4c]">
+                    projected −{Math.round(opt.predicted_wait_reduction)}m avg
+                    wait
+                  </div>
+                </div>
+              )}
 
               <div className="glass card-hover rounded-[26px] p-6">
                 <div className="flex items-center gap-2 text-[12px] font-bold text-neutral-800 mb-1.5">
@@ -275,7 +336,11 @@ export default function AiInsights() {
                   AI narrative
                 </div>
                 <div className="text-[12px] leading-[1.55] text-neutral-600">
-                  {narrative}
+                  {opt?.ai_narrative?.narrative ??
+                    analysis?.explanation?.explanation ??
+                    (loading
+                      ? "Generating narrative..."
+                      : "No narrative available")}
                 </div>
               </div>
             </div>
