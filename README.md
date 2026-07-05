@@ -1,10 +1,8 @@
-# STARDANCE REVIEWER CAN YOU PLEASE GIVE ME YOUR SLACK WE ARE HAVING SOME MISCOMMUNICATION PLEASE
-
 # PulseFlow AI
 
 Simulates a whole hospital in real time and layers AI on top of it, patient flow, department capacity, staff load, all running live and streaming to the browser over WebSocket.
 
-![demo](frontend\public\liquidglassvibe.png)
+![demo](frontend/public/liquidglassvibe.png)
 
 ## Try it
 
