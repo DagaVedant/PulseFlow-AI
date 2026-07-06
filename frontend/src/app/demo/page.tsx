@@ -11,9 +11,16 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { route: "/command-center", duration: 10000, actions: [{ delay: 4000, action: "view_ambulances" }] },
-  { route: "/digital-twin", duration: 10000 },
-  { route: "/patient-intel", duration: 10000, actions: [{ delay: 1800, action: "analyze_patients" }] },
+  {
+    route: "/command-center",
+    duration: 10000,
+    actions: [{ delay: 4000, action: "view_ambulances" }],
+  },
+  {
+    route: "/patient-intel",
+    duration: 10000,
+    actions: [{ delay: 1800, action: "analyze_patients" }],
+  },
   {
     route: "/operations",
     duration: 10000,
@@ -22,8 +29,16 @@ const STEPS: Step[] = [
       { delay: 7000, action: "remove_constraint" },
     ],
   },
-  { route: "/copilot", duration: 10000, actions: [{ delay: 1500, action: "run_copilot" }] },
-  { route: "/sandbox", duration: 10000, actions: [{ delay: 1500, action: "sandbox_demo" }] },
+  {
+    route: "/copilot",
+    duration: 10000,
+    actions: [{ delay: 1500, action: "run_copilot" }],
+  },
+  {
+    route: "/sandbox",
+    duration: 10000,
+    actions: [{ delay: 1500, action: "sandbox_demo" }],
+  },
   { route: "/shift-report", duration: 10000 },
 ];
 
@@ -60,7 +75,9 @@ export default function DemoPage() {
         const timers: ReturnType<typeof setTimeout>[] = [];
         if (s.actions) {
           for (const act of s.actions) {
-            timers.push(setTimeout(() => setPendingAction(act.action as any), act.delay));
+            timers.push(
+              setTimeout(() => setPendingAction(act.action as any), act.delay),
+            );
           }
         }
 
@@ -87,8 +104,12 @@ export default function DemoPage() {
   return (
     <div className="flex flex-col items-center justify-center h-full gap-8">
       <div className="text-center select-none">
-        <h1 className="text-[32px] font-medium text-ink tracking-tight">PulseFlow AI</h1>
-        <p className="mono text-muted text-sm mt-2 tracking-widest uppercase">Demo</p>
+        <h1 className="text-[32px] font-medium text-ink tracking-tight">
+          PulseFlow AI
+        </h1>
+        <p className="mono text-muted text-sm mt-2 tracking-widest uppercase">
+          Demo
+        </p>
       </div>
 
       {done ? (

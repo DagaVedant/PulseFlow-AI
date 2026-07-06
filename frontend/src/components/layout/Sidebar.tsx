@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/command-center", label: "Command center" },
-  { href: "/digital-twin", label: "Digital twin" },
   { href: "/patient-intel", label: "Patient intel" },
   { href: "/operations", label: "Operations" },
   { href: "/copilot", label: "Copilot" },

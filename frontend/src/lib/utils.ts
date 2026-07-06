@@ -26,16 +26,6 @@ export function formatPercent(value: number, decimals = 0): string {
   return `${(value * 100).toFixed(decimals)}%`;
 }
 
-export function statusColor(status: DepartmentStatus): string {
-  return (
-    {
-      healthy: "#1F6F4A",
-      warning: "#D89A3E",
-      critical: "#C4603A",
-    }[status] ?? "#6B6455"
-  );
-}
-
 export function statusBg(status: DepartmentStatus): string {
   return (
     {

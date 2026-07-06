@@ -1,11 +1,22 @@
 export type Severity = "low" | "medium" | "high" | "critical";
 export type PatientState =
-  | "arriving" | "triage" | "waiting_er" | "in_er"
-  | "waiting_labs" | "in_labs" | "waiting_imaging" | "in_imaging"
-  | "waiting_icu" | "in_icu" | "waiting_ward" | "in_ward"
-  | "waiting_discharge" | "discharged";
+  | "arriving"
+  | "triage"
+  | "waiting_er"
+  | "in_er"
+  | "waiting_labs"
+  | "in_labs"
+  | "waiting_imaging"
+  | "in_imaging"
+  | "waiting_icu"
+  | "in_icu"
+  | "waiting_ward"
+  | "in_ward"
+  | "waiting_discharge"
+  | "discharged";
 
-export type DepartmentKey = "er" | "labs" | "imaging" | "icu" | "ward" | "discharge";
+export type DepartmentKey =
+  "er" | "labs" | "imaging" | "icu" | "ward" | "discharge";
 export type DepartmentStatus = "healthy" | "warning" | "critical";
 export type AlertSeverity = "info" | "warning" | "critical";
 
@@ -76,7 +87,12 @@ export interface HospitalMetrics {
   critical_patients: number;
   mortality_risk_index: number;
   alerts_active: number;
-  severity_counts?: { critical: number; high: number; medium: number; low: number };
+  severity_counts?: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
   boarding_count?: number;
   deteriorating_count?: number;
   sepsis_count?: number;
@@ -99,21 +115,6 @@ export interface HospitalAlert {
   department: string;
   message: string;
   timestamp: number;
-}
-
-export interface PatientFlow {
-  registration_to_er: number;
-  er_to_labs: number;
-  er_to_imaging: number;
-  er_to_icu: number;
-  er_to_ward: number;
-  er_to_discharge: number;
-  labs_to_imaging: number;
-  labs_to_ward: number;
-  imaging_to_icu: number;
-  imaging_to_ward: number;
-  icu_to_ward: number;
-  ward_to_discharge: number;
 }
 
 export interface SimulationConfig {
@@ -143,7 +144,7 @@ export interface Specialist {
 }
 
 export type BottleneckType =
-  | "Doctor" | "Specialist" | "Operating Room" | "Equipment" | "Bed" | "Nurse";
+  "Doctor" | "Specialist" | "Operating Room" | "Equipment" | "Bed" | "Nurse";
 
 export interface FixedBottleneck {
   bottleneck_id: string;
@@ -204,7 +205,6 @@ export interface HospitalState {
   patients: Patient[];
   metrics: HospitalMetrics;
   alerts: HospitalAlert[];
-  flow: PatientFlow;
   config: SimulationConfig;
   forecast_24h?: ForecastPoint[];
   care?: CareState;
@@ -300,8 +300,14 @@ export interface CopilotAnalysis {
 }
 
 export type EventType =
-  | "flu_outbreak" | "ct_failure" | "mri_failure" | "lab_slowdown"
-  | "mass_casualty" | "heatwave" | "covid_surge" | "staff_shortage"
+  | "flu_outbreak"
+  | "ct_failure"
+  | "mri_failure"
+  | "lab_slowdown"
+  | "mass_casualty"
+  | "heatwave"
+  | "covid_surge"
+  | "staff_shortage"
   | "clear_event";
 
 export interface SandboxConfig {
