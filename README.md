@@ -2,7 +2,7 @@
 
 A full hospital platform that tracks patient flow, department capacity, staff load, and other data are all running live and in real time over WebSocket with a custom Ollama AI analysis running on top of the data.
 
-![demo video](frontend/public/preview.mp4)
+[demo video](frontend/public/preview.mp4)
 
 ## Try it
 
