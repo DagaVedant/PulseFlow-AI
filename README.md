@@ -2,6 +2,8 @@
 
 A full hospital platform that tracks patient flow, department capacity, staff load, and other data are all running live and in real time over WebSocket with a custom Ollama AI analysis running on top of the data.
 
+![PulseFlow AI screenshots](frontend/public/screenshots-collage.png)
+
 ## Try it
 
 **[Demo Link](https://pulse-flow-mjilr4qso-dagavedants-projects.vercel.app/command-center)**
