@@ -2,8 +2,6 @@
 
 Simulates a whole hospital in real time and layers AI on top of it, patient flow, department capacity, staff load, all running live and streaming to the browser over WebSocket.
 
-![demo](frontend/public/liquidglassvibe.png)
-
 ## Try it
 
 **[Demo Link](https://pulse-flow-9ht7a4fs9-dagavedants-projects.vercel.app/command-center)**
@@ -19,11 +17,13 @@ Two services, so this is more than 3 commands no matter how I cut it:
 .\start-frontend.ps1
 ```
 
-open `http://localhost:3000`, click **Auto Demo** in the sidebar, hit **Start Full Demo**. runs itself for about 80 seconds, mouse stays free the whole time.
+those handle venv/`pip install`/`npm install` for you on a fresh clone. Once that's done once, `python run.py` from the repo root starts both together in one command.
+
+open `http://localhost:3000`, click **Demo** in the nav bar, hit **Start demo**. runs itself for about 80 seconds, mouse stays free the whole time.
 
 ## Features
 
-There's a real-time floor plan with patients actually moving between departments, full state broadcast every 0.8s over WebSocket. Same hospital as a network graph too, departments as nodes, patient flow as edges, if you'd rather see topology than a floor plan. An AI copilot that solves staffing bottlenecks with real linear programming, OR-Tools with a SciPy fallback, not an LLM guessing at numbers. A sandbox for stacking crisis events, flu outbreak, CT scanner failure, and watching the cascade hit the floor plan live. 4 curated patients spanning the risk spectrum instead of a 270-row table nobody's going to read, each with AI care recommendations. An auto-generated shift handoff report. Real dark/light mode with no flash on load, built around a design contract I wrote based on HIPAA/WCAG constraints, UI-level alignment only, not an actual certification, don't get excited. And the API and WebSocket are actually gated now, shared-secret auth, rate limiting, WebSocket message validation, structured audit logs on every write, plus a CI job that runs a dependency vulnerability scan on every push.
+There's a real-time floor plan with patients actually moving between departments, full state broadcast every 0.8s over WebSocket. Same hospital as a network graph too, departments as nodes, patient flow as edges, if you'd rather see topology than a floor plan. An AI copilot that solves staffing bottlenecks with real linear programming, OR-Tools with a SciPy fallback, not an LLM guessing at numbers. A sandbox for stacking crisis events, flu outbreak, CT scanner failure, and watching the cascade hit the floor plan live. 4 curated patients spanning the risk spectrum instead of a 270-row table nobody's going to read, each with AI care recommendations. An auto-generated shift handoff report. Flat, single-theme UI, one navy canvas, `Space Grotesk` for headings, `JetBrains Mono` for every number, no gradients or glass anywhere, rebuilt after the first pass came out looking too AI-generated. And the API and WebSocket are actually gated now, shared-secret auth, rate limiting, WebSocket message validation, structured audit logs on every write, plus a CI job that runs a dependency vulnerability scan on every push.
 
 ## How to run it locally
 
