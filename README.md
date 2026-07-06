@@ -1,5 +1,7 @@
 # PulseFlow AI
 
+![command center](frontend/public/preview.png)
+
 Simulates a whole hospital in real time and layers AI on top of it, patient flow, department capacity, staff load, all running live and streaming to the browser over WebSocket.
 
 ## Try it
