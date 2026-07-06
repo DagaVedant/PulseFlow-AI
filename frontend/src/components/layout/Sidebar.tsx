@@ -31,20 +31,19 @@ export function Sidebar() {
   }, []);
 
   return (
-    <div className="flex items-baseline gap-8">
-      <span className="font-display text-[17px] font-medium whitespace-nowrap">
+    <div className="flex items-baseline gap-6 flex-shrink-0 min-w-0">
+      <span className="font-display text-[17px] font-medium whitespace-nowrap flex-shrink-0">
         {typed}
       </span>
-      <nav className="flex items-baseline gap-6">
+      <nav className="flex items-baseline gap-5 min-w-0 overflow-x-auto">
         {NAV_ITEMS.map(({ href, label }) => {
-          const isActive =
-            pathname === href || pathname.startsWith(href + "/");
+          const isActive = pathname === href || pathname.startsWith(href + "/");
           return (
             <Link
               key={href}
               href={href}
               className={cn(
-                "pb-1 text-[14px] transition-colors border-b-2",
+                "pb-1 text-[14px] transition-colors border-b-2 whitespace-nowrap flex-shrink-0",
                 isActive
                   ? "text-ink font-medium border-ink"
                   : "text-muted border-transparent hover:text-ink",

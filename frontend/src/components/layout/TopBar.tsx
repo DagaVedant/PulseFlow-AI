@@ -8,7 +8,7 @@ export function TopBar() {
   const simTime = hospitalState?.sim_time ?? 0;
 
   return (
-    <div className="flex items-center gap-3 text-[13px] text-muted">
+    <div className="flex items-center gap-3 text-[13px] text-muted flex-shrink-0 whitespace-nowrap">
       <span className="mono">{formatSimTime(simTime)}</span>
       <span>·</span>
       <AutoLogoutTimer />
