@@ -2,34 +2,41 @@
 
 ![command center](frontend/public/preview.png)
 
-Simulates a whole hospital in real time and layers AI on top of it, patient flow, department capacity, staff load, all running live and streaming to the browser over WebSocket.
+A full hospital platform that tracks patient flow, department capacity, staff load, and other data are all running live and in real time over WebSocket with a custom Ollama AI analysis running on top of the data.
 
 ## Try it
 
-**[Demo Link](https://pulse-flow-9ht7a4fs9-dagavedants-projects.vercel.app/command-center)**
+**[Demo Link](https://pulse-flow-mjilr4qso-dagavedants-projects.vercel.app/command-center)**
 
-`render.yaml` for the backend and `pulseflow-ai.vercel.app` for the frontend, both wired up and deployed.
+`render.yaml` for the backend and `pulseflow-ai.vercel.app` for the frontend
 
 ## Quick start
 
-Two services, so this is more than 3 commands no matter how I cut it:
+Because its made up of two different services (render and vercel), so this is how I condensed everything to make it easier to start:
 
 ```powershell
 .\start-backend.ps1
 .\start-frontend.ps1
 ```
 
-those handle venv/`pip install`/`npm install` for you on a fresh clone. Once that's done once, `python run.py` from the repo root starts both together in one command.
+these basically handle everything from venv/`pip install`/`npm install` after you clone it for the first time. after that run, `python run.py` to start the backend and frontend together.
 
-open `http://localhost:3000`, click **Demo** in the nav bar, hit **Start demo**. runs itself for about 80 seconds, mouse stays free the whole time.
+open `http://localhost:3000`, click **Demo** in the nav bar, hit **Start demo** for a quick walkthrough or just go to each page yourself.
 
 ## Features
 
-There's a real-time floor plan with patients actually moving between departments, full state broadcast every 0.8s over WebSocket. An AI copilot that solves staffing bottlenecks with real linear programming, OR-Tools with a SciPy fallback, not an LLM guessing at numbers. A sandbox for stacking crisis events, flu outbreak, CT scanner failure, and watching the cascade hit the floor plan live. 4 curated patients spanning the risk spectrum instead of a 270-row table nobody's going to read, each with AI care recommendations. An auto-generated shift handoff report. Flat, single-theme UI, one navy canvas, `Space Grotesk` for headings, `JetBrains Mono` for every number, no gradients or glass anywhere, rebuilt after the first pass came out looking too AI-generated. And the API and WebSocket are actually gated now, shared-secret auth, rate limiting, WebSocket message validation, structured audit logs on every write, plus a CI job that runs a dependency vulnerability scan on every push.
+- Real-time view of patients actually moving between departments every 0.8s over WebSocket.
+- AI copilot that solves staffing bottlenecks with real linear programming, OR-Tools with a SciPy fallback, and a LLM.
+- Sandbox for stacking crisis events, flu outbreak, and CT scanner failure
+- 4 curated patients spanning the risk spectrum instead of a 270-row table nobody's going to read, each with AI care recommendations.
+- Auto-generated shift handoff report.
+- Flat, single-theme UI, one navy canvas, `Space Grotesk` for headings, `JetBrains Mono` for every number, all coded by me (NO AI)
+- API and WebSocket are actually gated under shared-secret auth, rate limiting, WebSocket message validation, structured audit logs on every write, plus a CI job that runs a dependency vulnerability scan.
 
 ## How to run it locally
 
 **Backend**, Python 3.11
+
 ```powershell
 cd backend
 python -m venv venv
@@ -39,13 +46,14 @@ python run.py
 ```
 
 **Frontend**, Next.js 15
+
 ```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-backend's on `http://localhost:8000` (docs at `/docs`), frontend on `http://localhost:3000`, WebSocket at `ws://localhost:8000/ws`. nothing here is required to boot, everything degrades gracefully if it's missing:
+backend's on `http://localhost:8000` (docs at `/docs`), frontend on `http://localhost:3000`, WebSocket at `ws://localhost:8000/ws`:
 
 ```
 # backend/.env
