@@ -16,7 +16,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/command-center",
     target: "cc-metrics",
     title: "Live hospital vitals",
-    body: "Bed occupancy, ICU load, and the other top-line numbers update in real time over WebSocket as the simulated hospital runs — nothing on this page is static.",
+    body: "Bed occupancy, ICU load, and the other top-line numbers update in real time over WebSocket as the simulated hospital runs, nothing on this page is static.",
   },
   {
     route: "/command-center",
@@ -28,13 +28,13 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/command-center",
     target: "cc-alerts",
     title: "Alerts feed",
-    body: "Anything that needs attention — a department going critical, a patient deteriorating — surfaces here first.",
+    body: "Anything that needs attention (a department going critical, a patient deteriorating) surfaces here first.",
   },
   {
     route: "/patient-intel",
     target: "pi-list",
     title: "Patient watchlist",
-    body: "Instead of a 270-row table nobody would actually read, this surfaces a handful of patients spanning the risk spectrum — the ones worth a second look right now.",
+    body: "Instead of a 270-row table nobody would actually read, this surfaces a handful of patients spanning the risk spectrum, the ones worth a second look right now.",
   },
   {
     route: "/patient-intel",
@@ -52,7 +52,7 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/operations",
     target: "ops-specialists",
     title: "Operational constraints",
-    body: "Take specialists offline or add scheduling constraints here, and the copilot's next recommendation has to respect them — it can't just wish the problem away.",
+    body: "Take specialists offline or add scheduling constraints here, and the copilot's next recommendation has to respect them, it can't just wish the problem away.",
   },
   {
     route: "/copilot",
@@ -64,19 +64,19 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/copilot",
     target: "cp-run",
     title: "Run the optimizer",
-    body: "Solves staff reallocation with OR-Tools linear programming under real constraints — safe minimum coverage, staffing budget, ICU pressure weighted 3x — then an LLM explains the result in plain English. If the LLM is unavailable, you still get the same underlying decision with fallback text.",
+    body: "Solves staff reallocation with OR-Tools linear programming under real constraints (safe minimum coverage, staffing budget, ICU pressure weighted 3x), then an LLM explains the result in plain English. If the LLM is unavailable, you still get the same underlying decision with fallback text.",
   },
   {
     route: "/sandbox",
     target: "sb-controls",
     title: "Stress-test the hospital",
-    body: "Stack crisis events — a flu outbreak, a CT scanner failure — and see how the simulation and the optimizer respond in combination, not just in isolation.",
+    body: "Stack crisis events (a flu outbreak, a CT scanner failure) and see how the simulation and the optimizer respond in combination, not just in isolation.",
   },
   {
     route: "/shift-report",
     target: "sr-report",
     title: "Auto-generated handoff report",
-    body: "A shift-change summary generated straight from live sim state — census, risk, priorities — the kind of report a charge nurse would actually hand off.",
+    body: "A shift-change summary generated straight from live sim state (census, risk, priorities), the kind of report a charge nurse would actually hand off.",
   },
   {
     route: "/shift-report",

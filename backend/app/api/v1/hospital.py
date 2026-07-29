@@ -1,4 +1,4 @@
-"""Hospital data API — patients and departments endpoints, consolidated."""
+"""Hospital data API: patients and departments endpoints, consolidated."""
 
 from fastapi import APIRouter, HTTPException
 from typing import Optional

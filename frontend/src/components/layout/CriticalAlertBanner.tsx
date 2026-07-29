@@ -22,7 +22,7 @@ export function CriticalAlertBanner() {
         {criticalAlerts.length === 1 ? "Alert" : "Alerts"}
       </span>
       <span className="text-[13px] text-muted truncate">
-        {latest.department.toUpperCase()} — {latest.message}
+        {latest.department.toUpperCase()}: {latest.message}
       </span>
     </div>
   );

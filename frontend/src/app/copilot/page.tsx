@@ -280,7 +280,7 @@ export default function CopilotPage() {
                           {opt.recommendations.slice(0, 4).map((rec, i) => (
                             <div key={i} className="border border-line flex items-center justify-between px-4 py-2 rounded-lg">
                               <div className="min-w-0 flex-1">
-                                <div className="text-[13px] text-ink">{rec.department} — {rec.resource_type}</div>
+                                <div className="text-[13px] text-ink">{rec.department}: {rec.resource_type}</div>
                                 <div className="text-[11px] text-muted mt-1 truncate">{rec.reason}</div>
                               </div>
                               <div className="flex items-center gap-2 flex-shrink-0 ml-4 mono text-[13px]">
@@ -366,7 +366,7 @@ export default function CopilotPage() {
                       </button>
                       {implemented && (
                         <p className="text-center text-[11px] text-muted mt-2">
-                          Saved at {implementedAt} by clinician · Simulation is updating — watch the floor plan for instant impact
+                          Saved at {implementedAt} by clinician · Simulation is updating, watch the floor plan for instant impact
                         </p>
                       )}
                     </div>

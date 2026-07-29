@@ -1,10 +1,10 @@
 """
-PulseFlow AI — Analytics Engine
+PulseFlow AI: Analytics Engine
 Consolidated module covering four domains:
-  FORECASTING    — Holt-Winters time-series forecasting with uncertainty intervals
-  OPTIMIZATION   — OR-Tools / SciPy staffing and resource allocation
-  AI NARRATIVE   — Ollama-powered local LLM explanations (graceful fallback)
-  CARE COORDINATION — Specialist roster, fixed bottlenecks, tracked patients
+  FORECASTING    - Holt-Winters time-series forecasting with uncertainty intervals
+  OPTIMIZATION   - OR-Tools / SciPy staffing and resource allocation
+  AI NARRATIVE   - Ollama-powered local LLM explanations (graceful fallback)
+  CARE COORDINATION - Specialist roster, fixed bottlenecks, tracked patients
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ try:
     ORTOOLS_AVAILABLE = True
 except ImportError:
     ORTOOLS_AVAILABLE = False
-    logger.warning("OR-Tools not available — using SciPy fallback for optimization")
+    logger.warning("OR-Tools not available, using SciPy fallback for optimization")
 
 try:
     import ollama as _ollama
@@ -38,7 +38,7 @@ try:
     OLLAMA_AVAILABLE = True
 except ImportError:
     OLLAMA_AVAILABLE = False
-    logger.warning("ollama package not installed — using fallback text responses")
+    logger.warning("ollama package not installed, using fallback text responses")
 
 import time as _time
 
@@ -63,7 +63,7 @@ class ForecastResult:
         Converts this ForecastResult into a plain dictionary so it can be serialized to JSON and sent over the API.
 
         Parameters:
-            None — operates on the fields of the dataclass instance itself.
+            None, operates on the fields of the dataclass instance itself.
 
         Returns:
             A dictionary with all forecast fields rounded to a reasonable number of decimal places, ready for JSON serialization.
@@ -422,7 +422,7 @@ class OptimizationResult:
         Converts this OptimizationResult into a plain dictionary suitable for JSON serialization and sending over the API.
 
         Parameters:
-            None — operates on the fields of the dataclass instance itself.
+            None, operates on the fields of the dataclass instance itself.
 
         Returns:
             A dictionary containing the objective value, a list of recommendation dicts, predicted metric improvements, bottleneck info, root causes, intervention plan, confidence, and solver name.
@@ -663,7 +663,7 @@ class HospitalOptimizer:
                 urgency: A string label like "critical", "high", "medium", or "low".
 
             Returns:
-                None — appends directly to the enclosing recs list.
+                None, appends directly to the enclosing recs list.
             """
             if delta:
                 recs.append(
@@ -1073,7 +1073,7 @@ class AICopilot:
             model: The name of the Ollama model to load for chat completions (default "llama3.2").
 
         Returns:
-            None — standard __init__ constructor.
+            None, standard __init__ constructor.
         """
         self.base_url = base_url
         self.model = model
@@ -1144,7 +1144,7 @@ class AICopilot:
 
     async def explain_bottleneck(self, state: dict, opt: dict) -> dict:
         """
-        Generates a 3-4 sentence plain-English explanation of the current hospital bottleneck — its root cause, consequence, and the best intervention — using the LLM if available or a deterministic fallback otherwise.
+        Generates a 3-4 sentence plain-English explanation of the current hospital bottleneck (its root cause, consequence, and the best intervention) using the LLM if available or a deterministic fallback otherwise.
 
         Parameters:
             state: The current hospital state dict from the simulation, containing "departments" and "metrics".
@@ -1322,7 +1322,7 @@ class AICopilot:
         icu = state.get("departments", {}).get("icu", {})
         explanation = (
             f"With {m.get('active_patients', 0)} active patients and {m.get('avg_wait_time', 0):.0f}m avg wait, "
-            f"{dept} is the critical bottleneck — {er.get('occupancy', 0) * 100:.0f}% occupancy, {er.get('queue_length', 0)} queued. "
+            f"{dept} is the critical bottleneck: {er.get('occupancy', 0) * 100:.0f}% occupancy, {er.get('queue_length', 0)} queued. "
             f"{opt.get('root_causes', ['Unknown cause'])[0]}. ICU at {icu.get('occupancy', 0) * 100:.0f}% with "
             f"{m.get('critical_patients', 0)} critical cases. "
             f"Primary action: {opt.get('intervention_plan', ['Reallocate staff'])[0]}. "
@@ -1360,11 +1360,11 @@ class AICopilot:
             else (
                 "Close monitoring required"
                 if risk > 0.4
-                else "Stable — routine care pathway"
+                else "Stable: routine care pathway"
             )
         )
         return (
-            f"{name}, {patient.get('age', '?')}, {sev.upper()} — {patient.get('chief_complaint', '?')}. "
+            f"{name}, {patient.get('age', '?')}, {sev.upper()}: {patient.get('chief_complaint', '?')}. "
             f"In {dept}, waited {wait:.0f}m, risk {risk:.2f}. {urgency}."
         )
 
@@ -1655,7 +1655,7 @@ class CareCoordinator:
             None.
 
         Returns:
-            None — standard __init__ constructor.
+            None, standard __init__ constructor.
         """
         self.specialists: List[Specialist] = []
         self.bottlenecks: Dict[str, FixedBottleneck] = {}
@@ -1670,7 +1670,7 @@ class CareCoordinator:
             now: The current simulation time in minutes, used to set created_at and release_at timestamps correctly relative to the simulation clock.
 
         Returns:
-            None — mutates self.specialists, self.bottlenecks, and self.tracked in place.
+            None, mutates self.specialists, self.bottlenecks, and self.tracked in place.
 
         Called from:
             _ensure_seeded, which calls this exactly once per CareCoordinator instance.
@@ -1686,7 +1686,7 @@ class CareCoordinator:
             4,
             2,
             28,
-            "Cath Lab — STEMI",
+            "Cath Lab: STEMI",
         )
         s(sid(), "Dr. Nina Patel", "Cardiology", "Electrophysiologist", 30, 2, 1, 0)
         s(
@@ -1801,7 +1801,7 @@ class CareCoordinator:
                 "resource_type": "Specialist",
                 "status": "In CABG Surgery",
                 "priority": "high",
-                "notes": "Cardiac surgeon — cannot be interrupted",
+                "notes": "Cardiac surgeon, cannot be interrupted",
                 "release_label": "2:45 PM",
                 "release_in_min": 75,
             },
@@ -1810,7 +1810,7 @@ class CareCoordinator:
                 "resource_type": "Equipment",
                 "status": "Scheduled maintenance",
                 "priority": "medium",
-                "notes": "Coil calibration — imaging routed to Suite 1",
+                "notes": "Coil calibration, imaging routed to Suite 1",
                 "release_label": "1:30 PM",
                 "release_in_min": 40,
             },
@@ -1974,7 +1974,7 @@ class CareCoordinator:
 
     def get_state(self, now: float) -> dict:
         """
-        Returns a complete snapshot of the care coordination layer — all specialists, active bottlenecks, and tracked patients — with all time-dependent fields computed for the current moment.
+        Returns a complete snapshot of the care coordination layer (all specialists, active bottlenecks, and tracked patients) with all time-dependent fields computed for the current moment.
 
         Parameters:
             now: The current simulation time in minutes, passed through to all child serialization methods that need to compute availability, wait times, and risk scores.
@@ -2218,7 +2218,7 @@ class CareCoordinator:
                 if alt:
                     alt_eta = alt.to_dict(now)["available_in_min"]
                     reasons.append(
-                        f"Reroute to {alt.role} {alt.name} — "
+                        f"Reroute to {alt.role} {alt.name}, "
                         + (
                             "available now"
                             if alt_eta == 0

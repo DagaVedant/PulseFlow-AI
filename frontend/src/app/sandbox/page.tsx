@@ -238,7 +238,7 @@ export default function SandboxPage() {
             Sandbox
           </h1>
           <p className="text-[13px] text-muted mt-1">
-            Changes apply automatically — events and constraints drive dynamic delays and resource competition
+            Changes apply automatically, events and constraints drive dynamic delays and resource competition
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -331,7 +331,7 @@ export default function SandboxPage() {
           {hospitalState?.departments && (
             <div className="border border-line rounded-lg p-6 flex-1 min-h-0 overflow-y-auto">
               <div className="text-[12px] font-medium text-ink uppercase tracking-wider mb-4">
-                Department status — adjust sliders to see changes
+                Department status: adjust sliders to see changes
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {(["er", "icu", "ward"] as const).map((dept) => {

@@ -30,7 +30,7 @@ const DEMO_CONSTRAINT = {
   priority: "critical" as const,
   release_in_min: 90,
   release_label: "3:30 PM",
-  notes: "Open-heart — OR 2 unavailable",
+  notes: "Open-heart: OR 2 unavailable",
 };
 
 export default function OperationsPage() {

@@ -1,5 +1,5 @@
 """
-PulseFlow AI — FastAPI Backend Entry Point
+PulseFlow AI: FastAPI Backend Entry Point
 Hospital Digital Twin Platform
 """
 
@@ -82,7 +82,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="PulseFlow AI",
-    description="AI-Powered Hospital Operating System — Digital Twin Platform",
+    description="AI-Powered Hospital Operating System: Digital Twin Platform",
     version=settings.VERSION,
     lifespan=lifespan,
 )
@@ -191,7 +191,7 @@ async def _handle_client_message(websocket: WebSocket, msg: dict):
 
     Parameters:
         websocket: The WebSocket connection object for the specific client
-                   who sent this message — used to send the reply back.
+                   who sent this message, used to send the reply back.
         msg:       A Python dict parsed from the raw JSON the client sent.
                    Expected to have a "type" key whose value is one of:
                    "trigger_event", "update_config", "request_optimization",
@@ -200,7 +200,7 @@ async def _handle_client_message(websocket: WebSocket, msg: dict):
     Returns nothing directly; instead it awaits a send back to the client
     with a result, acknowledgement, or error dict. The message is validated
     against its pydantic schema (app/api/v1/ws_schemas.py) before anything
-    else happens — an unrecognized type or a schema mismatch sends back
+    else happens, an unrecognized type or a schema mismatch sends back
     {"type": "error", ...} and never touches simulation_service.
 
     Called from the websocket_endpoint handler whenever the client sends text.

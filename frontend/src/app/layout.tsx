@@ -4,7 +4,7 @@ import { WebSocketProvider } from "@/components/layout/WebSocketProvider";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
-  title: "PulseFlow AI — Hospital Operating System",
+  title: "PulseFlow AI: Hospital Operating System",
   description: "AI-Powered Hospital Digital Twin Platform",
 };
 

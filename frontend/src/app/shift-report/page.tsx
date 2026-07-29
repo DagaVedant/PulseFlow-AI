@@ -61,13 +61,13 @@ export default function ShiftReportPage() {
   const topRisk = [...patients].sort((a, b) => b.risk_score - a.risk_score).slice(0, 5);
 
   const priorities: string[] = [];
-  if ((m?.diversion_risk ?? 0) > 0.75) priorities.push("DIVERSION RISK — notify EMS coordinator immediately");
-  if (boardingCount > 2) priorities.push(`${boardingCount} boarding patients — expedite ICU/Ward bed assignments`);
-  if (deterioratingCount > 0) priorities.push(`${deterioratingCount} patients deteriorating in queue — escalate triage`);
-  if (sepsisCount > 0) priorities.push(`${sepsisCount} sepsis-risk patients — initiate bundle protocols`);
-  if ((m?.icu_utilization ?? 0) > 0.88) priorities.push("ICU near capacity — identify transfer candidates");
-  if ((m?.sla_compliance ?? 1) < 0.7) priorities.push("SLA compliance below 70% — increase triage throughput");
-  if (priorities.length === 0) priorities.push("No critical issues — maintain current staffing ratios");
+  if ((m?.diversion_risk ?? 0) > 0.75) priorities.push("DIVERSION RISK: notify EMS coordinator immediately");
+  if (boardingCount > 2) priorities.push(`${boardingCount} boarding patients: expedite ICU/Ward bed assignments`);
+  if (deterioratingCount > 0) priorities.push(`${deterioratingCount} patients deteriorating in queue: escalate triage`);
+  if (sepsisCount > 0) priorities.push(`${sepsisCount} sepsis-risk patients: initiate bundle protocols`);
+  if ((m?.icu_utilization ?? 0) > 0.88) priorities.push("ICU near capacity: identify transfer candidates");
+  if ((m?.sla_compliance ?? 1) < 0.7) priorities.push("SLA compliance below 70%: increase triage throughput");
+  if (priorities.length === 0) priorities.push("No critical issues: maintain current staffing ratios");
 
   return (
     <div className="flex flex-col gap-6">

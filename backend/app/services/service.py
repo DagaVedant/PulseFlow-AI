@@ -1,5 +1,5 @@
 """
-PulseFlow AI — Service Layer
+PulseFlow AI: Service Layer
 Consolidates WebSocket connection management and simulation orchestration.
 """
 
@@ -37,7 +37,7 @@ class ConnectionManager:
 
         No input parameters.
 
-        Returns nothing — called automatically when the module-level
+        Returns nothing, called automatically when the module-level
         `manager` singleton is created at import time.
         """
         self.active_connections: Set[WebSocket] = set()
@@ -151,7 +151,7 @@ class ConnectionManager:
         """
         Returns the number of WebSocket clients that are currently connected.
 
-        No input parameters — reads self.active_connections.
+        No input parameters, reads self.active_connections.
 
         Returns an integer count; used by the /health endpoint and by
         start_broadcast_loop to skip serialisation when nobody is listening.
@@ -168,7 +168,7 @@ def _make_config() -> SimulationConfig:
     packages them into a SimulationConfig object ready to be passed to the
     HospitalSimulation constructor.
 
-    No input parameters — reads from the module-level `settings` object.
+    No input parameters, reads from the module-level `settings` object.
 
     Returns a SimulationConfig dataclass with fields like er_beds,
     icu_doctors, arrival_rate, simulation_speed, etc.
@@ -207,7 +207,7 @@ class SimulationService:
 
         No input parameters.
 
-        Returns nothing — called automatically when the module-level
+        Returns nothing, called automatically when the module-level
         `simulation_service` singleton is created at import time.
         """
         self.simulation = HospitalSimulation(_make_config())
@@ -286,7 +286,7 @@ class SimulationService:
         state and enriches the result with an AI-generated narrative
         explaining the recommendations in plain English.
 
-        No input parameters — reads state from the live simulation.
+        No input parameters, reads state from the live simulation.
 
         Returns a dict containing optimization recommendations (staff
         reallocation, bed suggestions, etc.) plus an "ai_narrative" key
@@ -309,9 +309,9 @@ class SimulationService:
         """
         Produces a comprehensive AI analysis bundle containing an optimizer
         result, a bottleneck explanation, bottleneck predictions, and a
-        demand forecast summary — everything the AI Copilot page needs.
+        demand forecast summary, everything the AI Copilot page needs.
 
-        No input parameters — reads state, history, and forecasts from the
+        No input parameters, reads state, history, and forecasts from the
         live simulation.
 
         Returns a dict with keys: "explanation" (plain-English bottleneck
@@ -366,7 +366,7 @@ class SimulationService:
 
         Returns a dict (may be empty if the simulation has not started yet).
 
-        Called widely — by the broadcast loop, REST endpoints, and
+        Called widely, by the broadcast loop, REST endpoints, and
         WebSocket message handlers whenever the latest state is needed.
         """
         state = self.simulation.get_hospital_state() or {}
@@ -399,7 +399,7 @@ class SimulationService:
         current simulation time.
 
         Parameters:
-            data: A dict describing the bottleneck — typically includes
+            data: A dict describing the bottleneck, typically includes
                   keys like "department", "description", and "severity".
 
         Returns a dict representing the newly created bottleneck record,

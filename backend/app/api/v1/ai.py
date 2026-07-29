@@ -1,4 +1,4 @@
-"""AI and care coordination API — copilot analysis, optimization, shift reports, specialists, and constraints."""
+"""AI and care coordination API: copilot analysis, optimization, shift reports, specialists, and constraints."""
 
 import structlog
 from fastapi import APIRouter, HTTPException, Body
@@ -162,7 +162,7 @@ async def add_bottleneck(data: dict = Body(...)):
     sent by the client.
 
     Parameters:
-        data: A JSON request body dict describing the bottleneck — typically
+        data: A JSON request body dict describing the bottleneck, typically
               includes "department", "description", and "severity" keys.
 
     Returns the newly created bottleneck dict including its generated ID.

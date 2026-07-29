@@ -9,12 +9,22 @@ import { TOUR_STEPS } from "@/components/tutorial/tourSteps";
 const SEEN_KEY = "pf-tour-seen";
 const POPUP_WIDTH = 340;
 const SPOTLIGHT_PAD = 8;
+const VIEWPORT_MARGIN = 16;
+const DODGE_GAP = 16;
+const POPUP_HEIGHT_ESTIMATE = 260;
 
 export function GuidedTour() {
   const router = useRouter();
   const pathname = usePathname();
   const { active, stepIndex, start, stop, next, prev } = useTourStore();
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const [popupEl, setPopupEl] = useState<HTMLDivElement | null>(null);
+  const [popupHeight, setPopupHeight] = useState(POPUP_HEIGHT_ESTIMATE);
+  const [viewport, setViewport] = useState(() =>
+    typeof window === "undefined"
+      ? { w: 1280, h: 800 }
+      : { w: window.innerWidth, h: window.innerHeight },
+  );
   const lastNavigatedStep = useRef(-1);
 
   const step = TOUR_STEPS[stepIndex];
@@ -79,6 +89,24 @@ export function GuidedTour() {
     };
   }, [active, stepIndex, pathname, step]);
 
+  // The popup is centred on the viewport, so both its own height and the
+  // viewport size feed straight into where it gets placed.
+  useEffect(() => {
+    const update = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  useEffect(() => {
+    if (!popupEl) return;
+    const measure = () => setPopupHeight(popupEl.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(popupEl);
+    return () => observer.disconnect();
+  }, [popupEl]);
+
   const finish = () => {
     try {
       localStorage.setItem(SEEN_KEY, "1");
@@ -111,28 +139,40 @@ export function GuidedTour() {
       }
     : null;
 
-  const popupPos: { top: number; left: number; translateCenter?: boolean; anchorBottom?: boolean } = (() => {
-    if (typeof window === "undefined") return { top: 0, left: 0 };
-    if (!hasSpotlight) {
-      return {
-        top: window.innerHeight / 2,
-        left: Math.min(
-          Math.max(window.innerWidth / 2 - POPUP_WIDTH / 2, 16),
-          window.innerWidth - POPUP_WIDTH - 16,
-        ),
-        translateCenter: true,
-      };
-    }
-    const margin = 16;
-    const spaceBelow = window.innerHeight - rect!.bottom;
-    const placeBelow = spaceBelow > 240 || spaceBelow > rect!.top;
-    const left = Math.min(
-      Math.max(rect!.left, margin),
-      window.innerWidth - POPUP_WIDTH - margin,
-    );
-    return placeBelow
-      ? { top: rect!.bottom + margin + SPOTLIGHT_PAD, left }
-      : { top: rect!.top - SPOTLIGHT_PAD - margin, left, anchorBottom: true };
+  // Always vertically centred on the viewport, so the popup can never scroll
+  // off-screen the way an element-anchored position could. Horizontally it
+  // prefers the centre too, and only slides aside when dead-centre would cover
+  // the thing the step is pointing at.
+  const popupPos: { top: number; left: number } = (() => {
+    const { w: vw, h: vh } = viewport;
+    const clampLeft = (left: number) =>
+      Math.min(
+        Math.max(left, VIEWPORT_MARGIN),
+        Math.max(vw - POPUP_WIDTH - VIEWPORT_MARGIN, VIEWPORT_MARGIN),
+      );
+    const top = Math.max((vh - popupHeight) / 2, VIEWPORT_MARGIN);
+    const centred = clampLeft((vw - POPUP_WIDTH) / 2);
+
+    if (!hasSpotlight) return { top, left: centred };
+
+    const spot = {
+      top: rect!.top - SPOTLIGHT_PAD,
+      bottom: rect!.bottom + SPOTLIGHT_PAD,
+      left: rect!.left - SPOTLIGHT_PAD,
+      right: rect!.right + SPOTLIGHT_PAD,
+    };
+    const overlaps =
+      top < spot.bottom &&
+      top + popupHeight > spot.top &&
+      centred < spot.right &&
+      centred + POPUP_WIDTH > spot.left;
+    if (!overlaps) return { top, left: centred };
+
+    const needed = POPUP_WIDTH + DODGE_GAP + VIEWPORT_MARGIN;
+    if (vw - spot.right >= needed) return { top, left: clampLeft(spot.right + DODGE_GAP) };
+    if (spot.left >= needed) return { top, left: clampLeft(spot.left - DODGE_GAP - POPUP_WIDTH) };
+    // Target is too wide to dodge (a full-width panel); stay centred over it.
+    return { top, left: centred };
   })();
 
   return (
@@ -162,17 +202,14 @@ export function GuidedTour() {
       <AnimatePresence mode="wait">
         <motion.div
           key={stepIndex}
+          ref={setPopupEl}
           role="document"
-          className="fixed bg-elevated border border-line rounded-lg p-5 shadow-2xl"
+          className="fixed bg-elevated border border-line rounded-lg p-5 shadow-2xl overflow-y-auto"
           style={{
             width: POPUP_WIDTH,
             top: popupPos.top,
             left: popupPos.left,
-            transform: popupPos.translateCenter
-              ? "translateY(-50%)"
-              : popupPos.anchorBottom
-                ? "translateY(-100%)"
-                : undefined,
+            maxHeight: viewport.h - VIEWPORT_MARGIN * 2,
           }}
           initial={{ opacity: 0, y: 6, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}

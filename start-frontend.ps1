@@ -1,4 +1,4 @@
-# PulseFlow AI — Start Frontend
+# PulseFlow AI: Start Frontend
 Set-Location "$PSScriptRoot\frontend"
 
 # Install dependencies if needed

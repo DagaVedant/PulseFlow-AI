@@ -1,5 +1,5 @@
 """
-PulseFlow AI — Hospital Digital Twin Simulation Engine
+PulseFlow AI: Hospital Digital Twin Simulation Engine
 Core SimPy-based discrete-event simulation of entire hospital operations.
 """
 from __future__ import annotations
@@ -61,7 +61,7 @@ class DepartmentState:
 
         Parameters: None (reads self.occupancy and self.queue_length).
 
-        Returns: Nothing — updates self.status in place.
+        Returns: Nothing, updates self.status in place.
 
         Called from: Any code that needs a human-readable status label for a department
         before sending state to the frontend.
@@ -147,7 +147,7 @@ class HospitalSimulation:
                     bed counts, staff numbers, arrival rate, and event flags. If not
                     provided, sensible defaults are used.
 
-        Returns: Nothing — initialises all instance attributes.
+        Returns: Nothing, initialises all instance attributes.
 
         Called from: Application startup (e.g. services layer or FastAPI lifespan hook).
         """
@@ -189,7 +189,7 @@ class HospitalSimulation:
 
         Parameters: None (reads from self.config).
 
-        Returns: Nothing — stores resource objects as instance attributes and
+        Returns: Nothing, stores resource objects as instance attributes and
                  builds the self._dept_capacity lookup dictionary.
 
         Called from: __init__ during object construction.
@@ -239,7 +239,7 @@ class HospitalSimulation:
 
         Parameters: None.
 
-        Returns: Nothing — adds Patient objects directly to self.active_patients and
+        Returns: Nothing, adds Patient objects directly to self.active_patients and
                  increments self.total_admitted.
 
         Called from: __init__ after _setup_resources().
@@ -279,7 +279,7 @@ class HospitalSimulation:
     def _patient_journey(self, patient: Patient):
         """
         Drive a single patient through every stage of their hospital stay as a SimPy
-        generator process — triage, ER treatment, optional labs, optional imaging,
+        generator process, triage, ER treatment, optional labs, optional imaging,
         optional ICU, optional general ward, and finally discharge.
 
         Parameters:
@@ -287,7 +287,7 @@ class HospitalSimulation:
                      needs_icu, needs_ward) determine which departments they visit.
                      Timestamps and state fields on the object are updated in-place.
 
-        Returns: Nothing — this is a SimPy generator; it yields timeouts and resource
+        Returns: Nothing, this is a SimPy generator; it yields timeouts and resource
                  requests.  When the generator finishes the patient has been moved from
                  self.active_patients to self.discharged_patients.
 
@@ -430,7 +430,7 @@ class HospitalSimulation:
             low:      Lower bound of the expected service-time range (in minutes).
             high:     Upper bound of the expected service-time range (in minutes).
             severity: The patient's Severity enum value (LOW / MEDIUM / HIGH / CRITICAL)
-                      which multiplies the mean — critical patients take roughly 2.4x
+                      which multiplies the mean, critical patients take roughly 2.4x
                       longer than low-severity ones.
             scale:    An additional multiplier that lets each department stretch or
                       compress times (e.g. ICU uses scale=2.0).
@@ -455,13 +455,13 @@ class HospitalSimulation:
     def _patient_arrivals(self):
         """
         Continuously generate new patients arriving at the hospital using a Poisson
-        process — waiting an exponentially-distributed inter-arrival time, then
+        process, waiting an exponentially-distributed inter-arrival time, then
         spawning a new _patient_journey process for each arrival.
 
         Parameters: None (reads arrival rate and event flags from self.config at each
                     iteration so that rate changes take effect immediately).
 
-        Returns: Nothing — this is an infinite SimPy generator process that runs for
+        Returns: Nothing, this is an infinite SimPy generator process that runs for
                  the lifetime of the simulation.
 
         Called from: start() via self.env.process().
@@ -503,7 +503,7 @@ class HospitalSimulation:
 
         Parameters: None.
 
-        Returns: Nothing — this is an infinite SimPy generator process; it appends
+        Returns: Nothing, this is an infinite SimPy generator process; it appends
                  dicts to self.metrics_history, self.wait_time_history,
                  self.throughput_history, and self._util_history.
 
@@ -533,7 +533,7 @@ class HospitalSimulation:
 
         Parameters: None.
 
-        Returns: Nothing — this is an infinite SimPy generator process that delegates
+        Returns: Nothing, this is an infinite SimPy generator process that delegates
                  all alert logic to _check_alerts().
 
         Called from: start() via self.env.process().
@@ -555,14 +555,14 @@ class HospitalSimulation:
     def _check_alerts(self):
         """
         Inspect the current hospital state and every active patient to decide whether
-        any alert conditions have been triggered — including department overcrowding,
+        any alert conditions have been triggered, including department overcrowding,
         hospital-wide excessive wait times, individual patient deterioration due to
         prolonged waiting, sepsis risk from high-risk chief complaints, patient
         boarding after ER discharge, and SLA breaches.
 
         Parameters: None (reads state from self and self.active_patients).
 
-        Returns: Nothing — calls _create_alert() to post new alerts and mutates
+        Returns: Nothing, calls _create_alert() to post new alerts and mutates
                  patient flags such as deterioration_notified, sepsis_risk, and
                  sla_breached directly on Patient objects.
 
@@ -575,7 +575,7 @@ class HospitalSimulation:
         for dept_name, dept in state["departments"].items():
             if dept["occupancy"] >= 0.92:
                 self._create_alert("critical", dept_name,
-                    f"{dept['display_name']} at {dept['occupancy']*100:.0f}% capacity — CRITICAL")
+                    f"{dept['display_name']} at {dept['occupancy']*100:.0f}% capacity: CRITICAL")
             elif dept["occupancy"] >= 0.85:
                 self._create_alert("warning", dept_name,
                     f"{dept['display_name']} approaching capacity ({dept['occupancy']*100:.0f}%)")
@@ -602,7 +602,7 @@ class HospitalSimulation:
                         p.deterioration_notified = True
                         p.risk_score = min(1.0, p.risk_score + 0.18)
                         self._create_alert("critical", p.current_department.value,
-                            f"DETERIORATION — {p.name} ({sev.upper()}) waiting "
+                            f"DETERIORATION: {p.name} ({sev.upper()}) waiting "
                             f"{now - queue_enter:.0f} min · risk now {p.risk_score:.2f}")
 
                 if (not p.sepsis_risk and
@@ -612,7 +612,7 @@ class HospitalSimulation:
                     if wait >= 60:
                         p.sepsis_risk = True
                         self._create_alert("critical", p.current_department.value,
-                            f"SEPSIS RISK — {p.name}: '{p.chief_complaint}' — "
+                            f"SEPSIS RISK: {p.name}, '{p.chief_complaint}', "
                             f"{wait:.0f} min without treatment")
 
                 if (p.state in (PatientState.WAITING_ICU, PatientState.WAITING_WARD)
@@ -622,7 +622,7 @@ class HospitalSimulation:
                     if board_time >= 120 and not p.deterioration_notified:
                         p.deterioration_notified = True
                         self._create_alert("warning", "hospital",
-                            f"BOARDING — {p.name} ({sev.upper()}) boarded "
+                            f"BOARDING: {p.name} ({sev.upper()}) boarded "
                             f"{board_time:.0f} min waiting for {p.state.value.replace('waiting_', '').upper()} bed")
 
                 if p.er_start is not None and not p.sla_breached:
@@ -643,7 +643,7 @@ class HospitalSimulation:
                         'hospital'.
             message:    Human-readable description of the alert condition.
 
-        Returns: Nothing — mutates self.active_alerts in place.
+        Returns: Nothing, mutates self.active_alerts in place.
 
         Called from: _check_alerts(), _patient_journey(), and trigger_event() whenever
                      an alert condition is detected.
@@ -667,7 +667,7 @@ class HospitalSimulation:
     def _extract_metrics(self) -> dict:
         """
         Compute a flat dictionary of key performance indicators from the current
-        live state of all SimPy resources and active patients — covering wait times,
+        live state of all SimPy resources and active patients, covering wait times,
         utilisation rates, patient counts, severity breakdown, staff utilisation,
         and mortality risk.
 
@@ -780,7 +780,7 @@ class HospitalSimulation:
     def get_hospital_state(self) -> dict:
         """
         Build and return a complete snapshot of the entire hospital at the current
-        simulation time — including per-department occupancy and queues, a sorted
+        simulation time, including per-department occupancy and queues, a sorted
         patient list, aggregated metrics, active alerts, patient flow rates between
         departments, a 24-hour arrival forecast, and the active configuration flags.
 
@@ -1101,7 +1101,7 @@ class HospitalSimulation:
         threshold next and how many simulated minutes away that event is.
 
         Parameters:
-            icu_utils:  List of ICU utilisation fractions (0.0–1.0) in chronological
+            icu_utils:  List of ICU utilisation fractions (0.0 to 1.0) in chronological
                         order, one entry per simulated minute of history.
             bed_utils:  List of overall bed utilisation fractions in the same format.
             wait_times: List of average wait-time values (in minutes) in the same
@@ -1166,7 +1166,7 @@ class HospitalSimulation:
     def _compute_advanced_metrics(self, patients: list, departments: dict) -> dict:
         """
         Calculate a set of higher-level operational metrics that go beyond simple
-        utilisation numbers — including boarding counts, deteriorating and sepsis
+        utilisation numbers, including boarding counts, deteriorating and sepsis
         patient counts, SLA compliance rate, ambulance diversion risk score, estimated
         minutes to diversion, financial delay cost, and per-department staff burnout
         risk based on sustained high utilisation.
@@ -1304,7 +1304,7 @@ class HospitalSimulation:
         """
         Update a SimPy PriorityResource capacity in-place without recreating it.
         Recreating resources orphans every in-flight patient process that holds a
-        reference to the old object — those processes would wait forever because
+        reference to the old object, those processes would wait forever because
         the old resource never gets new capacity.  Instead we mutate _capacity
         directly (a plain integer attribute).
 
@@ -1314,7 +1314,7 @@ class HospitalSimulation:
             new_cap:  The desired new capacity.  Enforced to be at least 1 so no
                       resource is ever set to zero, which would deadlock patients.
 
-        Returns: Nothing — mutates resource._capacity in place.
+        Returns: Nothing, mutates resource._capacity in place.
 
         Called from: update_config() when a live configuration hot-reload is applied.
         """
@@ -1323,7 +1323,7 @@ class HospitalSimulation:
 
     def update_config(self, new_config: SimulationConfig) -> None:
         """
-        Apply a new SimulationConfig to the running simulation without stopping it —
+        Apply a new SimulationConfig to the running simulation without stopping it,
         replacing self.config and resizing every SimPy resource in-place so that
         in-flight patient processes automatically see the updated capacities.
 
@@ -1331,7 +1331,7 @@ class HospitalSimulation:
             new_config: A SimulationConfig object with the desired new values for bed
                         counts, staff numbers, arrival rate, and event flags.
 
-        Returns: Nothing — mutates self.config and all SimPy resource capacities
+        Returns: Nothing, mutates self.config and all SimPy resource capacities
                  in place; also adjusts queue timestamps via _adjust_queue_timestamps()
                  so displayed wait times reflect the new configuration immediately.
 
@@ -1374,7 +1374,7 @@ class HospitalSimulation:
             new: The newly applied SimulationConfig whose staff and arrival-rate values
                  are used to compute a target wait time for each queue state.
 
-        Returns: Nothing — mutates the queue-entry timestamp attributes
+        Returns: Nothing, mutates the queue-entry timestamp attributes
                  (er_queue_enter, icu_queue_enter, etc.) directly on Patient objects
                  in self.active_patients.
 
@@ -1429,9 +1429,9 @@ class HospitalSimulation:
 
     def trigger_event(self, event_type: str, params: dict = None):
         """
-        Activate a named emergency or operational event in the simulation — adjusting
+        Activate a named emergency or operational event in the simulation (adjusting
         arrival rates, disabling equipment, injecting mass-casualty patients, or
-        clearing all active events — and post a corresponding alert to the dashboard.
+        clearing all active events) and post a corresponding alert to the dashboard.
 
         Parameters:
             event_type: A string identifying the event to trigger.  Supported values
@@ -1443,7 +1443,7 @@ class HospitalSimulation:
                         can include 'count' (int); for 'staff_shortage' it must include
                         'department' (str).
 
-        Returns: Nothing — mutates self.config flags and calls _create_alert() or
+        Returns: Nothing, mutates self.config flags and calls _create_alert() or
                  spawns new patient processes via self.env.process().
 
         Called from: The WebSocket 'trigger_event' message handler and the
@@ -1459,7 +1459,7 @@ class HospitalSimulation:
 
         elif event_type == "ct_failure":
             cfg.ct_failure = True
-            self._create_alert("critical", "imaging", "CT scanner failure — imaging queue will grow")
+            self._create_alert("critical", "imaging", "CT scanner failure, imaging queue will grow")
 
         elif event_type == "mri_failure":
             cfg.mri_failure = True
@@ -1467,7 +1467,7 @@ class HospitalSimulation:
 
         elif event_type == "lab_slowdown":
             cfg.lab_slowdown = True
-            self._create_alert("warning", "labs", "Laboratory processing slowdown — results delayed")
+            self._create_alert("warning", "labs", "Laboratory processing slowdown, results delayed")
 
         elif event_type == "mass_casualty":
             cfg.mass_casualty = True
@@ -1521,7 +1521,7 @@ class HospitalSimulation:
         Returns: Nothing.  Does nothing if the simulation is already running
                  (guarded by self._running).
 
-        Called from: Application startup — typically the FastAPI lifespan hook or
+        Called from: Application startup, typically the FastAPI lifespan hook or
                      the services orchestration layer.
         """
         if self._running:
@@ -1543,7 +1543,7 @@ class HospitalSimulation:
 
         Returns: Nothing.
 
-        Called from: Application shutdown — typically the FastAPI lifespan teardown
+        Called from: Application shutdown, typically the FastAPI lifespan teardown
                      or a test fixture teardown.
         """
         self._running = False
@@ -1558,7 +1558,7 @@ class HospitalSimulation:
 
         Parameters: None.
 
-        Returns: Nothing — runs until self._running is set to False by stop().
+        Returns: Nothing, runs until self._running is set to False by stop().
 
         Called from: start() as the target of the background daemon thread.
         """

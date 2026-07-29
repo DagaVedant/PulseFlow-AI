@@ -262,7 +262,7 @@ class Patient:
         older patients (above 60) plus a small random noise value.
 
         Parameters:
-            severity: A Severity enum value — higher severity means higher
+            severity: A Severity enum value, higher severity means higher
                       base risk (LOW=0.05, MEDIUM=0.25, HIGH=0.65,
                       CRITICAL=0.90).
             age:      The patient's age in years; patients over 60 receive
@@ -289,7 +289,7 @@ class Patient:
         most urgent (CRITICAL) and 4 is the least urgent (LOW), following
         standard triage numbering.
 
-        No input parameters — reads self.severity.
+        No input parameters, reads self.severity.
 
         Used by the simulation engine to sort patients when multiple are
         waiting for the same resource.
@@ -302,7 +302,7 @@ class Patient:
         Returns the total wait time in simulated minutes that this patient
         has accumulated so far while sitting in queues.
 
-        No input parameters — reads self.total_wait_time.
+        No input parameters, reads self.total_wait_time.
 
         Returns a float number of minutes; used by the frontend to display
         per-patient wait times and by metrics aggregation.
@@ -317,7 +317,7 @@ class Patient:
         Converts this Patient object into a plain Python dictionary so it
         can be serialised to JSON and sent over the WebSocket or REST API.
 
-        No input parameters — reads all fields from self.
+        No input parameters, reads all fields from self.
 
         Returns a dict containing patient ID, name, age, arrival time,
         severity, state, department, complaint, risk score, wait time,

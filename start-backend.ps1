@@ -1,4 +1,4 @@
-# PulseFlow AI — Start Backend
+# PulseFlow AI: Start Backend
 Set-Location "$PSScriptRoot\backend"
 
 # Create .env if it doesn't exist
@@ -12,7 +12,7 @@ Write-Host ""
 Write-Host "AI Copilot uses Ollama (local, free, offline)."
 Write-Host "If not installed: https://ollama.com"
 Write-Host "Then run:  ollama pull llama3.2"
-Write-Host "(The platform works without it — AI features fall back to built-in text)"
+Write-Host "(The platform works without it, AI features fall back to built-in text)"
 Write-Host ""
 
 # Create virtual environment if needed
