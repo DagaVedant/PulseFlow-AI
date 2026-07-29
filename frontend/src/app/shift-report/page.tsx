@@ -90,7 +90,7 @@ export default function ShiftReportPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div data-tour="sr-report" className="grid grid-cols-3 gap-6">
         <div className="flex flex-col gap-4 col-span-2">
           <Section title="Patient census" icon={<Users className="w-4 h-4 text-muted" />}>
             <div className="grid grid-cols-5 gap-4">

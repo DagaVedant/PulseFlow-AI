@@ -128,6 +128,7 @@ export default function CopilotPage() {
           <p className="text-[13px] text-muted mt-1">Bottleneck detection · OR-Tools optimization · AI planning</p>
         </div>
         <button
+          data-tour="cp-run"
           onClick={runAnalysis}
           disabled={loading}
           className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-[13px] font-medium bg-ink text-canvas disabled:opacity-60 hover:opacity-90 transition-opacity"
@@ -152,7 +153,7 @@ export default function CopilotPage() {
 
       <div className="flex flex-1 gap-4 min-h-0 overflow-hidden">
         <div className="flex flex-col gap-4 w-[260px] flex-shrink-0 overflow-y-auto">
-          <div className="border border-line rounded-lg p-5">
+          <div data-tour="cp-radar" className="border border-line rounded-lg p-5">
             <div className="text-[11px] font-medium text-muted uppercase mb-4">System health radar</div>
             {radarData.length > 0 ? (
               <div className="h-[220px]">

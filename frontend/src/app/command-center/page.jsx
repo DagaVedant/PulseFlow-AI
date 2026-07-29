@@ -49,7 +49,7 @@ export default function CommandCenterPage() {
 
   return (
     <div>
-      <div className="grid grid-cols-4 gap-6 mb-10">
+      <div data-tour="cc-metrics" className="grid grid-cols-4 gap-6 mb-10">
         <div>
           <div className="text-[12px] uppercase tracking-wide text-muted mb-2">
             Bed occupancy
@@ -80,7 +80,7 @@ export default function CommandCenterPage() {
       </div>
 
       <h2 className="text-[14px] font-medium mb-3">Departments</h2>
-      <div className="mb-10">
+      <div data-tour="cc-departments" className="mb-10">
         {departmentRows.map((d) => (
           <div
             key={d.key}
@@ -112,7 +112,7 @@ export default function CommandCenterPage() {
       </div>
 
       <h2 className="text-[14px] font-medium mb-3">Alerts</h2>
-      <div>
+      <div data-tour="cc-alerts">
         {sortedAlerts.length === 0 ? (
           <div className="flex items-center gap-2 py-2.5 pl-3 border-l-2 border-ink text-[14px]">
             <span>{topAlertText}</span>

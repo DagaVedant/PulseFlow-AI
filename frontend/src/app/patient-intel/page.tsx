@@ -100,6 +100,7 @@ export default function PatientIntelPage() {
             </div>
           )}
           <button
+            data-tour="pi-analyze"
             onClick={analyzeAll}
             disabled={analyzing || patients.length === 0}
             className={
@@ -126,7 +127,7 @@ export default function PatientIntelPage() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto pr-1">
+      <div data-tour="pi-list" className="flex-1 min-h-0 overflow-y-auto pr-1">
         {patients.length === 0 ? (
           <div className="flex items-center justify-center py-20 text-muted text-sm">
             Loading patient data...

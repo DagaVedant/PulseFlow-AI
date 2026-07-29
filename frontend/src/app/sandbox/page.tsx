@@ -264,7 +264,7 @@ export default function SandboxPage() {
 
       <div className="flex flex-1 gap-4 min-h-0 overflow-hidden">
         <div className="w-[300px] flex flex-col gap-4 overflow-y-auto flex-shrink-0">
-          <div className="border border-line rounded-lg p-6 space-y-5">
+          <div data-tour="sb-controls" className="border border-line rounded-lg p-6 space-y-5">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-muted" />
               <span className="text-[12px] font-medium text-ink uppercase tracking-wider">Staffing</span>
