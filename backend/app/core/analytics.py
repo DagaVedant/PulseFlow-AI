@@ -15,12 +15,11 @@ import math
 import random
 import uuid
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 import numpy as np
 from scipy import optimize as scipy_optimize
 from scipy.signal import savgol_filter
-from scipy.stats import norm, poisson
 
 logger = logging.getLogger(__name__)
 

@@ -309,27 +309,3 @@ export type EventType =
   | "covid_surge"
   | "staff_shortage"
   | "clear_event";
-
-export interface SandboxConfig {
-  arrival_rate: number;
-  er_beds: number;
-  er_doctors: number;
-  er_nurses: number;
-  lab_technicians: number;
-  lab_analyzers: number;
-  imaging_ct: number;
-  imaging_mri: number;
-  icu_beds: number;
-  icu_doctors: number;
-  icu_nurses: number;
-  ward_beds: number;
-  ward_doctors: number;
-  ward_nurses: number;
-  active_events: EventType[];
-}
-
-export interface ComparisonMetrics {
-  baseline: Partial<HospitalMetrics>;
-  optimized: Partial<HospitalMetrics>;
-  improvements: Record<string, number>;
-}

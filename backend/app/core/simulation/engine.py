@@ -9,15 +9,14 @@ import threading
 import time
 import math
 import logging
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any, Deque
+from typing import Dict, List, Optional, Deque
 
 import simpy
-import numpy as np
 
 from app.core.simulation.patient import (
-    Patient, Severity, PatientState, Department, SEVERITY_PRIORITY
+    Patient, Severity, PatientState, Department
 )
 
 logger = logging.getLogger(__name__)
@@ -203,10 +202,6 @@ class HospitalSimulation:
         self.lab_analyzers = simpy.PriorityResource(self.env, capacity=max(1, cfg.lab_analyzers))
         self.lab_technicians = simpy.PriorityResource(self.env, capacity=max(1, cfg.lab_technicians))
 
-        ct_cap = max(1, cfg.imaging_ct) if not cfg.ct_failure else 0
-        mri_cap = max(1, cfg.imaging_mri) if not cfg.mri_failure else 0
-        if ct_cap == 0:
-            ct_cap = 0
         self.ct_scanners = simpy.PriorityResource(self.env, capacity=max(1, cfg.imaging_ct))
         self.mri_machines = simpy.PriorityResource(self.env, capacity=max(1, cfg.imaging_mri))
         self.xray_rooms = simpy.PriorityResource(self.env, capacity=max(1, cfg.imaging_xray))

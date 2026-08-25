@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Brain,
   Zap,
@@ -17,7 +17,7 @@ import { useSimulationStore } from "@/store/simulationStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { api } from "@/lib/api";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts";
-import { formatTime, formatPercent, cn } from "@/lib/utils";
+import { formatTime, formatPercent } from "@/lib/utils";
 import type { CopilotAnalysis, StaffingRecommendation, HospitalMetrics } from "@/types";
 import { useDemoStore } from "@/store/demoStore";
 import { useTypewriter } from "@/hooks/useTypewriter";

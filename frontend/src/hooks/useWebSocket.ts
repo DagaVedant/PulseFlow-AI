@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useRef, useCallback } from "react";
 import { useSimulationStore } from "@/store/simulationStore";
-import { api } from "@/lib/api";
 import type { HospitalState } from "@/types";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
@@ -142,20 +141,4 @@ export function useWebSocket() {
     addBottleneck,
     removeBottleneck,
   };
-}
-
-export function useSimulation() {
-  const store = useSimulationStore();
-  const { triggerEvent, updateConfig } = useWebSocket();
-  const runOptimization = useCallback(async () => {
-    store.setIsOptimizing(true);
-    try {
-      const result = await api.runOptimization();
-      store.setLatestOptimization(result);
-      return result;
-    } finally {
-      store.setIsOptimizing(false);
-    }
-  }, [store]);
-  return { ...store, triggerEvent, updateConfig, runOptimization };
 }

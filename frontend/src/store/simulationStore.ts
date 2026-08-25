@@ -43,7 +43,7 @@ interface SimulationStore {
 const MAX_HISTORY = 720;
 
 export const useSimulationStore = create<SimulationStore>()(
-  immer((set, get) => ({
+  immer((set) => ({
     isConnected: false,
     connectionError: null,
     lastUpdate: 0,
