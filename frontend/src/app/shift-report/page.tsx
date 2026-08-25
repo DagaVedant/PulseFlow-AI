@@ -1,11 +1,11 @@
 "use client";
 import { useEffect } from "react";
 import { useSimulationStore } from "@/store/simulationStore";
-import { useDemoStore } from "@/store/demoStore";
+import { useDemoStore } from "@/store/simulationStore";
 import { formatTime, formatPercent, riskLabel } from "@/lib/utils";
 import { ClipboardList, Printer, AlertTriangle, Users, Bed, Activity, Flame, Anchor } from "lucide-react";
-import { StatusBadge, type ClinicalStatus } from "@/components/ui/StatusBadge";
-import { PrivacyMask } from "@/components/ui/PrivacyMask";
+import { StatusBadge, type ClinicalStatus } from "@/components/ui";
+import { PrivacyMask } from "@/components/ui";
 
 function now() {
   return new Date().toLocaleString("en-US", {

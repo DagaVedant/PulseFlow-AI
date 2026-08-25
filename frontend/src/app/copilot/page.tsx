@@ -19,7 +19,7 @@ import { api } from "@/lib/api";
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer } from "recharts";
 import { formatTime, formatPercent } from "@/lib/utils";
 import type { CopilotAnalysis, StaffingRecommendation, HospitalMetrics } from "@/types";
-import { useDemoStore } from "@/store/demoStore";
+import { useDemoStore } from "@/store/simulationStore";
 import { useTypewriter } from "@/hooks/useTypewriter";
 
 const URGENCY_CLASS: Record<string, string> = {

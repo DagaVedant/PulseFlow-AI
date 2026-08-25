@@ -14,9 +14,9 @@ import {
   Ban,
 } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
-import { useDemoStore } from "@/store/demoStore";
-import { PrivacyMask } from "@/components/ui/PrivacyMask";
-import { StatusBadge, type ClinicalStatus } from "@/components/ui/StatusBadge";
+import { useDemoStore } from "@/store/simulationStore";
+import { PrivacyMask } from "@/components/ui";
+import { StatusBadge, type ClinicalStatus } from "@/components/ui";
 import type { TrackedPatient } from "@/types";
 
 const PRIORITY_LABEL: Record<string, string> = {

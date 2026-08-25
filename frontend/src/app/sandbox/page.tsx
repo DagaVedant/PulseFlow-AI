@@ -3,7 +3,7 @@ import { useState, useCallback, useEffect, useRef, useMemo, useId } from "react"
 import { FlaskConical, Zap, AlertTriangle, RefreshCw, Minus, Plus, Activity, Users, Bed, Server } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { useDemoStore } from "@/store/demoStore";
+import { useDemoStore } from "@/store/simulationStore";
 import { formatTime, formatPercent } from "@/lib/utils";
 import type { EventType } from "@/types";
 

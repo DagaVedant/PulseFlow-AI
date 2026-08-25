@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import { Network, Stethoscope, Lock, Plus, X, Clock, AlertOctagon } from "lucide-react";
 import { useSimulationStore } from "@/store/simulationStore";
 import { useWebSocket } from "@/hooks/useWebSocket";
-import { useDemoStore } from "@/store/demoStore";
-import { StatusBadge, type ClinicalStatus } from "@/components/ui/StatusBadge";
+import { useDemoStore } from "@/store/simulationStore";
+import { StatusBadge, type ClinicalStatus } from "@/components/ui";
 import type { Specialist, FixedBottleneck, BottleneckType } from "@/types";
 
 const RESOURCE_TYPES: BottleneckType[] = ["Doctor", "Specialist", "Operating Room", "Equipment", "Bed", "Nurse"];

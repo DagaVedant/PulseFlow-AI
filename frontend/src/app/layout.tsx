@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { WebSocketProvider } from "@/components/layout/WebSocketProvider";
 import { AppShell } from "@/components/layout/AppShell";
 
 export const metadata: Metadata = {
@@ -26,9 +25,7 @@ export default function RootLayout({
         className="bg-clinical-canvas text-clinical-text-strong font-sans antialiased"
         suppressHydrationWarning
       >
-        <WebSocketProvider>
-          <AppShell>{children}</AppShell>
-        </WebSocketProvider>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

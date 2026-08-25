@@ -296,22 +296,6 @@ class Patient:
         """
         return SEVERITY_PRIORITY[self.severity]
 
-    @property
-    def current_wait_time(self) -> float:
-        """
-        Returns the total wait time in simulated minutes that this patient
-        has accumulated so far while sitting in queues.
-
-        No input parameters, reads self.total_wait_time.
-
-        Returns a float number of minutes; used by the frontend to display
-        per-patient wait times and by metrics aggregation.
-
-        This property is a read-only alias for total_wait_time and is
-        accessed wherever live queue durations are needed.
-        """
-        return self.total_wait_time
-
     def to_dict(self) -> dict:
         """
         Converts this Patient object into a plain Python dictionary so it

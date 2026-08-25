@@ -2,7 +2,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Play, Square, CheckCircle } from "lucide-react";
-import { useDemoStore } from "@/store/demoStore";
+import { useDemoStore } from "@/store/simulationStore";
 
 interface Step {
   route: string;

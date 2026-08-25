@@ -255,45 +255,6 @@ class HospitalForecaster:
             confidence=max(0.5, 0.90 - 0.15 * (horizon / 60) / 24),
         )
 
-    def forecast_demand(
-        self, history: List[dict], sim_time: float, horizon_minutes: int = 60
-    ) -> dict:
-        """
-        Estimates the expected patient arrival rate for each minute of the next N minutes, factoring in the current trend and a time-of-day adjustment.
-
-        Parameters:
-            history: A list of past simulation state snapshots, each containing an "active_patients" count. Needs at least 5 entries to produce a result.
-            sim_time: The current simulation time in minutes, used to determine what hour of the day it is.
-            horizon_minutes: How many minutes ahead to forecast (default 60, meaning one hour forward).
-
-        Returns:
-            A dictionary with keys: "horizon_minutes" (int), "arrival_rate_forecast" (list of per-minute arrival rates), "peak_hour_forecast" (the highest predicted rate), and "avg_forecast" (the mean predicted rate). Returns an empty dict if there is not enough history.
-
-        Called from:
-            The AI copilot service or sandbox API when demand forecasting is requested.
-        """
-        if len(history) < 5:
-            return {}
-        active = [h.get("active_patients", 0) for h in history]
-        if len(active) > 1:
-            delta = [active[i] - active[i - 1] for i in range(1, len(active))]
-            avg_arrival = max(0, sum(delta[-30:]) / max(1, len(delta[-30:])))
-        else:
-            avg_arrival = 8.0 / 60
-        current_hour = (sim_time / 60) % 24
-        forecast_values = []
-        for i in range(horizon_minutes):
-            hour = (current_hour + i / 60) % 24
-            tod_factor = 1.0 + 0.4 * math.sin((hour - 6) * math.pi / 12)
-            rate = max(0, avg_arrival * tod_factor * 60) + random.gauss(0, 0.5)
-            forecast_values.append(max(0, rate))
-        return {
-            "horizon_minutes": horizon_minutes,
-            "arrival_rate_forecast": [round(v, 2) for v in forecast_values],
-            "peak_hour_forecast": round(max(forecast_values), 2),
-            "avg_forecast": round(sum(forecast_values) / len(forecast_values), 2),
-        }
-
     def generate_bottleneck_predictions(
         self, state: dict, history: List[dict]
     ) -> List[dict]:
