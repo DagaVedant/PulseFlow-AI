@@ -89,8 +89,6 @@ export function GuidedTour() {
     };
   }, [active, stepIndex, pathname, step]);
 
-  // The popup is centred on the viewport, so both its own height and the
-  // viewport size feed straight into where it gets placed.
   useEffect(() => {
     const update = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
     update();
@@ -139,10 +137,6 @@ export function GuidedTour() {
       }
     : null;
 
-  // Always vertically centred on the viewport, so the popup can never scroll
-  // off-screen the way an element-anchored position could. Horizontally it
-  // prefers the centre too, and only slides aside when dead-centre would cover
-  // the thing the step is pointing at.
   const popupPos: { top: number; left: number } = (() => {
     const { w: vw, h: vh } = viewport;
     const clampLeft = (left: number) =>
@@ -171,7 +165,6 @@ export function GuidedTour() {
     const needed = POPUP_WIDTH + DODGE_GAP + VIEWPORT_MARGIN;
     if (vw - spot.right >= needed) return { top, left: clampLeft(spot.right + DODGE_GAP) };
     if (spot.left >= needed) return { top, left: clampLeft(spot.left - DODGE_GAP - POPUP_WIDTH) };
-    // Target is too wide to dodge (a full-width panel); stay centred over it.
     return { top, left: centred };
   })();
 
